@@ -1,0 +1,13 @@
+jupyter-book>=2.0.0
+matplotlib
+numpy
+scipy
+scikit-learn
+pandas
+# Deep learning (optional)
+torch
+# Sphinx extensions
+sphinx-proof
+sphinxcontrib-mermaid
+sphinxcontrib-bibtex
+

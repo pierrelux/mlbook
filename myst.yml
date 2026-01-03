@@ -1,0 +1,78 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 8a3f2c1d-5e7b-4a9c-b2d8-6f1e3c5a7b9d
+  title: "Fondements de l'apprentissage machine"
+  description: "Un manuel d'introduction à l'apprentissage machine couvrant les méthodes supervisées et non-supervisées, des algorithmes classiques aux réseaux de neurones modernes."
+  authors:
+    - name: Pierre-Luc Bacon
+  github: https://github.com/pierrelux/mlbook
+  bibliography:
+    - references.bib
+  math:
+    '\E': '\mathbb{E}'
+    '\Var': '\mathrm{Var}'
+    '\Cov': '\mathrm{Cov}'
+    '\Prob': '\mathbb{P}'
+    '\R': '\mathbb{R}'
+    '\N': '\mathbb{N}'
+    '\Loss': '\mathcal{L}'
+    '\Risk': '\mathcal{R}'
+    '\Hypothesis': '\mathcal{H}'
+    '\Data': '\mathcal{D}'
+    '\indicator': '\mathbb{1}'
+    '\defeq': '\triangleq'
+    '\mathds': '\mathbb'
+    '\hdots': '\cdots'
+  exports:
+    - format: pdf
+      output: exports/book.pdf
+  toc:
+    - file: intro.md
+    - title: "Partie I: Fondements"
+      children:
+        - file: learning_problem.md
+        - file: generalization.md
+    - title: "Partie II: Méthodes non-paramétriques"
+      children:
+        - file: knn.md
+        - file: kernel_methods.md
+    - title: "Partie III: Modèles linéaires"
+      children:
+        - file: linear_regression.md
+        - file: linear_classifiers.md
+        - file: generative_models.md
+    - title: "Partie IV: Machines à vecteurs de support"
+      children:
+        - file: svm.md
+    - title: "Partie V: Réseaux de neurones"
+      children:
+        - file: neural_networks.md
+        - file: cnn.md
+        - file: rnn.md
+    - title: "Partie VI: Méthodes d'ensemble"
+      children:
+        - file: trees.md
+        - file: ensembles.md
+        - file: boosting.md
+    - title: "Partie VII: Apprentissage non-supervisé"
+      children:
+        - file: pca.md
+        - file: clustering.md
+    - title: "Partie VIII: Modèles probabilistes"
+      children:
+        - file: graphical_models.md
+    - title: Annexes
+      children:
+        - file: appendix_linear_algebra.md
+        - file: appendix_probability.md
+        - file: appendix_optimization.md
+    
+site:
+  template: book-theme
+  options:
+    logo_text: "IFT6390"
+    numbered: true
+  actions:
+    - title: View on GitHub
+      url: https://github.com/pierrelux/mlbook

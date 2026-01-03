@@ -1,0 +1,38 @@
+# MyST build outputs
+_build/
+exports/
+.venv/
+venv/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Lock files (optional - some projects commit these)
+uv.lock
+
+# Source files (keep these private)
+slides_source/
+Overleaf*.zip
+
+# Internal files (not for public repo)
+WRITING_GUIDELINES.md
+PEDAGOGICAL_GUIDELINES.md
+MASTER_PLAN.md
+

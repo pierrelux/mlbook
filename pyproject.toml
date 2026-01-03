@@ -1,0 +1,30 @@
+[project]
+name = "mlbook"
+version = "0.1.0"
+description = "Fondements de l'apprentissage machine"
+authors = [
+    {name = "Pierre-Luc Bacon"}
+]
+requires-python = ">=3.12"
+dependencies = [
+    "jupyter-book>=2.0.0",
+    "matplotlib",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "pandas",
+    "sphinx-proof",
+    "sphinxcontrib-mermaid",
+    "sphinxcontrib-bibtex",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+
+[tool.uv]
+dev-dependencies = [] 
+
