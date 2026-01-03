@@ -1,93 +1,99 @@
 # Introduction
 
-L'apprentissage machine étudie les algorithmes qui s'améliorent par l'expérience. Plutôt que de suivre des instructions explicites programmées à l'avance, un algorithme d'apprentissage utilise les données pour découvrir des régularités, faire des prédictions et informer des décisions. Ce livre introduit les fondements mathématiques et les algorithmes pratiques qui rendent un tel apprentissage possible.
+```{admonition} Objectifs d'apprentissage
+:class: note
 
-## Perspective historique
+À la fin de ce chapitre, vous serez en mesure de:
+- Expliquer pourquoi la maîtrise des fondements de l'AM reste essentielle à l'ère des LLMs
+- Identifier les sources classiques d'écart entre performance rapportée et performance réelle
+- Distinguer les différents types d'apprentissage (supervisé, non supervisé, par renforcement)
+- Relier un protocole d'évaluation à la notion de risque
+```
 
-L'idée d'apprendre à partir des données n'est pas récente. En 1693, Edmund Halley tentait de découvrir des régularités dans les naissances et mortalités de la ville de Breslau. Son objectif était de dériver une formule pour prédire les montants espérés en taxes qui seraient collectés pour chaque individu. Cette table de mortalité représente l'une des premières tentatives systématiques d'utiliser des données pour faire des prédictions.
+## Pourquoi l'apprentissage machine à l'ère des LLMs?
 
-La cybernétique, discipline introduite par Norbert Wiener en 1947, a unifié les théories de l'information et de la commande optimale. Cette approche ambitieuse visait à expliquer le cerveau à l'aide des ordinateurs, à comprendre les organisations sociales et les interactions entre humains et machines. Ces travaux ont posé les bases conceptuelles de l'apprentissage automatique moderne.
+Aujourd'hui, il est devenu facile d'obtenir du code d'apprentissage machine en quelques instructions. Un assistant de programmation peut écrire un script complet, afficher des graphiques, et même rapporter des métriques qui semblent convaincantes. Cette facilité change profondément la pratique: **la difficulté n'est plus d'écrire du code "qui tourne", mais de savoir si ce code mesure réellement ce qu'il prétend mesurer**, et si le modèle apprendra quelque chose qui sera encore vrai au moment du déploiement.
 
-En 1957, Frank Rosenblatt a introduit le perceptron pour classifier des images. Utilisant les idées de McCulloch et Pitts ainsi que de Donald Hebb sur la formalisation du calcul neuronal, le perceptron représente l'ancêtre des réseaux de neurones modernes. Cette machine pouvait apprendre à distinguer différentes formes à partir d'exemples, démontrant pour la première fois qu'une machine pouvait véritablement apprendre.
+Le danger le plus courant est que des résultats impressionnants cachent un problème méthodologique. Un modèle peut sembler excellent tout en:
 
-## Types d'apprentissage
+- **Surapprenant**: mémoriser les exemples d'entraînement plutôt qu'apprendre des régularités généralisables
+- **Exploitant une fuite d'information**: utiliser indirectement des données qui ne seront pas disponibles au moment du test
+- **S'appuyant sur des variables privilégiées**: des caractéristiques présentes dans le jeu de données mais non observables dans l'environnement réel
+
+Dans tous ces cas, les métriques "auto-rapportées" sont trompeuses: elles décrivent surtout la capacité du pipeline à se convaincre lui-même.
+
+```{admonition} Compétence centrale: inspection et évaluation
+:class: warning
+
+Savoir entraîner un modèle ne suffit plus. Il faut savoir **lire et critiquer** les artefacts produits par du code généré: jeux d'entraînement/validation/test, construction des variables, protocole d'évaluation, choix de métriques, et signes de surapprentissage ou de fuite d'information.
+
+Ce livre introduit le langage formel — risque, risque empirique, ERM, MLE — qui permet de poser ces questions proprement.
+```
+
+C'est pourquoi ce livre insiste sur une idée simple: **apprendre l'AM, c'est apprendre à définir un problème, spécifier une procédure d'évaluation crédible, et relier un objectif d'optimisation à une notion de performance qui généralise**. Les modèles modernes rendent certaines tâches plus accessibles, mais ils rendent la rigueur *encore plus essentielle*, car il devient plus facile de produire des artefacts convaincants qui sont néanmoins faux.
+
+## Qu'est-ce que l'apprentissage machine?
+
+L'apprentissage machine étudie les algorithmes qui s'améliorent par l'expérience. Plutôt que de suivre des instructions explicites programmées à l'avance, un algorithme d'apprentissage utilise les données pour découvrir des régularités, faire des prédictions et informer des décisions.
+
+### Perspective historique
+
+L'idée d'apprendre à partir des données n'est pas récente. En 1693, Edmund Halley tentait de découvrir des régularités dans les naissances et mortalités de la ville de Breslau pour prédire les montants espérés en taxes. La cybernétique de Norbert Wiener (1947) a unifié les théories de l'information et de la commande optimale, posant les bases conceptuelles de l'apprentissage automatique moderne. En 1957, Frank Rosenblatt a introduit le perceptron, ancêtre des réseaux de neurones modernes, démontrant pour la première fois qu'une machine pouvait véritablement apprendre à partir d'exemples.
+
+### Types d'apprentissage
 
 Les problèmes d'apprentissage machine se divisent en plusieurs catégories selon la nature des données disponibles et l'objectif visé.
 
-### Apprentissage supervisé
+**Apprentissage supervisé.** Nous disposons de paires d'entrées et de sorties. L'objectif est d'identifier une relation pour prédire la sortie associée à de nouvelles entrées. Selon la nature de la sortie:
+- **Classification**: $\hat{f}: \mathbb{R}^d \to \{0, 1, \ldots, m\}$ (questions qualitatives)
+- **Régression**: $\hat{f}: \mathbb{R}^d \to \mathbb{R}^p$ (questions quantitatives)
 
-Dans l'apprentissage supervisé, nous disposons de paires d'entrées et de sorties. L'objectif est d'identifier automatiquement une relation entre ces paires pour pouvoir prédire la sortie associée à de nouvelles entrées. Nous supposons qu'il existe une vraie fonction $f: \mathcal{X} \to \mathcal{Y}$ pouvant expliquer les données, et nous cherchons à l'approximer.
+**Apprentissage non supervisé.** Nous n'avons accès qu'aux données d'entrée, sans étiquettes. L'objectif est de découvrir la structure cachée: estimation de densité, partitionnement (clustering), réduction de dimensionnalité.
 
-Soit $d$ la dimension du vecteur d'entrée. Selon la nature de la sortie, nous distinguons:
+**Apprentissage auto-supervisé.** On génère automatiquement des cibles à partir des données elles-mêmes (masquer une partie d'une image et la reconstruire, prédire le mot suivant). Cette approche exploite de grandes quantités de données non étiquetées.
 
-- La **classification binaire**: $\hat{f}: \mathbb{R}^d \to \{0, 1\}$
-- La **classification multiclasse**: $\hat{f}: \mathbb{R}^d \to \{0, \ldots, m\}$ 
-- La **régression**: $\hat{f}: \mathbb{R}^d \to \mathbb{R}^p$
+**Apprentissage par renforcement.** Un agent interagit avec un environnement et apprend à maximiser une récompense cumulative. Ce paradigme s'applique aux jeux, à la robotique et aux systèmes de recommandation.
 
-Les problèmes de classification ont trait à des questions de nature qualitative, alors que la régression traite de questions quantitatives. Par exemple, déterminer si un courriel est un pourriel relève de la classification, tandis que prédire le prix d'une maison relève de la régression.
+## Structure du livre
 
-### Apprentissage non supervisé
+Ce livre est organisé en huit parties qui progressent des fondements vers les méthodes avancées.
 
-Dans l'apprentissage non supervisé, nous n'avons accès qu'aux données d'entrée, sans étiquettes associées. L'objectif est de découvrir la structure cachée dans les données. L'estimation de densité, qui consiste à estimer la fonction de densité d'une variable aléatoire à partir d'observations, constitue un exemple classique. Le partitionnement (clustering), qui vise à regrouper des exemples similaires, en est un autre.
+**Partie I: Fondements.** Nous formalisons le problème d'apprentissage: le risque, le risque empirique, et ce que signifie pour un algorithme de généraliser. Ce cadre théorique est essentiel pour comprendre *pourquoi* certains modèles échouent malgré de bonnes métriques d'entraînement.
 
-### Apprentissage auto-supervisé
+**Partie II: Méthodes non paramétriques.** Les k plus proches voisins et les méthodes à noyau illustrent les concepts fondamentaux sans imposer de forme paramétrique forte.
 
-L'apprentissage auto-supervisé génère automatiquement des cibles utiles à partir des données elles-mêmes. Par exemple, on peut masquer une partie d'une image et entraîner un modèle à la reconstruire, ou prédire le mot suivant dans une phrase. Cette approche permet d'exploiter de grandes quantités de données non étiquetées.
+**Partie III: Modèles linéaires.** Régression linéaire, régression logistique, et modèles génératifs. Ces méthodes, bien que conceptuellement simples, sont puissantes et constituent la base des approches plus complexes.
 
-### Apprentissage par renforcement
+**Partie IV: Machines à vecteurs de support.** L'optimisation sous contraintes et l'astuce du noyau permettent des frontières de décision non linéaires.
 
-L'apprentissage par renforcement traite des problèmes d'actions plutôt que de prédictions. Un agent interagit avec un environnement et apprend à maximiser une récompense cumulative. Ce paradigme s'applique aux jeux, à la robotique et aux systèmes de recommandation.
+**Partie V: Réseaux de neurones.** Les perceptrons multicouches, réseaux convolutifs et récurrents étendent les modèles linéaires en composant des transformations.
 
-## Aperçu du cours
+**Partie VI: Méthodes d'ensemble.** Arbres de décision, bagging, boosting. Les forêts aléatoires et le gradient boosting comptent parmi les algorithmes les plus performants en pratique.
 
-Ce livre couvre les concepts et méthodes fondamentaux de l'apprentissage machine. Nous commençons par la formalisation du problème d'apprentissage: le risque, le risque empirique, et ce que signifie pour un algorithme de généraliser. Ce cadre théorique guide notre étude des algorithmes.
+**Partie VII: Apprentissage non supervisé.** Analyse en composantes principales et mélanges gaussiens.
 
-Nous étudions d'abord les méthodes non paramétriques comme les k plus proches voisins et les méthodes à noyau. Ces approches simples illustrent les concepts fondamentaux sans imposer de forme paramétrique forte aux données.
-
-Les modèles linéaires forment ensuite le coeur du livre: régression linéaire, régression logistique, et machines à vecteurs de support. Ces méthodes, bien que conceptuellement simples, sont puissantes et constituent la base des approches plus complexes.
-
-Les réseaux de neurones étendent les modèles linéaires en composant des transformations simples. Nous couvrons les perceptrons multicouches, les réseaux convolutifs pour les images, et les réseaux récurrents pour les séquences.
-
-Les méthodes d'ensemble combinent plusieurs modèles: le bagging réduit la variance, le boosting réduit le biais. Les forêts aléatoires et le gradient boosting comptent parmi les algorithmes les plus performants en pratique.
-
-L'apprentissage non supervisé occupe la dernière partie: l'analyse en composantes principales pour la réduction de dimensionnalité, et les mélanges gaussiens pour le partitionnement. Nous concluons par une introduction aux modèles graphiques probabilistes.
+**Partie VIII: Modèles probabilistes.** Introduction aux modèles graphiques et à l'inférence variationnelle.
 
 ## Prérequis
 
-Ce cours suppose une familiarité avec les domaines suivants.
+Ce cours suppose une familiarité avec:
 
-**Algèbre linéaire.** Vecteurs, matrices, produits matriciels, valeurs propres et vecteurs propres, décompositions matricielles. La capacité à manipuler des expressions vectorielles et matricielles est essentielle.
+- **Algèbre linéaire**: vecteurs, matrices, valeurs propres, décompositions matricielles
+- **Probabilités**: variables aléatoires, distributions, espérance, variance
+- **Calcul différentiel**: gradients, règle de la chaîne
+- **Programmation**: Python, NumPy, Matplotlib, scikit-learn
 
-**Probabilités et statistiques.** Variables aléatoires, distributions de probabilité, espérance, variance, covariance. Les distributions de Bernoulli, catégorique et gaussienne apparaissent fréquemment.
-
-**Calcul différentiel.** Dérivées partielles, gradients, règle de la chaîne. L'optimisation par descente de gradient est omniprésente en apprentissage machine.
-
-**Programmation.** Capacité à implémenter des algorithmes en Python, avec les bibliothèques NumPy et Matplotlib. Les exemples de code utilisent également scikit-learn.
-
-Les annexes fournissent des révisions brèves du matériel prérequis pour référence.
+Les annexes fournissent des révisions du matériel prérequis.
 
 ## Comment utiliser ce livre
 
-Chaque chapitre commence par une liste d'objectifs d'apprentissage formulés comme des capacités: "À la fin de ce chapitre, vous serez en mesure de..." Ces objectifs guident la lecture et correspondent à ce qui est évalué dans les exercices.
+Chaque chapitre commence par des **objectifs d'apprentissage** formulés comme des capacités. Ces objectifs guident la lecture et correspondent à ce qui est évalué.
 
-Les concepts sont introduits par des exemples concrets avant les définitions formelles. Un exemple simple en deux dimensions précède souvent la formulation générale. Après avoir présenté la théorie, nous revenons à l'exemple initial pour montrer comment il s'inscrit dans le cadre abstrait.
+Les concepts sont introduits par des **exemples concrets** avant les définitions formelles. Un exemple simple en deux dimensions précède souvent la formulation générale.
 
-Les exemples travaillés montrent les étapes intermédiaires des calculs. Nous indiquons explicitement quelles hypothèses ou lemmes sont utilisés, et pourquoi chaque étape est effectuée.
-
-Les exercices varient en difficulté: rappel de définitions, applications directes, preuves conceptuelles, et implémentations. Les exercices de codage demandent d'implémenter les algorithmes à partir de zéro avant d'utiliser les fonctions de bibliothèque.
-
-## Ressources complémentaires
-
-Les ouvrages suivants complètent ce livre:
-
-- *Probabilistic Machine Learning: An Introduction* par Kevin P. Murphy, disponible gratuitement en ligne
-- *The Elements of Statistical Learning* par Hastie, Tibshirani et Friedman
-- *Pattern Recognition and Machine Learning* par Christopher M. Bishop
-- *Deep Learning* par Goodfellow, Bengio et Courville
+Les **exercices** varient en difficulté: rappel de définitions, applications directes, preuves, et implémentations. Les exercices de codage demandent d'implémenter les algorithmes à partir de zéro avant d'utiliser les fonctions de bibliothèque.
 
 ## Notation
-
-Nous adoptons les conventions suivantes tout au long du livre:
 
 | Symbole | Signification |
 |---------|---------------|
@@ -101,6 +107,13 @@ Nous adoptons les conventions suivantes tout au long du livre:
 | $\mathcal{H}$ | Classe d'hypothèses |
 | $\mathbb{E}[\cdot]$ | Espérance |
 | $\mathbb{P}(\cdot)$ | Probabilité |
-| $\mathbb{1}_A$ | Fonction indicatrice de l'ensemble $A$ |
+| $\mathbb{1}_A$ | Fonction indicatrice |
 
 Les vecteurs sont notés en gras minuscule ($\boldsymbol{x}$), les matrices en gras majuscule ($\boldsymbol{X}$), et les scalaires en italique ($x$).
+
+## Ressources complémentaires
+
+- *Probabilistic Machine Learning: An Introduction* — Kevin P. Murphy
+- *The Elements of Statistical Learning* — Hastie, Tibshirani, Friedman
+- *Pattern Recognition and Machine Learning* — Christopher M. Bishop
+- *Deep Learning* — Goodfellow, Bengio, Courville
