@@ -29,44 +29,44 @@ project:
       output: exports/book.pdf
   toc:
     - file: intro.md
-    - title: "Partie I: Fondements"
-      children:
-        - file: learning_problem.md
-        - file: generalization.md
-    - title: "Partie II: Méthodes non-paramétriques"
-      children:
-        - file: knn.md
-        - file: kernel_methods.md
-    - title: "Partie III: Modèles linéaires"
-      children:
-        - file: linear_regression.md
-        - file: linear_classifiers.md
-        - file: generative_models.md
-    - title: "Partie IV: Machines à vecteurs de support"
-      children:
-        - file: svm.md
-    - title: "Partie V: Réseaux de neurones"
-      children:
-        - file: neural_networks.md
-        - file: cnn.md
-        - file: rnn.md
-    - title: "Partie VI: Méthodes d'ensemble"
-      children:
-        - file: trees.md
-        - file: ensembles.md
-        - file: boosting.md
-    - title: "Partie VII: Apprentissage non-supervisé"
-      children:
-        - file: pca.md
-        - file: clustering.md
-    - title: "Partie VIII: Modèles probabilistes"
-      children:
-        - file: graphical_models.md
-    - title: Annexes
-      children:
-        - file: appendix_linear_algebra.md
-        - file: appendix_probability.md
-        - file: appendix_optimization.md
+    # - title: "Partie I: Fondements"
+    #   children:
+    #     - file: learning_problem.md
+    #     - file: generalization.md
+    # - title: "Partie II: Méthodes non-paramétriques"
+    #   children:
+    #     - file: knn.md
+    #     - file: kernel_methods.md
+    # - title: "Partie III: Modèles linéaires"
+    #   children:
+    #     - file: linear_regression.md
+    #     - file: linear_classifiers.md
+    #     - file: generative_models.md
+    # - title: "Partie IV: Machines à vecteurs de support"
+    #   children:
+    #     - file: svm.md
+    # - title: "Partie V: Réseaux de neurones"
+    #   children:
+    #     - file: neural_networks.md
+    #     - file: cnn.md
+    #     - file: rnn.md
+    # - title: "Partie VI: Méthodes d'ensemble"
+    #   children:
+    #     - file: trees.md
+    #     - file: ensembles.md
+    #     - file: boosting.md
+    # - title: "Partie VII: Apprentissage non-supervisé"
+    #   children:
+    #     - file: pca.md
+    #     - file: clustering.md
+    # - title: "Partie VIII: Modèles probabilistes"
+    #   children:
+    #     - file: graphical_models.md
+    # - title: Annexes
+    #   children:
+    #     - file: appendix_linear_algebra.md
+    #     - file: appendix_probability.md
+    #     - file: appendix_optimization.md
     
 site:
   template: book-theme
