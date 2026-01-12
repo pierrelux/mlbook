@@ -1,0 +1,1340 @@
+---
+kernelspec:
+  name: python3
+  display_name: Python 3
+---
+
+# K plus proches voisins
+
+```{admonition} Objectifs d'apprentissage
+:class: note
+
+À la fin de ce chapitre, vous serez en mesure de:
+- Expliquer le fonctionnement de l'algorithme des k plus proches voisins
+- Définir et appliquer différentes fonctions de distance
+- Analyser l'effet du paramètre k sur le compromis biais-variance
+- Expliquer le fléau de la dimensionnalité et ses conséquences
+- Implémenter l'algorithme k-ppv pour la classification et la régression
+```
+
+## L'idée de base
+
+Soit $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ un ensemble d'entraînement avec $x_i \in \mathbb{R}^d$ et $y_i \in \{1, \ldots, C\}$. Nous voulons prédire l'étiquette d'un nouveau point $x$. L'approche la plus simple consiste à regarder les exemples connus qui ressemblent à $x$ et à prédire la même chose.
+
+Les k plus proches voisins (k-ppv) formalisent cette intuition. Pour classifier $x$, nous identifions les $k$ points de $\mathcal{D}$ les plus proches de $x$ et prenons un vote majoritaire sur leurs étiquettes. La méthode ne fait aucune hypothèse sur la forme de la relation entre $x$ et $y$. Elle se contente de consulter les données au moment de la prédiction.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate simple 2D data
+np.random.seed(42)
+n_per_class = 15
+
+# Class 0: cluster around (-1, -1)
+X0 = np.random.randn(n_per_class, 2) * 0.6 + np.array([-1, -1])
+# Class 1: cluster around (1, 1)
+X1 = np.random.randn(n_per_class, 2) * 0.6 + np.array([1, 1])
+
+X_train = np.vstack([X0, X1])
+y_train = np.array([0] * n_per_class + [1] * n_per_class)
+
+# Query point
+x_query = np.array([0.3, 0.2])
+k = 5
+
+# Compute distances and find k nearest
+distances = np.sqrt(np.sum((X_train - x_query)**2, axis=1))
+k_nearest_idx = np.argsort(distances)[:k]
+
+fig, ax = plt.subplots(figsize=(6, 5))
+
+# Plot training points
+ax.scatter(X_train[y_train == 0, 0], X_train[y_train == 0, 1], 
+           c='C0', s=60, label='Classe 0', zorder=2)
+ax.scatter(X_train[y_train == 1, 0], X_train[y_train == 1, 1], 
+           c='C1', s=60, label='Classe 1', zorder=2)
+
+# Highlight k nearest neighbors
+for idx in k_nearest_idx:
+    ax.plot([x_query[0], X_train[idx, 0]], [x_query[1], X_train[idx, 1]], 
+            'k--', alpha=0.4, linewidth=1, zorder=1)
+    ax.scatter(X_train[idx, 0], X_train[idx, 1], 
+               s=150, facecolors='none', edgecolors='black', linewidths=2, zorder=3)
+
+# Plot query point
+ax.scatter(x_query[0], x_query[1], c='red', s=120, marker='*', 
+           label='Point requête', zorder=4)
+
+# Count votes
+votes = y_train[k_nearest_idx]
+n_class0 = np.sum(votes == 0)
+n_class1 = np.sum(votes == 1)
+prediction = 0 if n_class0 > n_class1 else 1
+
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.legend(loc='upper left')
+ax.set_title(f'$k = {k}$: votes = [{n_class0} classe 0, {n_class1} classe 1] → prédiction: classe {prediction}')
+ax.set_aspect('equal')
+plt.tight_layout()
+```
+
+Soit $\mathcal{N}_k(x)$ l'ensemble des indices des $k$ plus proches voisins de $x$. La prédiction est:
+
+$$
+\hat{y} = \arg\max_{c} \sum_{i \in \mathcal{N}_k(x)} \mathbb{1}_{y_i = c}
+$$
+
+La somme compte combien de voisins appartiennent à chaque classe $c$, et nous retenons la classe la plus fréquente.
+
+Cette formulation admet une interprétation probabiliste. La proportion de voisins appartenant à la classe $c$ estime la probabilité conditionnelle:
+
+$$
+p(y = c \mid x, \mathcal{D}) = \frac{1}{k} \sum_{i \in \mathcal{N}_k(x)} \mathbb{1}_{y_i = c}
+$$
+
+La prédiction déterministe correspond au mode de cette distribution empirique.
+
+## Fonctions de distance
+
+L'algorithme repose sur la capacité à mesurer la proximité entre points. Une **fonction de distance** $d: \mathcal{X} \times \mathcal{X} \to [0, \infty)$ doit satisfaire trois axiomes: $d(x, y) = 0$ si et seulement si $x = y$ (identité), $d(x, y) = d(y, x)$ (symétrie), et $d(x, z) \leq d(x, y) + d(y, z)$ (inégalité triangulaire).
+
+La **distance euclidienne** est le choix le plus courant:
+
+$$
+d_2(x, y) = \sqrt{\sum_{j=1}^{d} (x_j - y_j)^2} = \|x - y\|_2
+$$
+
+La **distance de Manhattan** suit les axes plutôt que la ligne droite:
+
+$$
+d_1(x, y) = \sum_{j=1}^{d} |x_j - y_j| = \|x - y\|_1
+$$
+
+Ces deux distances appartiennent à la famille des normes $\ell_p$, définies par $\|x\|_p = \left(\sum_j |x_j|^p\right)^{1/p}$. Le cas limite $p \to \infty$ donne la norme $\ell_\infty$:
+
+$$
+\|x\|_\infty = \max_j |x_j|
+$$
+
+### Boules unité: visualiser ce que "équidistant" signifie
+
+Pour comprendre comment une norme mesure les distances, on trace sa **boule unité**. Formellement, la boule unité d'une norme $\|\cdot\|$ est l'ensemble:
+
+$$
+B = \{x \in \mathbb{R}^d : \|x\| \leq 1\}
+$$
+
+et sa frontière, la **sphère unité**, est $S = \{x : \|x\| = 1\}$. Tous les points sur cette sphère sont à distance exactement 1 de l'origine. La forme de la boule révèle ce que la norme considère comme "équidistant".
+
+- **Norme $\ell_2$ (cercle)**: Le point $(1, 0)$ et le point $(0.71, 0.71)$ sont à la même distance de l'origine. Se déplacer en diagonale coûte autant que suivre un axe. C'est notre intuition géométrique habituelle.
+
+- **Norme $\ell_1$ (losange)**: Le point $(1, 0)$ est à distance 1, mais $(0.71, 0.71)$ est à distance $0.71 + 0.71 = 1.42$. Se déplacer en diagonale coûte plus cher, comme un taxi qui ne peut tourner qu'aux intersections.
+
+- **Norme $\ell_\infty$ (carré)**: Seule la plus grande coordonnée compte. Les points $(1, 0)$, $(1, 0.5)$ et $(1, 1)$ sont tous à distance 1. C'est la distance du joueur d'échecs (le roi peut se déplacer d'une case dans n'importe quelle direction).
+
+Pour les k-ppv, la forme de la boule détermine quels points sont considérés voisins. Avec $\ell_1$, les voisins forment un losange autour de la requête; avec $\ell_\infty$, un carré.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(1, 3, figsize=(11, 4))
+
+# Unit balls for different norms
+theta = np.linspace(0, 2*np.pi, 1000)
+
+# Key points to highlight
+p1 = (1, 0)
+p2 = (1/np.sqrt(2), 1/np.sqrt(2))  # ≈ (0.71, 0.71)
+
+# L1 norm (diamond)
+ax = axes[0]
+t = np.linspace(0, 1, 250)
+x_l1 = np.concatenate([t, 1-t, -t, -1+t])
+y_l1 = np.concatenate([1-t, -t, -1+t, t])
+ax.fill(x_l1, y_l1, alpha=0.3, color='C0')
+ax.plot(x_l1, y_l1, 'C0-', linewidth=2)
+
+# Show points - (1,0) is on boundary, (0.71, 0.71) is OUTSIDE
+ax.scatter([p1[0]], [p1[1]], s=80, c='black', zorder=5)
+ax.scatter([p2[0]], [p2[1]], s=80, c='red', zorder=5)
+ax.annotate(f'$(1, 0)$\n$d=1$', p1, textcoords='offset points', 
+            xytext=(5, 10), fontsize=9)
+ax.annotate(f'$(0.71, 0.71)$\n$d=1.42$', p2, textcoords='offset points', 
+            xytext=(5, 10), fontsize=9, color='red')
+
+ax.set_title(r'Norme $\ell_1$ (Manhattan)')
+ax.set_xlim(-1.5, 1.5)
+ax.set_ylim(-1.5, 1.5)
+ax.set_aspect('equal')
+ax.axhline(0, color='gray', linewidth=0.5)
+ax.axvline(0, color='gray', linewidth=0.5)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+
+# L2 norm (circle)
+ax = axes[1]
+x_l2 = np.cos(theta)
+y_l2 = np.sin(theta)
+ax.fill(x_l2, y_l2, alpha=0.3, color='C1')
+ax.plot(x_l2, y_l2, 'C1-', linewidth=2)
+
+# Both points are on the boundary for L2
+ax.scatter([p1[0]], [p1[1]], s=80, c='black', zorder=5)
+ax.scatter([p2[0]], [p2[1]], s=80, c='black', zorder=5)
+ax.annotate(f'$(1, 0)$\n$d=1$', p1, textcoords='offset points', 
+            xytext=(5, 10), fontsize=9)
+ax.annotate(f'$(0.71, 0.71)$\n$d=1$', p2, textcoords='offset points', 
+            xytext=(5, 10), fontsize=9)
+
+ax.set_title(r'Norme $\ell_2$ (Euclidienne)')
+ax.set_xlim(-1.5, 1.5)
+ax.set_ylim(-1.5, 1.5)
+ax.set_aspect('equal')
+ax.axhline(0, color='gray', linewidth=0.5)
+ax.axvline(0, color='gray', linewidth=0.5)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+
+# L-infinity norm (square)
+ax = axes[2]
+x_linf = np.array([1, 1, -1, -1, 1])
+y_linf = np.array([1, -1, -1, 1, 1])
+ax.fill(x_linf, y_linf, alpha=0.3, color='C2')
+ax.plot(x_linf, y_linf, 'C2-', linewidth=2)
+
+# For L-inf: (1,0), (1,0.5), (1,1) all have distance 1
+p_inf = [(1, 0), (1, 0.5), (1, 1)]
+for i, p in enumerate(p_inf):
+    ax.scatter([p[0]], [p[1]], s=80, c='black', zorder=5)
+ax.annotate('$(1, 0)$\n$d=1$', p_inf[0], textcoords='offset points', 
+            xytext=(-45, -5), fontsize=9)
+ax.annotate('$(1, 0.5)$\n$d=1$', p_inf[1], textcoords='offset points', 
+            xytext=(5, -5), fontsize=9)
+ax.annotate('$(1, 1)$\n$d=1$', p_inf[2], textcoords='offset points', 
+            xytext=(5, 5), fontsize=9)
+
+ax.set_title(r'Norme $\ell_\infty$')
+ax.set_xlim(-1.5, 1.5)
+ax.set_ylim(-1.5, 1.5)
+ax.set_aspect('equal')
+ax.axhline(0, color='gray', linewidth=0.5)
+ax.axvline(0, color='gray', linewidth=0.5)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+
+plt.tight_layout()
+```
+
+### Données numériques: normalisation et corrélation
+
+La distance euclidienne traite toutes les dimensions de manière égale. Si les variables ont des échelles différentes, certaines domineront le calcul. Imaginons un problème où $x_1$ est l'âge (0-100) et $x_2$ est le revenu annuel (0-500000). Sans normalisation, la différence de revenu écrasera la différence d'âge.
+
+**Solution pratique**: normaliser les variables (soustraire la moyenne, diviser par l'écart-type) avant d'appliquer les k-ppv. C'est presque toujours nécessaire pour des données tabulaires.
+
+La **distance de Mahalanobis** va plus loin en tenant compte des corrélations:
+
+$$
+d_M(x, y) = \sqrt{(x - y)^\top \Sigma^{-1} (x - y)}
+$$
+
+où $\Sigma$ est la matrice de covariance des données. Pour comprendre cette formule, décomposons-la.
+
+**La matrice de covariance $\Sigma$.** Cette matrice $d \times d$ capture deux informations: sur la diagonale, les variances de chaque variable; hors diagonale, les covariances (corrélations) entre variables. Si $\Sigma = \begin{pmatrix} 4 & 0 \\ 0 & 1 \end{pmatrix}$, la première variable a une variance 4 fois plus grande que la seconde, et elles sont indépendantes.
+
+**Calcul concret.** Soit $X \in \mathbb{R}^{N \times d}$ la matrice des données (chaque ligne est un exemple). On centre d'abord les données en soustrayant la moyenne de chaque colonne:
+
+$$
+\bar{x}_j = \frac{1}{N} \sum_{i=1}^{N} x_{ij}, \quad \tilde{X} = X - \mathbf{1} \bar{x}^\top
+$$
+
+La covariance empirique est alors:
+
+$$
+\Sigma = \frac{1}{N-1} \tilde{X}^\top \tilde{X}
+$$
+
+L'élément $(j, k)$ de cette matrice est $\Sigma_{jk} = \frac{1}{N-1} \sum_{i=1}^{N} (x_{ij} - \bar{x}_j)(x_{ik} - \bar{x}_k)$. En Python:
+
+```python
+X_centered = X - X.mean(axis=0)
+Sigma = (X_centered.T @ X_centered) / (len(X) - 1)
+# ou directement: Sigma = np.cov(X.T)
+```
+
+**L'inverse $\Sigma^{-1}$.** Multiplier par l'inverse de la covariance "blanchit" les données: les directions de forte variance sont comprimées, les corrélations sont supprimées. Après cette transformation, les données ressemblent à un nuage sphérique de variance unitaire.
+
+**Interprétation géométrique.** La distance de Mahalanobis mesure "à combien d'écarts-types" un point se trouve d'un autre, en tenant compte de la forme du nuage de données. Deux points éloignés dans une direction de forte variance sont considérés plus proches que deux points également éloignés dans une direction de faible variance.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+
+np.random.seed(42)
+
+# Generate correlated 2D data
+n = 200
+mean = [0, 0]
+cov = [[2, 1.5], [1.5, 1.5]]  # Correlated, different variances
+X = np.random.multivariate_normal(mean, cov, n)
+
+# Compute sample covariance
+Sigma = np.cov(X.T)
+Sigma_inv = np.linalg.inv(Sigma)
+
+# A reference point and a query point
+ref = np.array([0, 0])
+query1 = np.array([2, 0])    # Along high-variance direction
+query2 = np.array([-0.5, 1]) # Along low-variance direction
+
+# Compute distances
+def euclidean(a, b):
+    return np.sqrt(np.sum((a - b)**2))
+
+def mahalanobis(a, b, Sigma_inv):
+    diff = a - b
+    return np.sqrt(diff @ Sigma_inv @ diff)
+
+d_euc1 = euclidean(ref, query1)
+d_euc2 = euclidean(ref, query2)
+d_mah1 = mahalanobis(ref, query1, Sigma_inv)
+d_mah2 = mahalanobis(ref, query2, Sigma_inv)
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+# Left: Euclidean view
+ax = axes[0]
+ax.scatter(X[:, 0], X[:, 1], alpha=0.3, s=20, c='gray')
+ax.scatter([ref[0]], [ref[1]], s=100, c='black', zorder=5, label='Référence')
+ax.scatter([query1[0]], [query1[1]], s=100, c='C0', zorder=5, marker='s')
+ax.scatter([query2[0]], [query2[1]], s=100, c='C1', zorder=5, marker='^')
+
+# Draw circles for Euclidean distance
+circle1 = plt.Circle(ref, d_euc1, fill=False, color='C0', linestyle='--', linewidth=2)
+circle2 = plt.Circle(ref, d_euc2, fill=False, color='C1', linestyle='--', linewidth=2)
+ax.add_patch(circle1)
+ax.add_patch(circle2)
+
+ax.annotate(f'$d_{{euc}} = {d_euc1:.2f}$', query1, textcoords='offset points', 
+            xytext=(10, 10), fontsize=10, color='C0')
+ax.annotate(f'$d_{{euc}} = {d_euc2:.2f}$', query2, textcoords='offset points', 
+            xytext=(10, 10), fontsize=10, color='C1')
+
+ax.set_xlim(-4, 4)
+ax.set_ylim(-4, 4)
+ax.set_aspect('equal')
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title('Distance Euclidienne\n(ignore la structure des données)')
+
+# Right: Mahalanobis view
+ax = axes[1]
+ax.scatter(X[:, 0], X[:, 1], alpha=0.3, s=20, c='gray')
+ax.scatter([ref[0]], [ref[1]], s=100, c='black', zorder=5, label='Référence')
+ax.scatter([query1[0]], [query1[1]], s=100, c='C0', zorder=5, marker='s')
+ax.scatter([query2[0]], [query2[1]], s=100, c='C1', zorder=5, marker='^')
+
+# Draw ellipses for Mahalanobis distance (iso-distance contours)
+# Eigendecomposition for ellipse orientation
+eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
+angle = np.degrees(np.arctan2(eigenvectors[1, 1], eigenvectors[0, 1]))
+
+for d_mah, color in [(d_mah1, 'C0'), (d_mah2, 'C1')]:
+    width = 2 * d_mah * np.sqrt(eigenvalues[1])
+    height = 2 * d_mah * np.sqrt(eigenvalues[0])
+    ellipse = Ellipse(ref, width, height, angle=angle, fill=False, 
+                      color=color, linestyle='--', linewidth=2)
+    ax.add_patch(ellipse)
+
+ax.annotate(f'$d_{{mah}} = {d_mah1:.2f}$', query1, textcoords='offset points', 
+            xytext=(10, 10), fontsize=10, color='C0')
+ax.annotate(f'$d_{{mah}} = {d_mah2:.2f}$', query2, textcoords='offset points', 
+            xytext=(10, 10), fontsize=10, color='C1')
+
+ax.set_xlim(-4, 4)
+ax.set_ylim(-4, 4)
+ax.set_aspect('equal')
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title('Distance de Mahalanobis\n(tient compte de la covariance)')
+
+plt.tight_layout()
+```
+
+Dans cet exemple, le point bleu (carré) est plus loin en distance euclidienne, mais plus proche en distance de Mahalanobis. Cela s'explique par le fait qu'il se trouve dans la direction où les données varient naturellement. Le point orange (triangle), bien que plus proche en euclidien, est "surprenant" par rapport à la distribution et donc plus loin en Mahalanobis.
+
+En pratique, on utilise rarement Mahalanobis directement pour les k-ppv. La normalisation standard (centrer et réduire chaque variable) capture l'essentiel. Mahalanobis devient utile quand les corrélations entre variables sont fortes et informatives.
+
+### Au-delà des vecteurs numériques
+
+Les k-ppv ne se limitent pas aux vecteurs dans $\mathbb{R}^d$. Toute fonction de distance valide permet d'appliquer l'algorithme.
+
+**Chaînes de caractères et ADN.** La **distance d'édition** (ou distance de Levenshtein) compte le nombre minimum d'opérations (insertion, suppression, substitution) pour transformer une chaîne en une autre:
+
+$$
+d_{\text{edit}}(\texttt{"chat"}, \texttt{"chien"}) = 3
+$$
+
+Cette distance est utilisée pour la correction orthographique, l'alignement de séquences ADN, et la détection de plagiat. Pour comparer des séquences génétiques, on peut aussi utiliser des distances spécialisées qui tiennent compte de la biologie des mutations.
+
+**Documents et texte.** Pour comparer des documents, on les représente souvent comme des vecteurs de fréquences de mots (bag-of-words). La **similarité cosinus** mesure l'angle entre ces vecteurs:
+
+$$
+\text{sim}_{\cos}(x, y) = \frac{x \cdot y}{\|x\| \|y\|}
+$$
+
+On convertit en distance par $d = 1 - \text{sim}_{\cos}$. Cette mesure ignore la longueur des documents et se concentre sur leur contenu thématique. C'est le choix standard pour la recherche d'information et la classification de texte.
+
+**Ensembles et données binaires.** Pour des données représentées comme des ensembles (mots-clés, tags, gènes exprimés), la **distance de Jaccard** mesure le chevauchement:
+
+$$
+d_{\text{Jaccard}}(A, B) = 1 - \frac{|A \cap B|}{|A \cup B|}
+$$
+
+Deux documents partageant 80% de leurs mots-clés ont une distance de 0.2. Pour des vecteurs binaires (présence/absence), la **distance de Hamming** compte les positions différentes.
+
+**Images.** Les pixels bruts donnent des distances peu informatives. Par exemple, deux images du même objet décalé d'un pixel seraient très "différentes". En pratique, on extrait des représentations (embeddings) via des réseaux de neurones pré-entraînés, puis on applique la distance euclidienne ou cosinus dans cet espace de représentation.
+
+### Guide pratique: quelle distance choisir?
+
+| Type de données | Distance recommandée | Pourquoi |
+|-----------------|---------------------|----------|
+| Vecteurs numériques | Euclidienne (après normalisation) | Simple, efficace, interprétable |
+| Données avec corrélations fortes | Mahalanobis ou PCA + Euclidienne | Tient compte de la structure |
+| Texte / documents | Cosinus sur TF-IDF ou embeddings | Invariant à la longueur |
+| Séquences (ADN, protéines) | Distance d'édition ou alignement | Capture les mutations/insertions |
+| Ensembles, tags | Jaccard | Mesure le chevauchement |
+| Vecteurs binaires | Hamming | Compte les différences |
+| Images | Cosinus sur embeddings CNN | Les pixels bruts sont peu informatifs |
+
+**Le choix de la distance encode vos hypothèses.** Si deux clients ayant acheté les mêmes produits sont "similaires", utilisez Jaccard sur les paniers. Si deux clients ayant dépensé des montants similaires sont "proches", utilisez la distance euclidienne sur les dépenses. La distance définit ce que "voisin" signifie: c'est une décision de modélisation, pas un détail technique.
+
+## L'effet du paramètre k
+
+Le paramètre $k$ contrôle la complexité du modèle. Avec $k = 1$, chaque point est classifié selon son plus proche voisin. La frontière de décision est très irrégulière et s'adapte étroitement aux données. L'erreur d'entraînement est exactement zéro: chaque point est son propre plus proche voisin. Mais cette adaptation excessive aux données d'entraînement nuit à la généralisation.
+
+Avec un grand $k$, la prédiction moyenne sur plus de voisins et la frontière devient plus lisse. Le cas extrême $k = N$ prédit toujours la classe majoritaire globale, ignorant complètement l'entrée.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+# Generate 2D classification data
+np.random.seed(0)
+n_samples = 100
+
+# Two interleaved half circles
+from sklearn.datasets import make_moons
+X, y = make_moons(n_samples=n_samples, noise=0.25, random_state=42)
+
+def knn_predict(X_train, y_train, X_test, k):
+    predictions = []
+    for x in X_test:
+        distances = np.sqrt(np.sum((X_train - x)**2, axis=1))
+        k_nearest_idx = np.argsort(distances)[:k]
+        k_nearest_labels = y_train[k_nearest_idx]
+        predictions.append(np.round(np.mean(k_nearest_labels)))
+    return np.array(predictions)
+
+# Create mesh for decision boundary
+x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 150),
+                     np.linspace(y_min, y_max, 150))
+X_mesh = np.c_[xx.ravel(), yy.ravel()]
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+k_values = [1, 5, 50]
+cmap_light = ListedColormap(['#FFAAAA', '#AAAAFF'])
+cmap_bold = ListedColormap(['#FF0000', '#0000FF'])
+
+for ax, k in zip(axes, k_values):
+    Z = knn_predict(X, y, X_mesh, k)
+    Z = Z.reshape(xx.shape)
+    
+    ax.contourf(xx, yy, Z, alpha=0.4, cmap=cmap_light)
+    ax.scatter(X[y == 0, 0], X[y == 0, 1], c='C0', s=30, edgecolors='k', linewidths=0.5)
+    ax.scatter(X[y == 1, 0], X[y == 1, 1], c='C1', s=30, edgecolors='k', linewidths=0.5)
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_title(f'$k = {k}$')
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+
+plt.tight_layout()
+```
+
+Entre ces deux extrêmes se trouve le compromis biais-variance. Un petit $k$ donne un modèle à faible biais mais haute variance: les prédictions sont sensibles aux fluctuations des données. Un grand $k$ donne un modèle à haute biais mais faible variance: les prédictions sont stables mais peuvent manquer des structures locales.
+
+Le choix de $k$ se fait par validation. On trace l'erreur sur un ensemble de validation en fonction de $k$ et on retient la valeur qui minimise cette erreur. Des valeurs impaires évitent les égalités dans les votes.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+
+# Generate a larger dataset for smoother curves
+n_samples = 500
+X = np.random.randn(n_samples, 2)
+# Create a non-linear boundary
+y = ((X[:, 0]**2 + X[:, 1]**2) > 1.5).astype(int)
+# Add label noise
+noise_idx = np.random.choice(n_samples, size=int(0.1 * n_samples), replace=False)
+y[noise_idx] = 1 - y[noise_idx]
+
+# Split into train and test
+n_train = 350
+X_train, X_test = X[:n_train], X[n_train:]
+y_train, y_test = y[:n_train], y[n_train:]
+
+def knn_predict(X_train, y_train, X_test, k):
+    predictions = []
+    for x in X_test:
+        distances = np.sqrt(np.sum((X_train - x)**2, axis=1))
+        k_nearest_idx = np.argsort(distances)[:k]
+        k_nearest_labels = y_train[k_nearest_idx]
+        predictions.append(np.round(np.mean(k_nearest_labels)))
+    return np.array(predictions)
+
+# Compute train and test error for different k
+# Use 1/k on x-axis (model complexity decreases as k increases)
+k_values = list(range(1, 100, 2))  # Odd values to avoid ties
+train_errors = []
+test_errors = []
+
+for k in k_values:
+    y_pred_train = knn_predict(X_train, y_train, X_train, k)
+    y_pred_test = knn_predict(X_train, y_train, X_test, k)
+    train_errors.append(np.mean(y_pred_train != y_train))
+    test_errors.append(np.mean(y_pred_test != y_test))
+
+fig, ax = plt.subplots(figsize=(8, 4.5))
+
+ax.plot(k_values, train_errors, 'C0-', linewidth=2, label='Erreur entraînement')
+ax.plot(k_values, test_errors, 'C1-', linewidth=2, label='Erreur test')
+
+# Mark optimal k
+best_idx = np.argmin(test_errors)
+best_k = k_values[best_idx]
+ax.scatter([best_k], [test_errors[best_idx]], s=100, c='C1', zorder=5, edgecolors='black')
+ax.axvline(best_k, color='gray', linestyle='--', alpha=0.5)
+
+# Add annotations for the regions - positioned to avoid overlapping curves
+ax.text(10, 0.45, 'Surapprentissage\n(haute variance)', fontsize=10, 
+        ha='center', va='top', color='gray', alpha=0.8)
+ax.text(85, 0.1, 'Sous-apprentissage\n(haut biais)', fontsize=10, 
+        ha='center', va='bottom', color='gray', alpha=0.8)
+
+# Mark optimal k with an arrow from above
+ax.annotate(f'Meilleur $k = {best_k}$', xy=(best_k, test_errors[best_idx]), 
+            xytext=(best_k, test_errors[best_idx] + 0.1),
+            fontsize=10, ha='center',
+            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0', color='black'))
+
+ax.set_xlabel('$k$ (nombre de voisins)')
+ax.set_ylabel('Taux d\'erreur')
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, frameon=False)
+ax.set_xlim(0, 100)
+ax.set_ylim(0, 0.5)
+
+# Add complexity arrow at the bottom
+ax.text(0.5, -0.15, r'$\longleftarrow$ complexité du modèle', transform=ax.transAxes, 
+        ha='center', va='top', fontsize=9, color='gray')
+
+plt.tight_layout()
+```
+
+## Diagramme de Voronoï
+
+Le cas $k = 1$ induit une partition de l'espace en cellules. La cellule $V_i$ associée au point $x_i$ contient tous les points plus proches de $x_i$ que de tout autre point d'entraînement:
+
+$$
+V_i = \{x \in \mathbb{R}^d : d(x, x_i) \leq d(x, x_j) \text{ pour tout } j \neq i\}
+$$
+
+Cette partition s'appelle le **diagramme de Voronoï**. Les frontières entre cellules sont des hyperplans en dimension $d$. Avec le 1-ppv, la frontière de décision suit exactement ce diagramme.
+
+### Pourquoi s'intéresser au diagramme de Voronoï?
+
+Cette représentation géométrique révèle des propriétés importantes du classifieur 1-ppv.
+
+**Sensibilité au bruit.** Un point mal étiqueté dans l'ensemble d'entraînement crée une cellule entière où les prédictions seront incorrectes. La taille de cette cellule dépend de la densité locale des données: dans une région peu dense, un seul point erroné peut contaminer une grande partie de l'espace.
+
+**Borne sur l'erreur.** Le théorème de Cover et Hart (1967) établit un résultat remarquable: lorsque $N \to \infty$, l'erreur du classifieur 1-ppv est bornée par
+
+$$
+R^* \leq R_{1\text{-ppv}} \leq 2R^*\left(1 - \frac{R^*}{C}\right)
+$$
+
+où $R^*$ est l'erreur de Bayes (le minimum atteignable par tout classifieur) et $C$ le nombre de classes. Pour un problème binaire, l'erreur du 1-ppv est au plus le double de l'erreur optimale. Sans aucune hypothèse sur la forme de la frontière de décision, le 1-ppv atteint une performance raisonnable. Ce résultat a d'ailleurs surpris la communauté statistique à l'époque.
+
+**Applications au-delà de la classification.** Les diagrammes de Voronoï apparaissent naturellement dans de nombreux domaines: modélisation des zones de chalandise en géographie (quel est le magasin le plus proche?), segmentation cellulaire en biologie, génération de maillages en simulation numérique. L'algorithme k-means, que nous verrons plus tard, converge vers une partition de Voronoï autour des centroïdes.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial import Voronoi, voronoi_plot_2d
+
+# Generate points
+np.random.seed(123)
+n_points = 20
+X = np.random.randn(n_points, 2) * 1.5
+y = (X[:, 0] + X[:, 1] + np.random.randn(n_points) * 0.5 > 0).astype(int)
+
+# Compute Voronoi diagram
+vor = Voronoi(X)
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+# Plot Voronoi regions with colors based on class
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+
+# Create colored regions
+for region_idx, point_idx in enumerate(vor.point_region):
+    region = vor.regions[point_idx]
+    if -1 not in region and len(region) > 0:
+        polygon = [vor.vertices[i] for i in region]
+        poly = Polygon(polygon, alpha=0.3, 
+                      facecolor='C0' if y[region_idx] == 0 else 'C1',
+                      edgecolor='gray', linewidth=0.5)
+        ax.add_patch(poly)
+
+# Plot Voronoi edges
+voronoi_plot_2d(vor, ax=ax, show_vertices=False, show_points=False, 
+                line_colors='gray', line_width=1, line_alpha=0.6)
+
+# Plot points
+ax.scatter(X[y == 0, 0], X[y == 0, 1], c='C0', s=80, edgecolors='k', 
+           linewidths=1, zorder=5, label='Classe 0')
+ax.scatter(X[y == 1, 0], X[y == 1, 1], c='C1', s=80, edgecolors='k', 
+           linewidths=1, zorder=5, label='Classe 1')
+
+ax.set_xlim(-4, 4)
+ax.set_ylim(-4, 4)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.legend(loc='upper left')
+ax.set_aspect('equal')
+plt.tight_layout()
+```
+
+## Le fléau de la dimensionnalité
+
+Les k-ppv fonctionnent bien en basse dimension mais souffrent en haute dimension. Ce phénomène, le **fléau de la dimensionnalité**, affecte toutes les méthodes basées sur la localité. Le problème n'est pas principalement calculatoire: le coût $O(Nd)$ croît linéairement en $d$, mais il est fondamentalement *statistique*.
+
+### La notion de voisinage s'effondre
+
+Considérons des points uniformément distribués dans $[0, 1]^d$. Pour capturer une fraction $p$ des points dans un hypercube, le côté doit être $r = p^{1/d}$. En dimension 1, capturer 10% des points requiert un intervalle de longueur 0.1. En dimension 100, il faut un hypercube de côté $0.1^{1/100} \approx 0.98$, couvrant presque tout l'espace.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+p = 0.1  # fraction of points to capture
+dimensions = np.arange(1, 101)
+side_length = p ** (1 / dimensions)
+
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.plot(dimensions, side_length, 'C0-', linewidth=2)
+ax.axhline(1, color='gray', linestyle='--', alpha=0.5)
+
+# Mark specific points
+for d in [1, 2, 10, 50, 100]:
+    r = p ** (1/d)
+    ax.plot(d, r, 'ko', markersize=6)
+    if d == 1:
+        ax.annotate(f'd={d}\nr={r:.2f}', (d, r), textcoords='offset points', 
+                   xytext=(10, -15), fontsize=9)
+    elif d == 100:
+        ax.annotate(f'd={d}\nr={r:.2f}', (d, r), textcoords='offset points', 
+                   xytext=(-40, -20), fontsize=9)
+
+ax.set_xlabel('Dimension $d$')
+ax.set_ylabel('Côté de l\'hypercube $r$')
+ax.set_title(f'Côté nécessaire pour capturer {int(p*100)}% des points: $r = p^{{1/d}}$')
+ax.set_xlim(0, 105)
+ax.set_ylim(0, 1.1)
+plt.tight_layout()
+```
+
+### Concentration des distances
+
+En haute dimension, un phénomène contre-intuitif se produit: les distances entre points se concentrent autour d'une même valeur. Le ratio entre la distance au plus proche voisin et au plus éloigné tend vers 1:
+
+$$
+\frac{d_{\min}}{d_{\max}} \xrightarrow{d \to \infty} 1
+$$
+
+Tous les points deviennent approximativement équidistants. La notion même de "plus proche voisin" perd son sens: si tous les points sont à la même distance, lequel choisir?
+
+### Conséquences sur le biais
+
+Rappelons que les k-ppv estiment $\mathbb{E}[Y \mid X = x]$ par une moyenne locale. En haute dimension, cette moyenne n'est plus locale car elle inclut des points qui, bien que "voisins" au sens de la distance, peuvent être très différents de $x$ dans l'espace d'entrée. Le biais augmente: nous moyennons sur des régions trop vastes pour capturer les variations locales de la fonction cible.
+
+Pour maintenir une densité constante de voisins dans une boule de rayon fixe, le nombre d'exemples requis croît exponentiellement avec la dimension: $N \propto r^{-d}$. Avec 1000 points en dimension 10, la densité locale est déjà très faible.
+
+### Que faire?
+
+La réduction de dimension (PCA, autoencodeurs) projette les données dans un espace de plus basse dimension avant d'appliquer les k-ppv. Les distances adaptatives comme Mahalanobis peuvent aider si certaines dimensions sont plus informatives. Mais fondamentalement, les méthodes de voisinage ne sont pas adaptées aux problèmes en très haute dimension, ce qui motive l'étude des méthodes paramétriques dans les chapitres suivants.
+
+## Régression
+
+En classification, nous avons combiné les étiquettes des voisins par vote majoritaire. Pour la régression, où $y_i \in \mathbb{R}$, la combinaison naturelle est une moyenne:
+
+$$
+\hat{y} = \frac{1}{k} \sum_{i \in \mathcal{N}_k(x)} y_i
+$$
+
+Cette moyenne locale estime l'espérance conditionnelle $\mathbb{E}[Y \mid X = x]$. L'intuition est simple: si nous voulons prédire la température demain et que nous avons des données historiques, regarder les jours passés qui ressemblaient à aujourd'hui et moyenner leurs températures du lendemain semble raisonnable.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate 1D regression data
+np.random.seed(42)
+n = 50
+X_train = np.sort(np.random.uniform(0, 10, n))
+y_train = np.sin(X_train) + np.random.randn(n) * 0.3
+
+def knn_regression(X_train, y_train, X_test, k):
+    predictions = []
+    for x in X_test:
+        distances = np.abs(X_train - x)
+        k_nearest_idx = np.argsort(distances)[:k]
+        predictions.append(np.mean(y_train[k_nearest_idx]))
+    return np.array(predictions)
+
+X_test = np.linspace(0, 10, 200)
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
+k_values = [1, 5, 15]
+
+for ax, k in zip(axes, k_values):
+    y_pred = knn_regression(X_train, y_train, X_test, k)
+    
+    ax.scatter(X_train, y_train, c='C0', s=30, alpha=0.6, label='Données')
+    ax.plot(X_test, y_pred, 'C1-', linewidth=2, label=f'k-ppv ($k={k}$)')
+    ax.plot(X_test, np.sin(X_test), 'k--', alpha=0.5, label=r'$\sin(x)$')
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$y$')
+    ax.set_title(f'$k = {k}$')
+    ax.legend(loc='upper right', fontsize=8)
+    ax.set_xlim(0, 10)
+
+plt.tight_layout()
+```
+
+Avec $k = 1$, la prédiction saute d'un point à l'autre, créant une fonction en escalier. Augmenter $k$ lisse la prédiction, mais un $k$ trop grand écrase les variations locales.
+
+## Estimation de densité par noyaux
+
+Avant d'aller plus loin dans la régression, introduisons un outil fondamental: l'**estimation de densité par noyaux** (kernel density estimation, ou fenêtres de Parzen).
+
+Supposons que nous observons des points $x_1, \ldots, x_N$ tirés d'une densité inconnue $p(x)$. Comment estimer cette densité? Une approche naïve serait de construire un histogramme, mais les histogrammes dépendent du choix arbitraire des intervalles et produisent des estimations discontinues.
+
+L'idée des fenêtres de Parzen est de placer un petit "noyau" sur chaque observation et de sommer ces contributions:
+
+$$
+\hat{p}(x) = \frac{1}{N} \sum_{i=1}^{N} K_\lambda(x - x_i)
+$$
+
+Le **noyau** $K_\lambda$ est une fonction qui satisfait $\int K_\lambda(u) \, du = 1$ et $K_\lambda(u) = K_\lambda(-u)$. Le paramètre $\lambda$ contrôle la **largeur de bande** (bandwidth): plus $\lambda$ est grand, plus le noyau est étalé, plus l'estimation est lisse.
+
+Le noyau le plus courant est le noyau gaussien:
+
+$$
+K_\lambda(u) = \frac{1}{\lambda \sqrt{2\pi}} \exp\left(-\frac{u^2}{2\lambda^2}\right)
+$$
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate samples from a mixture of Gaussians
+np.random.seed(42)
+n = 100
+samples = np.concatenate([
+    np.random.randn(n//2) * 0.5 + 2,
+    np.random.randn(n//2) * 0.8 + 5
+])
+
+def gaussian_kernel(u, bandwidth):
+    return np.exp(-u**2 / (2 * bandwidth**2)) / (bandwidth * np.sqrt(2 * np.pi))
+
+def kde(x_query, samples, bandwidth):
+    density = np.zeros_like(x_query)
+    for xi in samples:
+        density += gaussian_kernel(x_query - xi, bandwidth)
+    return density / len(samples)
+
+x = np.linspace(-1, 9, 500)
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
+bandwidths = [0.2, 0.5, 1.5]
+
+for ax, bw in zip(axes, bandwidths):
+    density = kde(x, samples, bw)
+    
+    ax.fill_between(x, density, alpha=0.3, color='C0')
+    ax.plot(x, density, 'C0-', linewidth=2, label=f'KDE ($\\lambda={bw}$)')
+    ax.scatter(samples, np.zeros_like(samples) - 0.02, c='k', s=10, alpha=0.5, marker='|')
+    ax.set_xlabel('$x$')
+    ax.set_ylabel(r'$\hat{p}(x)$')
+    ax.set_title(f'Largeur de bande $\\lambda = {bw}$')
+    ax.set_xlim(-1, 9)
+    ax.set_ylim(-0.05, 0.6)
+
+plt.tight_layout()
+```
+
+Avec une petite largeur de bande ($\lambda = 0.2$), chaque observation crée un pic distinct et l'estimation est très variable. Avec une grande largeur de bande ($\lambda = 1.5$), les détails sont perdus et la structure bimodale des données est masquée. Le choix de $\lambda$ incarne encore une fois le compromis biais-variance.
+
+## Régression de Nadaraya-Watson
+
+L'estimation de densité par noyaux mène naturellement à une forme de régression plus souple que les k-ppv. Plutôt que de sélectionner exactement $k$ voisins et de les traiter également, nous pouvons pondérer *tous* les points selon leur proximité à la requête.
+
+L'**estimateur de Nadaraya-Watson** définit la prédiction comme une moyenne pondérée:
+
+$$
+\hat{y}(x) = \frac{\sum_{i=1}^{N} K_\lambda(x - x_i) \, y_i}{\sum_{i=1}^{N} K_\lambda(x - x_i)} = \sum_{i=1}^{N} w_i(x) \, y_i
+$$
+
+où les poids sont normalisés:
+
+$$
+w_i(x) = \frac{K_\lambda(x - x_i)}{\sum_{j=1}^{N} K_\lambda(x - x_j)}
+$$
+
+Chaque point d'entraînement contribue à la prédiction, mais les points éloignés ont un poids négligeable. Le noyau agit comme une fenêtre qui détermine l'influence locale.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate 1D regression data
+np.random.seed(42)
+n = 50
+X_train = np.sort(np.random.uniform(0, 10, n))
+y_train = np.sin(X_train) + np.random.randn(n) * 0.3
+
+def gaussian_kernel(u, bandwidth):
+    return np.exp(-u**2 / (2 * bandwidth**2))
+
+def nadaraya_watson(X_train, y_train, X_test, bandwidth):
+    predictions = []
+    for x in X_test:
+        weights = gaussian_kernel(X_train - x, bandwidth)
+        if np.sum(weights) > 1e-10:
+            predictions.append(np.sum(weights * y_train) / np.sum(weights))
+        else:
+            predictions.append(0)
+    return np.array(predictions)
+
+X_test = np.linspace(0, 10, 200)
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
+bandwidths = [0.2, 0.5, 1.5]
+
+for ax, bw in zip(axes, bandwidths):
+    y_pred = nadaraya_watson(X_train, y_train, X_test, bw)
+    
+    ax.scatter(X_train, y_train, c='C0', s=30, alpha=0.6, label='Données')
+    ax.plot(X_test, y_pred, 'C1-', linewidth=2, label=f'Nadaraya-Watson')
+    ax.plot(X_test, np.sin(X_test), 'k--', alpha=0.5, label=r'$\sin(x)$')
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$y$')
+    ax.set_title(f'$\\lambda = {bw}$')
+    ax.legend(loc='upper right', fontsize=8)
+    ax.set_xlim(0, 10)
+
+plt.tight_layout()
+```
+
+Comparé aux k-ppv, Nadaraya-Watson produit des prédictions plus lisses car la transition entre voisins est graduelle plutôt qu'abrupte. Le paramètre $\lambda$ joue un rôle analogue à $k$: une petite largeur de bande donne une courbe qui suit de près les données (haute variance), une grande largeur de bande lisse excessivement (haut biais).
+
+Les deux approches, k-ppv et Nadaraya-Watson, sont des méthodes à **moyennes locales**. Elles estiment $\mathbb{E}[Y \mid X = x]$ en faisant une moyenne pondérée des $y_i$ pour les points $x_i$ proches de $x$. La différence réside dans la définition de "proche": les k-ppv utilisent une frontière nette (les $k$ plus proches), tandis que Nadaraya-Watson utilise une pondération douce (le noyau).
+
+## Complexité
+
+L'entraînement consiste à stocker les données: $O(N)$. L'inférence requiert de calculer la distance à tous les points et d'identifier les $k$ plus proches: $O(Nd)$ par requête. Pour de grands ensembles, des structures comme les arbres k-d ou le hachage sensible à la localité (LSH) réduisent ce coût.
+
+## Passage à l'échelle
+
+L'implémentation naïve des k-ppv calcule la distance entre la requête et chaque point d'entraînement: $O(Nd)$ par requête. Pour un million de points en dimension 100, chaque prédiction requiert 100 millions d'opérations. Cette complexité linéaire en $N$ rend la méthode impraticable pour de grands ensembles de données.
+
+### Arbres k-d
+
+Les **arbres k-d** (k-dimensional trees) partitionnent récursivement l'espace en régions. À chaque nœud, l'espace est divisé selon une dimension, alternant entre les dimensions à chaque niveau.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+np.random.seed(42)
+
+# Generate points
+points = np.random.rand(15, 2) * 10
+
+# Build k-d tree splits manually for visualization
+# We'll store splits as (dimension, value, depth, bounds)
+splits = []
+
+def build_kdtree_splits(points_idx, depth, x_min, x_max, y_min, y_max):
+    if len(points_idx) <= 1:
+        return
+    
+    dim = depth % 2
+    pts = points[points_idx]
+    
+    # Split at median
+    sorted_idx = np.argsort(pts[:, dim])
+    median_pos = len(sorted_idx) // 2
+    median_val = pts[sorted_idx[median_pos], dim]
+    
+    splits.append((dim, median_val, depth, x_min, x_max, y_min, y_max))
+    
+    left_idx = points_idx[sorted_idx[:median_pos]]
+    right_idx = points_idx[sorted_idx[median_pos:]]
+    
+    if dim == 0:  # vertical split
+        build_kdtree_splits(left_idx, depth + 1, x_min, median_val, y_min, y_max)
+        build_kdtree_splits(right_idx, depth + 1, median_val, x_max, y_min, y_max)
+    else:  # horizontal split
+        build_kdtree_splits(left_idx, depth + 1, x_min, x_max, y_min, median_val)
+        build_kdtree_splits(right_idx, depth + 1, x_min, x_max, median_val, y_max)
+
+build_kdtree_splits(np.arange(len(points)), 0, 0, 10, 0, 10)
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+# Draw splits
+colors = ['C0', 'C1', 'C2', 'C3']
+for dim, val, depth, x_min, x_max, y_min, y_max in splits:
+    color = colors[min(depth, len(colors)-1)]
+    alpha = 0.8 - depth * 0.15
+    if dim == 0:  # vertical line
+        ax.plot([val, val], [y_min, y_max], color=color, linewidth=2, alpha=alpha)
+    else:  # horizontal line
+        ax.plot([x_min, x_max], [val, val], color=color, linewidth=2, alpha=alpha)
+
+# Draw points
+ax.scatter(points[:, 0], points[:, 1], s=80, c='black', zorder=5)
+
+ax.set_xlim(-0.5, 10.5)
+ax.set_ylim(-0.5, 10.5)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+
+# Legend for depth
+from matplotlib.lines import Line2D
+legend_elements = [Line2D([0], [0], color=colors[i], linewidth=2, label=f'Profondeur {i}') 
+                   for i in range(4)]
+ax.legend(handles=legend_elements, loc='upper right')
+```
+
+La recherche du plus proche voisin exploite cette structure: si la requête est loin de la frontière de division, des sous-arbres entiers peuvent être élagués sans examiner leurs points.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle, Rectangle
+
+np.random.seed(42)
+points = np.random.rand(15, 2) * 10
+
+# Query point
+query = np.array([7.5, 3.0])
+
+# Find true nearest neighbor
+distances = np.sqrt(np.sum((points - query)**2, axis=1))
+nn_idx = np.argmin(distances)
+nn_dist = distances[nn_idx]
+
+# Rebuild splits for this visualization
+splits = []
+def build_kdtree_splits(points_idx, depth, x_min, x_max, y_min, y_max):
+    if len(points_idx) <= 1:
+        return
+    dim = depth % 2
+    pts = points[points_idx]
+    sorted_idx = np.argsort(pts[:, dim])
+    median_pos = len(sorted_idx) // 2
+    median_val = pts[sorted_idx[median_pos], dim]
+    splits.append((dim, median_val, depth, x_min, x_max, y_min, y_max))
+    left_idx = points_idx[sorted_idx[:median_pos]]
+    right_idx = points_idx[sorted_idx[median_pos:]]
+    if dim == 0:
+        build_kdtree_splits(left_idx, depth + 1, x_min, median_val, y_min, y_max)
+        build_kdtree_splits(right_idx, depth + 1, median_val, x_max, y_min, y_max)
+    else:
+        build_kdtree_splits(left_idx, depth + 1, x_min, x_max, y_min, median_val)
+        build_kdtree_splits(right_idx, depth + 1, x_min, x_max, median_val, y_max)
+
+build_kdtree_splits(np.arange(len(points)), 0, 0, 10, 0, 10)
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+# Shade pruned regions (regions that don't intersect the search circle)
+# For simplicity, we'll manually identify some pruned regions
+pruned_regions = [
+    (0, 4.5, 0, 10),      # Left side of first split
+]
+
+for x_min, x_max, y_min, y_max in pruned_regions:
+    rect = Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, 
+                     facecolor='gray', alpha=0.3, edgecolor='none')
+    ax.add_patch(rect)
+
+# Draw splits
+for dim, val, depth, x_min, x_max, y_min, y_max in splits:
+    alpha = 0.6
+    if dim == 0:
+        ax.plot([val, val], [y_min, y_max], color='gray', linewidth=1.5, alpha=alpha)
+    else:
+        ax.plot([x_min, x_max], [val, val], color='gray', linewidth=1.5, alpha=alpha)
+
+# Draw search radius
+circle = Circle(query, nn_dist, fill=False, color='C1', linewidth=2, linestyle='--')
+ax.add_patch(circle)
+
+# Draw points
+ax.scatter(points[:, 0], points[:, 1], s=80, c='C0', zorder=5, label='Points')
+ax.scatter(points[nn_idx, 0], points[nn_idx, 1], s=120, c='C2', zorder=6, 
+           edgecolors='black', linewidths=2, label='Plus proche voisin')
+
+# Draw query
+ax.scatter(query[0], query[1], s=150, c='red', marker='*', zorder=7, label='Requête')
+
+# Draw line to nearest neighbor
+ax.plot([query[0], points[nn_idx, 0]], [query[1], points[nn_idx, 1]], 
+        'C2--', linewidth=1.5, alpha=0.7)
+
+ax.set_xlim(-0.5, 10.5)
+ax.set_ylim(-0.5, 10.5)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+ax.legend(loc='upper left')
+
+# Add annotation for pruned region
+ax.annotate('Région élaguée\n(pas explorée)', xy=(2, 5), fontsize=10, 
+            ha='center', color='gray')
+```
+
+En basse dimension, les arbres k-d réduisent la complexité moyenne à $O(\log N)$ par requête. Mais leur efficacité se dégrade rapidement avec la dimension. Au-delà de $d \approx 20$, la structure arborescente n'offre plus d'avantage significatif sur la recherche exhaustive. C'est là une autre manifestation du fléau de la dimensionnalité.
+
+### Recherche approximative
+
+Quand la recherche exacte est trop coûteuse, on peut accepter des voisins *approximatifs*. Les méthodes de **recherche approximative des plus proches voisins** (approximate nearest neighbors, ANN) garantissent de trouver des points qui sont proches, sans garantir qu'ils soient les plus proches.
+
+Le **hachage sensible à la localité** (locality-sensitive hashing, LSH) projette les points dans un espace de hachage où les points proches ont une forte probabilité de collision. Plusieurs tables de hachage avec des fonctions différentes permettent d'atteindre un bon rappel. La complexité devient sous-linéaire en $N$, au prix d'une approximation.
+
+Des bibliothèques comme **FAISS** (Facebook AI Similarity Search) et **Annoy** (Approximate Nearest Neighbors Oh Yeah) implémentent ces algorithmes et permettent de chercher parmi des milliards de vecteurs. Ces outils sont essentiels pour les systèmes de recommandation et la recherche sémantique à grande échelle, où les représentations vectorielles (embeddings) de documents, images ou produits sont comparées par similarité.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Generate points in 2D
+n_points = 40
+points = np.random.randn(n_points, 2)
+
+# Query point
+query = np.array([0.5, 0.3])
+
+# Find true 5 nearest neighbors
+k = 5
+distances = np.sqrt(np.sum((points - query)**2, axis=1))
+true_nn_idx = np.argsort(distances)[:k]
+
+# Simulate approximate nearest neighbors (miss one, include one wrong)
+approx_nn_idx = np.array([true_nn_idx[0], true_nn_idx[1], true_nn_idx[2], 
+                          true_nn_idx[4], np.argsort(distances)[k+1]])
+
+# Points that are in both
+common_idx = np.intersect1d(true_nn_idx, approx_nn_idx)
+# Only in true
+only_true = np.setdiff1d(true_nn_idx, approx_nn_idx)
+# Only in approx
+only_approx = np.setdiff1d(approx_nn_idx, true_nn_idx)
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 5))
+
+# Left: Exact search
+ax = axes[0]
+ax.scatter(points[:, 0], points[:, 1], s=50, c='lightgray', alpha=0.7)
+ax.scatter(points[true_nn_idx, 0], points[true_nn_idx, 1], s=100, c='C2', 
+           edgecolors='black', linewidths=1.5, label=f'{k} plus proches (vrais)')
+ax.scatter(query[0], query[1], s=200, c='red', marker='*', zorder=10, label='Requête')
+
+# Draw circle for k-th distance
+kth_dist = distances[true_nn_idx[-1]]
+circle = plt.Circle(query, kth_dist, fill=False, color='C2', linestyle='--', linewidth=1.5)
+ax.add_patch(circle)
+
+ax.set_xlim(-3, 3)
+ax.set_ylim(-3, 3)
+ax.set_aspect('equal')
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title('Recherche exacte')
+ax.legend(loc='upper left', fontsize=9)
+
+# Right: Approximate search
+ax = axes[1]
+ax.scatter(points[:, 0], points[:, 1], s=50, c='lightgray', alpha=0.7)
+
+# Common points (found by both)
+ax.scatter(points[common_idx, 0], points[common_idx, 1], s=100, c='C2', 
+           edgecolors='black', linewidths=1.5, label='Trouvés (corrects)')
+
+# Missed by approximate
+ax.scatter(points[only_true, 0], points[only_true, 1], s=100, c='C3', 
+           edgecolors='black', linewidths=1.5, marker='s', label='Manqués')
+
+# False positives from approximate
+ax.scatter(points[only_approx, 0], points[only_approx, 1], s=100, c='C1', 
+           edgecolors='black', linewidths=1.5, marker='^', label='Faux positifs')
+
+ax.scatter(query[0], query[1], s=200, c='red', marker='*', zorder=10, label='Requête')
+
+ax.set_xlim(-3, 3)
+ax.set_ylim(-3, 3)
+ax.set_aspect('equal')
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title(f'Recherche approximative (rappel = {len(common_idx)}/{k})')
+ax.legend(loc='upper left', fontsize=9)
+
+plt.tight_layout()
+```
+
+### Compromis précision-vitesse
+
+Le choix entre recherche exacte et approximative dépend de l'application. Pour un diagnostic médical, une erreur dans l'identification des cas similaires peut avoir des conséquences graves: la recherche exacte est préférable. Pour suggérer des vidéos similaires sur une plateforme de streaming, quelques voisins manqués importent peu si les suggestions restent pertinentes.
+
+| Méthode | Complexité requête | Exacte | Dimension |
+|---------|-------------------|--------|-----------|
+| Force brute | $O(Nd)$ | Oui | Toute |
+| Arbre k-d | $O(\log N)$ à $O(N)$ | Oui | $d \lesssim 20$ |
+| LSH | $O(1)$ à $O(N^{\rho})$ | Non | Haute |
+| Graphes de proximité | $O(\log N)$ | Non | Haute |
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Simulated query times for different methods
+N = np.logspace(2, 7, 50)  # 100 to 10 million points
+
+# Brute force: O(N)
+brute_force = N * 1e-7
+
+# k-d tree: O(log N) in low dim, degrades to O(N) in high dim
+# We show the ideal low-dim case
+kd_tree = np.log2(N) * 1e-5
+
+# ANN (e.g., HNSW): nearly constant with slight log factor
+ann = np.log2(N) * 5e-6 + 1e-4
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+ax.loglog(N, brute_force, 'C0-', linewidth=2, label='Force brute $O(N)$')
+ax.loglog(N, kd_tree, 'C1-', linewidth=2, label=r'Arbre k-d $O(\log N)$')
+ax.loglog(N, ann, 'C2-', linewidth=2, label=r'ANN $O(\log N)$')
+
+# Add shaded regions for practical regimes
+ax.axvspan(100, 1e4, alpha=0.1, color='C0')
+ax.axvspan(1e4, 1e6, alpha=0.1, color='C1')
+ax.axvspan(1e6, 1e7, alpha=0.1, color='C2')
+
+ax.set_xlabel('Taille de l\'ensemble $N$')
+ax.set_ylabel('Temps par requête (s)')
+ax.legend(loc='upper left')
+ax.set_xlim(100, 1e7)
+ax.grid(True, alpha=0.3, which='both')
+
+# Annotations
+ax.annotate('Petit\nensemble', xy=(500, 1e-3), fontsize=9, ha='center', alpha=0.7)
+ax.annotate('Moyen', xy=(1e5, 1e-3), fontsize=9, ha='center', alpha=0.7)
+ax.annotate('Grande\néchelle', xy=(3e6, 1e-3), fontsize=9, ha='center', alpha=0.7)
+
+plt.tight_layout()
+```
+
+La figure illustre comment le temps de requête évolue avec la taille de l'ensemble. La force brute devient rapidement prohibitive. Les méthodes approximatives maintiennent des temps de réponse acceptables même pour des millions de points.
+
+## Méthodes paramétriques et non paramétriques
+
+Les k-ppv sont une méthode **non paramétrique**: les données sont le modèle. Il n'y a pas de paramètres appris; les prédictions consultent directement l'ensemble d'entraînement. La complexité du modèle croît avec $N$.
+
+| | Non paramétrique | Paramétrique |
+|--|------------------|--------------|
+| **Modèle** | Les données | Un vecteur $\theta \in \mathbb{R}^p$ |
+| **Complexité** | Croît avec $N$ | Fixe |
+| **Inférence** | Requiert les données | Requiert seulement $\theta$ |
+
+Les méthodes **paramétriques** distillent l'information dans un vecteur de paramètres de taille fixe. Un réseau de neurones entraîné sur des milliards d'exemples n'a besoin que de ses poids pour faire des prédictions, pas des données d'entraînement.
+
+## Résumé
+
+Les k plus proches voisins classifient un point par vote majoritaire parmi ses $k$ voisins les plus proches. Le paramètre $k$ contrôle le compromis biais-variance. Le choix de la distance encode les hypothèses sur la similarité. Le fléau de la dimensionnalité limite l'efficacité en haute dimension.
+
+La méthode illustre la tension entre mémorisation et généralisation: avec $k=1$, l'erreur d'entraînement est nulle mais la généralisation est mauvaise. Elle illustre aussi la distinction entre approches non paramétriques (les données sont le modèle) et paramétriques (un vecteur de paramètres résume les données).
+
+Le chapitre suivant développe l'approche paramétrique: l'apprentissage comme problème d'optimisation, où nous cherchons les paramètres qui minimisent une fonction de perte.
+
+## Exercices
+
+````{admonition} Exercice 1: Classification manuelle
+:class: hint dropdown
+
+Considérez les points d'entraînement suivants en 2D:
+
+| Point | $x_1$ | $x_2$ | Classe |
+|-------|-------|-------|--------|
+| A | 0 | 0 | 0 |
+| B | 1 | 0 | 0 |
+| C | 0 | 1 | 1 |
+| D | 2 | 2 | 1 |
+| E | 3 | 1 | 1 |
+
+1. Pour le point requête $x = (1, 1)$, identifiez les 3 plus proches voisins avec la distance euclidienne. Quelle est la prédiction du 3-ppv?
+
+2. Répétez avec $k = 1$ et $k = 5$. Les prédictions changent-elles?
+
+3. Calculez les distances avec la norme $\ell_1$ (Manhattan). Les 3 plus proches voisins sont-ils les mêmes?
+````
+
+````{admonition} Exercice 2: Effet de la normalisation
+:class: hint dropdown
+
+Un dataset contient deux variables: l'âge (entre 20 et 70 ans) et le revenu annuel (entre 20 000 et 200 000 euros).
+
+1. Calculez la distance euclidienne entre les points $x_1 = (30, 50000)$ et $x_2 = (35, 51000)$.
+
+2. Calculez la distance entre $x_1 = (30, 50000)$ et $x_3 = (31, 150000)$.
+
+3. Laquelle des deux paires est "plus proche"? Ce résultat est-il intuitivement raisonnable?
+
+4. Proposez une transformation des données qui rendrait les deux variables comparables. Recalculez les distances après transformation.
+````
+
+````{admonition} Exercice 3: Compromis biais-variance
+:class: hint dropdown
+
+Soit un problème de régression 1D où la vraie fonction est $f(x) = \sin(2\pi x)$ et les observations sont bruitées: $y = f(x) + \varepsilon$ avec $\varepsilon \sim \mathcal{N}(0, 0.1)$.
+
+1. Générez 50 points d'entraînement uniformément répartis sur $[0, 1]$.
+
+2. Implémentez la régression k-ppv et tracez les prédictions pour $k = 1, 5, 20, 50$.
+
+3. Calculez l'erreur quadratique moyenne (MSE) sur un ensemble de test de 200 points pour chaque valeur de $k$.
+
+4. Tracez le MSE en fonction de $k$. Quelle valeur de $k$ minimise l'erreur de test?
+
+5. Que se passe-t-il quand $k = N$ (nombre total de points d'entraînement)?
+````
+
+````{admonition} Exercice 4: Fléau de la dimensionnalité
+:class: hint dropdown
+
+Considérez $N = 1000$ points uniformément distribués dans l'hypercube $[0, 1]^d$.
+
+1. Pour $d = 1, 2, 5, 10, 20, 50, 100$, calculez la distance moyenne au plus proche voisin parmi ces points. Utilisez la simulation Monte Carlo.
+
+2. Tracez cette distance en fonction de $d$. Que constatez-vous?
+
+3. Pour capturer les 10 plus proches voisins (soit 1% des données), quel est le rayon de la boule centrée sur un point arbitraire? Calculez ce rayon pour différentes dimensions.
+
+4. Expliquez pourquoi les k-ppv deviennent inefficaces en haute dimension, même avec beaucoup de données.
+````
+
+````{admonition} Exercice 5: Distances pour texte
+:class: hint dropdown
+
+Considérez trois documents représentés par leurs vecteurs de fréquence de mots (bag-of-words) sur un vocabulaire de 5 mots:
+
+| Document | chat | chien | maison | voiture | arbre |
+|----------|------|-------|--------|---------|-------|
+| $d_1$ | 3 | 0 | 1 | 0 | 2 |
+| $d_2$ | 2 | 1 | 0 | 0 | 1 |
+| $d_3$ | 0 | 0 | 2 | 3 | 0 |
+
+1. Calculez la distance euclidienne entre chaque paire de documents.
+
+2. Calculez la similarité cosinus entre chaque paire, puis convertissez en distance ($d = 1 - \text{sim}$).
+
+3. Selon chaque mesure, quels sont les deux documents les plus similaires?
+
+4. Pourquoi la similarité cosinus est-elle souvent préférée pour les documents textuels?
+````
+
+````{admonition} Exercice 6: Nadaraya-Watson
+:class: hint dropdown
+
+Soit les données d'entraînement: $x = [0, 1, 2, 3]$ et $y = [1, 2, 1.5, 3]$.
+
+1. Avec un noyau gaussien $K_\lambda(u) = \exp(-u^2 / 2\lambda^2)$ et $\lambda = 0.5$, calculez manuellement la prédiction de Nadaraya-Watson pour $x^* = 1.5$.
+
+2. Répétez avec $\lambda = 2$. Comment la prédiction change-t-elle?
+
+3. Implémentez l'estimateur et tracez les prédictions pour $\lambda = 0.2, 0.5, 1, 2$ sur l'intervalle $[0, 3]$.
+
+4. Comparez visuellement avec la régression k-ppv pour $k = 1, 2, 3$. Quelle méthode produit des prédictions plus lisses?
+````
+
+````{admonition} Exercice 7: Complexité computationnelle
+:class: hint dropdown
+
+Vous développez un système de recommandation pour une plateforme avec 10 millions d'utilisateurs. Chaque utilisateur est représenté par un vecteur de 100 dimensions (embeddings).
+
+1. Combien d'opérations (multiplications et additions) faut-il pour trouver le plus proche voisin d'un utilisateur par force brute?
+
+2. Si chaque opération prend 1 nanoseconde, quel est le temps de réponse pour une requête?
+
+3. Si vous devez traiter 1000 requêtes par seconde, cette approche est-elle viable?
+
+4. Un arbre k-d réduit la complexité à $O(\log N)$ en basse dimension. Pourquoi cette structure n'est-elle pas efficace pour $d = 100$?
+
+5. Proposez une stratégie pour ce problème à grande échelle.
+````
