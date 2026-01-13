@@ -1,6 +1,8 @@
 # mlbook
 
-Course materials for IFT6390: Fondements de l'apprentissage machine.
+Course materials for **IFT6390: Fondements de l'apprentissage machine** at Université de Montréal.
+
+Voir [WRITING_GUIDELINES.md](WRITING_GUIDELINES.md) pour les conventions de style et de contenu.
 
 ## Notes on executable content
 
@@ -48,16 +50,25 @@ plots and widgets visible both on `localhost:3000` and on GitHub Pages:
 Following those three steps prevents regressions where the site appears correct
 only when a live kernel is attached.
 
-## Quick start
+## Pour les étudiants: exécuter le code localement
+
+Tous les exemples de code sont **autonomes** (self-contained). Chaque cellule de code inclut les données nécessaires directement. Vous pouvez copier-coller n'importe quel exemple dans un notebook Jupyter ou un script Python sans installation supplémentaire.
+
+Les seules dépendances sont les bibliothèques scientifiques standards:
+```bash
+pip install numpy matplotlib scikit-learn scipy
+```
+
+## Quick start (pour les contributeurs)
 
 ```bash
-# Install dependencies
+# Installer les dépendances
 uv sync
 
-# Build the book locally
+# Construire le livre localement
 uv run jupyter-book start --execute --port 3000
 
-# Build and publish to GitHub Pages
+# Construire et publier sur GitHub Pages
 source publish.sh
 ```
 

@@ -28,45 +28,40 @@ project:
     - format: pdf
       output: exports/book.pdf
   toc:
-    - file: intro.md
-    # - title: "Partie I: Fondements"
+    - file: drafts/intro.md
+    - file: drafts/knn.md
+    - file: learning_problem.md
+    # - file: drafts/generalization.md
+    # - title: "Partie II: Modèles linéaires"
     #   children:
-    #     - file: learning_problem.md
-    #     - file: generalization.md
-    # - title: "Partie II: Méthodes non-paramétriques"
+    #     - file: drafts/linear_regression.md
+    #     - file: drafts/linear_classifiers.md
+    #     - file: drafts/generative_models.md
+    # - title: "Partie III: Machines à vecteurs de support"
     #   children:
-    #     - file: knn.md
-    #     - file: kernel_methods.md
-    # - title: "Partie III: Modèles linéaires"
+    #     - file: drafts/svm.md
+    # - title: "Partie IV: Réseaux de neurones"
     #   children:
-    #     - file: linear_regression.md
-    #     - file: linear_classifiers.md
-    #     - file: generative_models.md
-    # - title: "Partie IV: Machines à vecteurs de support"
+    #     - file: drafts/neural_networks.md
+    #     - file: drafts/cnn.md
+    #     - file: drafts/rnn.md
+    # - title: "Partie V: Méthodes d'ensemble"
     #   children:
-    #     - file: svm.md
-    # - title: "Partie V: Réseaux de neurones"
+    #     - file: drafts/trees.md
+    #     - file: drafts/ensembles.md
+    #     - file: drafts/boosting.md
+    # - title: "Partie VI: Apprentissage non-supervisé"
     #   children:
-    #     - file: neural_networks.md
-    #     - file: cnn.md
-    #     - file: rnn.md
-    # - title: "Partie VI: Méthodes d'ensemble"
+    #     - file: drafts/pca.md
+    #     - file: drafts/clustering.md
+    # - title: "Partie VII: Modèles probabilistes"
     #   children:
-    #     - file: trees.md
-    #     - file: ensembles.md
-    #     - file: boosting.md
-    # - title: "Partie VII: Apprentissage non-supervisé"
-    #   children:
-    #     - file: pca.md
-    #     - file: clustering.md
-    # - title: "Partie VIII: Modèles probabilistes"
-    #   children:
-    #     - file: graphical_models.md
+    #     - file: drafts/graphical_models.md
     # - title: Annexes
     #   children:
-    #     - file: appendix_linear_algebra.md
-    #     - file: appendix_probability.md
-    #     - file: appendix_optimization.md
+    #     - file: drafts/appendix_linear_algebra.md
+    #     - file: drafts/appendix_probability.md
+    #     - file: drafts/appendix_optimization.md
     
 site:
   template: book-theme
