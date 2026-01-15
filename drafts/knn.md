@@ -4,12 +4,13 @@ kernelspec:
   display_name: Python 3
 ---
 
-# K plus proches voisins
+# Méthodes non paramétriques
 
 ```{admonition} Objectifs d'apprentissage
 :class: note
 
 À la fin de ce chapitre, vous serez en mesure de:
+- Distinguer les méthodes paramétriques et non paramétriques
 - Expliquer le fonctionnement de l'algorithme des k plus proches voisins
 - Définir et appliquer différentes fonctions de distance
 - Analyser l'effet du paramètre k sur le compromis biais-variance
@@ -17,11 +18,13 @@ kernelspec:
 - Implémenter l'algorithme k-ppv pour la classification et la régression
 ```
 
+En apprentissage automatique, deux grandes familles d'approches s'opposent. Les **méthodes paramétriques** résument les données d'entraînement dans un ensemble fixe de paramètres: une fois l'apprentissage terminé, les données peuvent être jetées. Les **méthodes non paramétriques** conservent les données et les consultent directement au moment de la prédiction. Ce chapitre présente cette seconde famille, dont les k plus proches voisins sont l'exemple le plus simple.
+
 ## L'idée de base
 
-Soit $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ un ensemble d'entraînement avec $x_i \in \mathbb{R}^d$ et $y_i \in \{1, \ldots, C\}$. Nous voulons prédire l'étiquette d'un nouveau point $x$. L'approche la plus simple consiste à regarder les exemples connus qui ressemblent à $x$ et à prédire la même chose.
+Soit $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$ un ensemble d'entraînement avec $\mathbf{x}_i \in \mathbb{R}^d$ et $y_i \in \{1, \ldots, C\}$. Nous voulons prédire l'étiquette d'un nouveau point $\mathbf{x}$. L'approche la plus simple consiste à regarder les exemples connus qui ressemblent à $\mathbf{x}$ et à prédire la même chose.
 
-Les k plus proches voisins (k-ppv) formalisent cette intuition. Pour classifier $x$, nous identifions les $k$ points de $\mathcal{D}$ les plus proches de $x$ et prenons un vote majoritaire sur leurs étiquettes. La méthode ne fait aucune hypothèse sur la forme de la relation entre $x$ et $y$. Elle se contente de consulter les données au moment de la prédiction.
+Les **k plus proches voisins** (k-ppv) formalisent cette intuition. Pour classifier $\mathbf{x}$, nous identifions les $k$ points de $\mathcal{D}$ les plus proches de $\mathbf{x}$ et prenons un vote majoritaire sur leurs étiquettes. La méthode ne fait aucune hypothèse sur la forme de la relation entre $\mathbf{x}$ et $y$. Elle se contente de consulter les données au moment de la prédiction.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -82,10 +85,10 @@ ax.set_aspect('equal')
 plt.tight_layout()
 ```
 
-Soit $\mathcal{N}_k(x)$ l'ensemble des indices des $k$ plus proches voisins de $x$. La prédiction est:
+Soit $\mathcal{N}_k(\mathbf{x})$ l'ensemble des indices des $k$ plus proches voisins de $\mathbf{x}$. La prédiction est:
 
 $$
-\hat{y} = \arg\max_{c} \sum_{i \in \mathcal{N}_k(x)} \mathbb{1}_{y_i = c}
+\hat{y} = \arg\max_{c} \sum_{i \in \mathcal{N}_k(\mathbf{x})} \mathbb{1}_{y_i = c}
 $$
 
 La somme compte combien de voisins appartiennent à chaque classe $c$, et nous retenons la classe la plus fréquente.
@@ -93,31 +96,31 @@ La somme compte combien de voisins appartiennent à chaque classe $c$, et nous r
 Cette formulation admet une interprétation probabiliste. La proportion de voisins appartenant à la classe $c$ estime la probabilité conditionnelle:
 
 $$
-p(y = c \mid x, \mathcal{D}) = \frac{1}{k} \sum_{i \in \mathcal{N}_k(x)} \mathbb{1}_{y_i = c}
+p(y = c \mid \mathbf{x}, \mathcal{D}) = \frac{1}{k} \sum_{i \in \mathcal{N}_k(\mathbf{x})} \mathbb{1}_{y_i = c}
 $$
 
 La prédiction déterministe correspond au mode de cette distribution empirique.
 
 ## Fonctions de distance
 
-L'algorithme repose sur la capacité à mesurer la proximité entre points. Une **fonction de distance** $d: \mathcal{X} \times \mathcal{X} \to [0, \infty)$ doit satisfaire trois axiomes: $d(x, y) = 0$ si et seulement si $x = y$ (identité), $d(x, y) = d(y, x)$ (symétrie), et $d(x, z) \leq d(x, y) + d(y, z)$ (inégalité triangulaire).
+L'algorithme repose sur la capacité à mesurer la proximité entre points. Une **fonction de distance** $d: \mathcal{X} \times \mathcal{X} \to [0, \infty)$ doit satisfaire trois axiomes: $d(\mathbf{x}, \mathbf{y}) = 0$ si et seulement si $\mathbf{x} = \mathbf{y}$ (identité), $d(\mathbf{x}, \mathbf{y}) = d(\mathbf{y}, \mathbf{x})$ (symétrie), et $d(\mathbf{x}, \mathbf{z}) \leq d(\mathbf{x}, \mathbf{y}) + d(\mathbf{y}, \mathbf{z})$ (inégalité triangulaire).
 
 La **distance euclidienne** est le choix le plus courant:
 
 $$
-d_2(x, y) = \sqrt{\sum_{j=1}^{d} (x_j - y_j)^2} = \|x - y\|_2
+d_2(\mathbf{x}, \mathbf{y}) = \sqrt{\sum_{j=1}^{d} (x_j - y_j)^2} = \|\mathbf{x} - \mathbf{y}\|_2
 $$
 
 La **distance de Manhattan** suit les axes plutôt que la ligne droite:
 
 $$
-d_1(x, y) = \sum_{j=1}^{d} |x_j - y_j| = \|x - y\|_1
+d_1(\mathbf{x}, \mathbf{y}) = \sum_{j=1}^{d} |x_j - y_j| = \|\mathbf{x} - \mathbf{y}\|_1
 $$
 
-Ces deux distances appartiennent à la famille des normes $\ell_p$, définies par $\|x\|_p = \left(\sum_j |x_j|^p\right)^{1/p}$. Le cas limite $p \to \infty$ donne la norme $\ell_\infty$:
+Ces deux distances appartiennent à la famille des normes $\ell_p$, définies par $\|\mathbf{x}\|_p = \left(\sum_j |x_j|^p\right)^{1/p}$. Le cas limite $p \to \infty$ donne la norme $\ell_\infty$:
 
 $$
-\|x\|_\infty = \max_j |x_j|
+\|\mathbf{x}\|_\infty = \max_j |x_j|
 $$
 
 ### Boules unité et géométrie des normes
@@ -125,10 +128,10 @@ $$
 Pour comprendre comment une norme mesure les distances, on trace sa **boule unité**. Formellement, la boule unité d'une norme $\|\cdot\|$ est l'ensemble:
 
 $$
-B = \{x \in \mathbb{R}^d : \|x\| \leq 1\}
+B = \{\mathbf{x} \in \mathbb{R}^d : \|\mathbf{x}\| \leq 1\}
 $$
 
-et sa frontière, la **sphère unité**, est $S = \{x : \|x\| = 1\}$. Tous les points sur cette sphère sont à distance exactement 1 de l'origine. La forme de la boule révèle ce que la norme considère comme "équidistant".
+et sa frontière, la **sphère unité**, est $S = \{\mathbf{x} : \|\mathbf{x}\| = 1\}$. Tous les points sur cette sphère sont à distance exactement 1 de l'origine. La forme de la boule révèle ce que la norme considère comme "équidistant".
 
 - **Norme $\ell_2$ (cercle)**: Le point $(1, 0)$ et le point $(0.71, 0.71)$ sont à la même distance de l'origine. Se déplacer en diagonale coûte autant que suivre un axe. C'est notre intuition géométrique habituelle.
 
@@ -241,23 +244,23 @@ La distance euclidienne traite toutes les dimensions de manière égale. Si les 
 La **distance de Mahalanobis** va plus loin en tenant compte des corrélations:
 
 $$
-d_M(x, y) = \sqrt{(x - y)^\top \Sigma^{-1} (x - y)}
+d_M(\mathbf{x}, \mathbf{y}) = \sqrt{(\mathbf{x} - \mathbf{y})^\top \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \mathbf{y})}
 $$
 
-où $\Sigma$ est la matrice de covariance des données. Pour comprendre cette formule, décomposons-la.
+où $\boldsymbol{\Sigma}$ est la matrice de covariance des données. Pour comprendre cette formule, décomposons-la.
 
-**La matrice de covariance $\Sigma$.** Cette matrice $d \times d$ capture deux informations: sur la diagonale, les variances de chaque variable; hors diagonale, les covariances (corrélations) entre variables. Si $\Sigma = \begin{pmatrix} 4 & 0 \\ 0 & 1 \end{pmatrix}$, la première variable a une variance 4 fois plus grande que la seconde, et elles sont indépendantes.
+**La matrice de covariance $\boldsymbol{\Sigma}$.** Cette matrice $d \times d$ capture deux informations: sur la diagonale, les variances de chaque variable; hors diagonale, les covariances (corrélations) entre variables. Si $\boldsymbol{\Sigma} = \begin{pmatrix} 4 & 0 \\ 0 & 1 \end{pmatrix}$, la première variable a une variance 4 fois plus grande que la seconde, et elles sont indépendantes.
 
-**Calcul concret.** Soit $X \in \mathbb{R}^{N \times d}$ la matrice des données (chaque ligne est un exemple). On centre d'abord les données en soustrayant la moyenne de chaque colonne:
+**Calcul concret.** Soit $\mathbf{X} \in \mathbb{R}^{N \times d}$ la matrice des données (chaque ligne est un exemple). On centre d'abord les données en soustrayant la moyenne de chaque colonne:
 
 $$
-\bar{x}_j = \frac{1}{N} \sum_{i=1}^{N} x_{ij}, \quad \tilde{X} = X - \mathbf{1} \bar{x}^\top
+\bar{x}_j = \frac{1}{N} \sum_{i=1}^{N} x_{ij}, \quad \tilde{\mathbf{X}} = \mathbf{X} - \mathbf{1} \bar{\mathbf{x}}^\top
 $$
 
 La covariance empirique est alors:
 
 $$
-\Sigma = \frac{1}{N-1} \tilde{X}^\top \tilde{X}
+\boldsymbol{\Sigma} = \frac{1}{N-1} \tilde{\mathbf{X}}^\top \tilde{\mathbf{X}}
 $$
 
 L'élément $(j, k)$ de cette matrice est $\Sigma_{jk} = \frac{1}{N-1} \sum_{i=1}^{N} (x_{ij} - \bar{x}_j)(x_{ik} - \bar{x}_k)$. En Python:
@@ -268,7 +271,7 @@ Sigma = (X_centered.T @ X_centered) / (len(X) - 1)
 # ou directement: Sigma = np.cov(X.T)
 ```
 
-**L'inverse $\Sigma^{-1}$.** Multiplier par l'inverse de la covariance "blanchit" les données: les directions de forte variance sont comprimées, les corrélations sont supprimées. Après cette transformation, les données ressemblent à un nuage sphérique de variance unitaire.
+**L'inverse $\boldsymbol{\Sigma}^{-1}$.** Multiplier par l'inverse de la covariance "blanchit" les données: les directions de forte variance sont comprimées, les corrélations sont supprimées. Après cette transformation, les données ressemblent à un nuage sphérique de variance unitaire.
 
 **Interprétation géométrique.** La distance de Mahalanobis mesure "à combien d'écarts-types" un point se trouve d'un autre, en tenant compte de la forme du nuage de données. Deux points éloignés dans une direction de forte variance sont considérés plus proches que deux points également éloignés dans une direction de faible variance.
 
@@ -389,7 +392,7 @@ Cette distance est utilisée pour la correction orthographique, l'alignement de 
 **Documents et texte.** Pour comparer des documents, on les représente souvent comme des vecteurs de fréquences de mots (bag-of-words). La **similarité cosinus** mesure l'angle entre ces vecteurs:
 
 $$
-\text{sim}_{\cos}(x, y) = \frac{x \cdot y}{\|x\| \|y\|}
+\text{sim}_{\cos}(\mathbf{x}, \mathbf{y}) = \frac{\mathbf{x} \cdot \mathbf{y}}{\|\mathbf{x}\| \|\mathbf{y}\|}
 $$
 
 On convertit en distance par $d = 1 - \text{sim}_{\cos}$. Cette mesure ignore la longueur des documents et se concentre sur leur contenu thématique. C'est le choix standard pour la recherche d'information et la classification de texte.
@@ -561,25 +564,25 @@ plt.tight_layout()
 
 ## Diagramme de Voronoï
 
-Le cas $k = 1$ induit une partition de l'espace en cellules. La cellule $V_i$ associée au point $x_i$ contient tous les points plus proches de $x_i$ que de tout autre point d'entraînement:
+Le cas $k = 1$ induit une partition de l'espace en cellules. La cellule $V_i$ associée au point $\mathbf{x}_i$ contient tous les points plus proches de $\mathbf{x}_i$ que de tout autre point d'entraînement:
 
 $$
-V_i = \{x \in \mathbb{R}^d : d(x, x_i) \leq d(x, x_j) \text{ pour tout } j \neq i\}
+V_i = \{\mathbf{x} \in \mathbb{R}^d : d(\mathbf{x}, \mathbf{x}_i) \leq d(\mathbf{x}, \mathbf{x}_j) \text{ pour tout } j \neq i\}
 $$
 
 Cette partition s'appelle le **diagramme de Voronoï**. Les frontières entre cellules sont des hyperplans en dimension $d$. Avec le 1-ppv, la frontière de décision suit exactement ce diagramme.
 
 ### Stabilité et marge géométrique
 
-Le diagramme de Voronoï donne une lecture géométrique de la **stabilité** des prédictions. Tant qu'une requête $x$ reste dans la même cellule $V_i$, sa prédiction ne change pas. La distance à la frontière de la cellule mesure donc la robustesse de la prédiction.
+Le diagramme de Voronoï donne une lecture géométrique de la **stabilité** des prédictions. Tant qu'une requête $\mathbf{x}$ reste dans la même cellule $V_i$, sa prédiction ne change pas. La distance à la frontière de la cellule mesure donc la robustesse de la prédiction.
 
 Pour quantifier cette robustesse, considérons l'écart entre les distances au premier et au deuxième plus proche voisin:
 
 $$
-\rho(x) = \frac{1}{2}\left(d(x, x_{(2)}) - d(x, x_{(1)})\right)
+\rho(\mathbf{x}) = \frac{1}{2}\left(d(\mathbf{x}, \mathbf{x}_{(2)}) - d(\mathbf{x}, \mathbf{x}_{(1)})\right)
 $$
 
-où $x_{(1)}$ et $x_{(2)}$ sont les premier et deuxième plus proches voisins. Si $\rho(x)$ est grand, le point $x$ est loin de toute frontière: sa prédiction est stable. Si $\rho(x)$ est proche de zéro, $x$ est sur une frontière: la moindre perturbation (bruit de mesure, erreur d'arrondi) peut changer la prédiction.
+où $\mathbf{x}_{(1)}$ et $\mathbf{x}_{(2)}$ sont les premier et deuxième plus proches voisins. Si $\rho(\mathbf{x})$ est grand, le point $\mathbf{x}$ est loin de toute frontière: sa prédiction est stable. Si $\rho(\mathbf{x})$ est proche de zéro, $\mathbf{x}$ est sur une frontière: la moindre perturbation (bruit de mesure, erreur d'arrondi) peut changer la prédiction.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -809,10 +812,10 @@ La réduction de dimension (PCA, autoencodeurs) projette les données dans un es
 En classification, nous avons combiné les étiquettes des voisins par vote majoritaire. Pour la régression, où $y_i \in \mathbb{R}$, la combinaison naturelle est une moyenne:
 
 $$
-\hat{y} = \frac{1}{k} \sum_{i \in \mathcal{N}_k(x)} y_i
+\hat{y} = \frac{1}{k} \sum_{i \in \mathcal{N}_k(\mathbf{x})} y_i
 $$
 
-Cette moyenne locale estime l'espérance conditionnelle $\mathbb{E}[Y \mid X = x]$. L'intuition est simple: si nous voulons prédire la température demain et que nous avons des données historiques, regarder les jours passés qui ressemblaient à aujourd'hui et moyenner leurs températures du lendemain semble raisonnable.
+Cette moyenne locale estime l'espérance conditionnelle $\mathbb{E}[Y \mid \mathbf{X} = \mathbf{x}]$. L'intuition est simple: si nous voulons prédire la température demain et que nous avons des données historiques, regarder les jours passés qui ressemblaient à aujourd'hui et moyenner leurs températures du lendemain semble raisonnable.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -928,13 +931,13 @@ L'estimation de densité par noyaux mène naturellement à une forme de régress
 L'**estimateur de Nadaraya-Watson** définit la prédiction comme une moyenne pondérée:
 
 $$
-\hat{y}(x) = \frac{\sum_{i=1}^{N} K_\lambda(x - x_i) \, y_i}{\sum_{i=1}^{N} K_\lambda(x - x_i)} = \sum_{i=1}^{N} w_i(x) \, y_i
+\hat{y}(\mathbf{x}) = \frac{\sum_{i=1}^{N} K_\lambda(\mathbf{x} - \mathbf{x}_i) \, y_i}{\sum_{i=1}^{N} K_\lambda(\mathbf{x} - \mathbf{x}_i)} = \sum_{i=1}^{N} w_i(\mathbf{x}) \, y_i
 $$
 
 où les poids sont normalisés:
 
 $$
-w_i(x) = \frac{K_\lambda(x - x_i)}{\sum_{j=1}^{N} K_\lambda(x - x_j)}
+w_i(\mathbf{x}) = \frac{K_\lambda(\mathbf{x} - \mathbf{x}_i)}{\sum_{j=1}^{N} K_\lambda(\mathbf{x} - \mathbf{x}_j)}
 $$
 
 Chaque point d'entraînement contribue à la prédiction, mais les points éloignés ont un poids négligeable. Le noyau agit comme une fenêtre qui détermine l'influence locale.
@@ -986,7 +989,7 @@ plt.tight_layout()
 
 Comparé aux k-ppv, Nadaraya-Watson produit des prédictions plus lisses car la transition entre voisins est graduelle plutôt qu'abrupte. Le paramètre $\lambda$ joue un rôle analogue à $k$: une petite largeur de bande donne une courbe qui suit de près les données (haute variance), une grande largeur de bande lisse excessivement (haut biais).
 
-Les deux approches, k-ppv et Nadaraya-Watson, sont des méthodes à **moyennes locales**. Elles estiment $\mathbb{E}[Y \mid X = x]$ en faisant une moyenne pondérée des $y_i$ pour les points $x_i$ proches de $x$. La différence réside dans la définition de "proche": les k-ppv utilisent une frontière nette (les $k$ plus proches), tandis que Nadaraya-Watson utilise une pondération douce (le noyau).
+Les deux approches, k-ppv et Nadaraya-Watson, sont des méthodes à **moyennes locales**. Elles estiment $\mathbb{E}[Y \mid \mathbf{X} = \mathbf{x}]$ en faisant une moyenne pondérée des $y_i$ pour les points $\mathbf{x}_i$ proches de $\mathbf{x}$. La différence réside dans la définition de "proche": les k-ppv utilisent une frontière nette (les $k$ plus proches), tandis que Nadaraya-Watson utilise une pondération douce (le noyau).
 
 ```{admonition} Lien avec le mécanisme d'attention
 :class: note
@@ -994,7 +997,7 @@ Les deux approches, k-ppv et Nadaraya-Watson, sont des méthodes à **moyennes l
 La formule de Nadaraya-Watson ressemble étonnamment au **mécanisme d'attention** qui a révolutionné l'apprentissage profond. Dans les deux cas, la sortie est une moyenne pondérée où les poids sont normalisés (somme égale à 1):
 
 $$
-\text{Nadaraya-Watson:} \quad \hat{y}(x) = \sum_{i} \frac{K(x, x_i)}{\sum_j K(x, x_j)} y_i
+\text{Nadaraya-Watson:} \quad \hat{y}(\mathbf{x}) = \sum_{i} \frac{K(\mathbf{x}, \mathbf{x}_i)}{\sum_j K(\mathbf{x}, \mathbf{x}_j)} y_i
 $$
 
 En 2014, Bahdanau, Cho et Bengio, alors à Mila (Montréal), ont introduit le mécanisme d'attention pour la traduction automatique neuronale. L'idée: plutôt que de compresser toute une phrase source en un vecteur fixe, le décodeur peut "regarder" différentes parties de la phrase source à chaque étape, avec des poids d'attention appris. Ce mécanisme a ensuite été généralisé dans l'architecture **Transformer** (Vaswani et al., 2017), qui est à la base des grands modèles de langage comme GPT et Claude.
@@ -1378,7 +1381,7 @@ Le terme **base de données vectorielle** (*vector database*) est devenu courant
 
 Ces systèmes sont au cœur des architectures **RAG** (Retrieval-Augmented Generation) utilisées avec les grands modèles de langage. Le principe: plutôt que de tout mémoriser dans les paramètres du modèle, on stocke des documents dans une base vectorielle. À chaque requête, on retrouve les documents pertinents par similarité cosinus sur leurs embeddings, puis on les fournit au modèle comme contexte.
 
-La similarité cosinus $\text{sim}(x, y) = \frac{x \cdot y}{\|x\| \|y\|}$ est particulièrement adaptée aux embeddings de texte car elle ignore la magnitude des vecteurs et se concentre sur leur direction, capturant ainsi la similarité sémantique plutôt que la longueur des documents.
+La similarité cosinus $\text{sim}(\mathbf{x}, \mathbf{y}) = \frac{\mathbf{x} \cdot \mathbf{y}}{\|\mathbf{x}\| \|\mathbf{y}\|}$ est particulièrement adaptée aux embeddings de texte car elle ignore la magnitude des vecteurs et se concentre sur leur direction, capturant ainsi la similarité sémantique plutôt que la longueur des documents.
 ```
 
 ```{code-cell} python
@@ -1526,9 +1529,9 @@ Les k-ppv sont une méthode **non paramétrique**: les données sont le modèle.
 
 | | Non paramétrique | Paramétrique |
 |--|------------------|--------------|
-| **Modèle** | Les données | Un vecteur $\theta \in \mathbb{R}^p$ |
+| **Modèle** | Les données | Un vecteur $\boldsymbol{\theta} \in \mathbb{R}^p$ |
 | **Complexité** | Croît avec $N$ | Fixe |
-| **Inférence** | Requiert les données | Requiert seulement $\theta$ |
+| **Inférence** | Requiert les données | Requiert seulement $\boldsymbol{\theta}$ |
 
 Les méthodes **paramétriques** distillent l'information dans un vecteur de paramètres de taille fixe. Un réseau de neurones entraîné sur des milliards d'exemples n'a besoin que de ses poids pour faire des prédictions, pas des données d'entraînement.
 
@@ -1555,7 +1558,7 @@ Considérez les points d'entraînement suivants en 2D:
 | D | 2 | 2 | 1 |
 | E | 3 | 1 | 1 |
 
-1. Pour le point requête $x = (1, 1)$, identifiez les 3 plus proches voisins avec la distance euclidienne. Quelle est la prédiction du 3-ppv?
+1. Pour le point requête $\mathbf{x} = (1, 1)$, identifiez les 3 plus proches voisins avec la distance euclidienne. Quelle est la prédiction du 3-ppv?
 
 2. Répétez avec $k = 1$ et $k = 5$. Les prédictions changent-elles?
 
@@ -1565,7 +1568,7 @@ Considérez les points d'entraînement suivants en 2D:
 ```{admonition} Solution Exercice 1
 :class: dropdown
 
-1. **Distances euclidiennes depuis $x = (1, 1)$:**
+1. **Distances euclidiennes depuis $\mathbf{x} = (1, 1)$:**
 
    | Point | Distance $\ell_2$ | Classe |
    |-------|-------------------|--------|
@@ -1601,9 +1604,9 @@ Considérez les points d'entraînement suivants en 2D:
 
 Un jeu de données contient deux variables: l'âge (entre 20 et 70 ans) et le revenu annuel (entre 20 000 et 200 000 dollars).
 
-1. Calculez la distance euclidienne entre les points $x_1 = (30, 50000)$ et $x_2 = (35, 51000)$.
+1. Calculez la distance euclidienne entre les points $\mathbf{x}_1 = (30, 50000)$ et $\mathbf{x}_2 = (35, 51000)$.
 
-2. Calculez la distance entre $x_1 = (30, 50000)$ et $x_3 = (31, 150000)$.
+2. Calculez la distance entre $\mathbf{x}_1 = (30, 50000)$ et $\mathbf{x}_3 = (31, 150000)$.
 
 3. Laquelle des deux paires est "plus proche"? Ce résultat est-il intuitivement raisonnable?
 
@@ -1613,15 +1616,15 @@ Un jeu de données contient deux variables: l'âge (entre 20 et 70 ans) et le re
 ```{admonition} Solution Exercice 2
 :class: dropdown
 
-1. **Distance $x_1$ à $x_2$:**
-   $$d(x_1, x_2) = \sqrt{(35-30)^2 + (51000-50000)^2} = \sqrt{25 + 1000000} \approx 1000$$
+1. **Distance $\mathbf{x}_1$ à $\mathbf{x}_2$:**
+   $$d(\mathbf{x}_1, \mathbf{x}_2) = \sqrt{(35-30)^2 + (51000-50000)^2} = \sqrt{25 + 1000000} \approx 1000$$
 
-2. **Distance $x_1$ à $x_3$:**
-   $$d(x_1, x_3) = \sqrt{(31-30)^2 + (150000-50000)^2} = \sqrt{1 + 10^{10}} \approx 100000$$
+2. **Distance $\mathbf{x}_1$ à $\mathbf{x}_3$:**
+   $$d(\mathbf{x}_1, \mathbf{x}_3) = \sqrt{(31-30)^2 + (150000-50000)^2} = \sqrt{1 + 10^{10}} \approx 100000$$
 
-3. **Comparaison:** Selon la distance euclidienne, $(x_1, x_2)$ est 100 fois plus proche que $(x_1, x_3)$. 
+3. **Comparaison:** Selon la distance euclidienne, $(\mathbf{x}_1, \mathbf{x}_2)$ est 100 fois plus proche que $(\mathbf{x}_1, \mathbf{x}_3)$. 
    
-   **Ce n'est pas raisonnable:** la différence de revenu domine complètement. La paire $(x_1, x_2)$ diffère de 5 ans et 1000$, tandis que $(x_1, x_3)$ diffère de 1 an et 100000$. Intuitivement, on pourrait argumenter que 5 ans de différence d'âge est plus significatif qu'1 an.
+   **Ce n'est pas raisonnable:** la différence de revenu domine complètement. La paire $(\mathbf{x}_1, \mathbf{x}_2)$ diffère de 5 ans et 1000$, tandis que $(\mathbf{x}_1, \mathbf{x}_3)$ diffère de 1 an et 100000$. Intuitivement, on pourrait argumenter que 5 ans de différence d'âge est plus significatif qu'1 an.
 
 4. **Normalisation (standardisation):**
    
@@ -1629,13 +1632,13 @@ Un jeu de données contient deux variables: l'âge (entre 20 et 70 ans) et le re
    
    Transformation: $z = (x - \mu) / \sigma$
    
-   - $x_1' = ((30-45)/15, (50000-110000)/60000) = (-1, -1)$
-   - $x_2' = ((35-45)/15, (51000-110000)/60000) = (-0.67, -0.98)$
-   - $x_3' = ((31-45)/15, (150000-110000)/60000) = (-0.93, 0.67)$
+   - $\mathbf{x}_1' = ((30-45)/15, (50000-110000)/60000) = (-1, -1)$
+   - $\mathbf{x}_2' = ((35-45)/15, (51000-110000)/60000) = (-0.67, -0.98)$
+   - $\mathbf{x}_3' = ((31-45)/15, (150000-110000)/60000) = (-0.93, 0.67)$
    
    Nouvelles distances:
-   - $d(x_1', x_2') = \sqrt{(-1+0.67)^2 + (-1+0.98)^2} \approx 0.33$
-   - $d(x_1', x_3') = \sqrt{(-1+0.93)^2 + (-1-0.67)^2} \approx 1.68$
+   - $d(\mathbf{x}_1', \mathbf{x}_2') = \sqrt{(-1+0.67)^2 + (-1+0.98)^2} \approx 0.33$
+   - $d(\mathbf{x}_1', \mathbf{x}_3') = \sqrt{(-1+0.93)^2 + (-1-0.67)^2} \approx 1.68$
    
    Après normalisation, les deux variables contribuent équitablement.
 ```
