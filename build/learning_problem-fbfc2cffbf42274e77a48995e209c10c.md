@@ -1,0 +1,2896 @@
+---
+kernelspec:
+  name: python3
+  display_name: Python 3
+---
+
+# Le problème d'apprentissage
+
+```{admonition} Objectifs d'apprentissage
+:class: note
+
+À la fin de ce chapitre, vous serez en mesure de:
+- Définir formellement le problème d'apprentissage supervisé
+- Distinguer les tâches de classification et de régression
+- Définir le risque et le risque empirique
+- Expliquer le principe de minimisation du risque empirique
+- Dériver l'estimateur du maximum de vraisemblance
+- Relier le maximum de vraisemblance à la divergence de Kullback-Leibler
+- Identifier les sources d'écart entre performance mesurée et performance réelle
+```
+
+Le chapitre précédent a présenté les méthodes non paramétriques, comme les k plus proches voisins, qui conservent les données d'entraînement et les consultent au moment de la prédiction. Cette approche est intuitive, mais elle a un coût: les données doivent rester en mémoire, et chaque prédiction requiert de parcourir l'ensemble d'entraînement. Ce chapitre développe une approche différente: plutôt que de garder les données, nous cherchons à les *résumer* dans un ensemble fixe de **paramètres**. L'apprentissage devient alors un problème d'**optimisation**.
+
+## Apprentissage supervisé
+
+Une ingénieure automobile mesure la distance de freinage d'un véhicule à différentes vitesses. Ses données ressemblent à ceci:
+
+| Vitesse (mph) | Distance (ft) |
+|---------------|---------------|
+| 4 | 2 |
+| 7 | 4 |
+| 12 | 20 |
+| 18 | 56 |
+| 24 | 93 |
+
+Elle veut prédire la distance de freinage à 30 mph sans faire l'essai. Pour cela, elle cherche une fonction $f$ telle que $f(\text{vitesse}) \approx \text{distance}$ sur ses observations. Si la fonction capture la relation sous-jacente, elle devrait donner une prédiction raisonnable pour des vitesses non mesurées.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données de freinage (Ezekiel, 1930): vitesse (mph) vs distance d'arrêt (ft)
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+plt.figure(figsize=(6, 4))
+plt.scatter(speed, dist, alpha=0.7, label='Observations')
+
+# Fit quadratic
+coeffs = np.polyfit(speed, dist, 2)
+speed_grid = np.linspace(0, 30, 100)
+dist_pred = np.polyval(coeffs, speed_grid)
+plt.plot(speed_grid, dist_pred, 'k--', alpha=0.6, label='Fonction ajustée')
+
+# Prediction at 30 mph
+pred_30 = np.polyval(coeffs, 30)
+plt.scatter([30], [pred_30], marker='x', s=80, color='C1', zorder=5, label=f'Prédiction à 30 mph: {pred_30:.0f} ft')
+
+plt.xlabel('Vitesse (mph)')
+plt.ylabel('Distance de freinage (ft)')
+plt.legend()
+plt.tight_layout()
+```
+
+Ce processus est l'ajustement de courbe (*curve fitting*). Nous avons des paires (entrée, sortie), nous ajustons une fonction, et nous utilisons cette fonction pour prédire. L'apprentissage supervisé généralise cette idée: les entrées peuvent être des vecteurs de dimension quelconque, les sorties peuvent être continues ou discrètes, et les fonctions candidates peuvent être bien plus complexes qu'un polynôme.
+
+Formellement, nous disposons d'un jeu de données $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$ composé de $N$ paires, où chaque $\mathbf{x}_i \in \mathcal{X}$ est une entrée et $y_i \in \mathcal{Y}$ est la sortie correspondante. L'objectif est de trouver une fonction $f: \mathcal{X} \to \mathcal{Y}$ qui approxime bien la relation entre entrées et sorties, y compris pour des exemples que nous n'avons pas encore observés.
+
+Dans de nombreuses applications, les entrées sont des vecteurs de caractéristiques. Chaque exemple $\mathbf{x}_i \in \mathbb{R}^d$ est un vecteur de dimension $d$, où chaque composante représente une mesure ou un attribut. Pour prédire le prix d'une maison, les entrées pourraient être la superficie, le nombre de chambres et l'âge du bâtiment. Pour filtrer les pourriels, les entrées pourraient être des fréquences de mots. Pour diagnostiquer une maladie, les entrées pourraient être des résultats d'analyses sanguines.
+
+Lorsque la sortie est une valeur continue, nous parlons de **régression**: $f: \mathbb{R}^d \to \mathbb{R}$ pour une sortie scalaire, ou $f: \mathbb{R}^d \to \mathbb{R}^p$ pour une sortie vectorielle. La distance de freinage, le prix d'une maison, la concentration d'un médicament dans le sang sont des exemples de régression.
+
+Lorsque la sortie est une catégorie parmi un ensemble fini, nous parlons de **classification**. Pour la classification binaire, $f: \mathbb{R}^d \to \{0, 1\}$. Pour la classification multiclasse avec $m$ catégories, $f: \mathbb{R}^d \to \{0, \ldots, m-1\}$. Déterminer si un courriel est un pourriel, diagnostiquer une maladie, ou reconnaître un chiffre manuscrit sont des exemples de classification.
+
+## Mesurer l'erreur
+
+Pour choisir entre deux fonctions candidates, nous avons besoin d'un critère qui quantifie la qualité des prédictions. Une **fonction de perte** $\ell: \mathcal{Y} \times \mathcal{Y} \to \mathbb{R}_+$ mesure l'écart entre une prédiction $\hat{y}$ et la vraie valeur $y$. Une perte de zéro indique une prédiction parfaite; plus la perte est grande, plus l'erreur est importante.
+
+Pour la régression, nous utilisons généralement la **perte quadratique**:
+
+$$
+\ell_2(y, \hat{y}) = (y - \hat{y})^2
+$$
+
+Cette perte pénalise les grandes erreurs de manière quadratique. Une erreur de 2 coûte quatre fois plus qu'une erreur de 1.
+
+Reprenons les données de freinage. Supposons que notre fonction prédise 50 ft pour une vitesse où la vraie distance est 56 ft. La perte quadratique est $(56 - 50)^2 = 36$. Si elle prédit 70 ft, la perte est $(56 - 70)^2 = 196$. La perte quadratique pénalise sévèrement les grandes erreurs.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données de freinage
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+coeffs = np.polyfit(speed, dist, 2)
+predictions = np.polyval(coeffs, speed)
+residuals = dist - predictions
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+# Left: predictions vs observations
+ax = axes[0]
+ax.scatter(speed, dist, alpha=0.7, label='Observations')
+speed_grid = np.linspace(4, 25, 100)
+ax.plot(speed_grid, np.polyval(coeffs, speed_grid), 'k--', alpha=0.6, label='Prédictions')
+for i in range(len(speed)):
+    ax.plot([speed[i], speed[i]], [dist[i], predictions[i]], 'C1-', alpha=0.5)
+ax.set_xlabel('Vitesse (mph)')
+ax.set_ylabel('Distance (ft)')
+ax.legend()
+ax.set_title('Résidus: écarts entre observations et prédictions')
+
+# Right: histogram of squared residuals
+ax = axes[1]
+ax.hist(residuals**2, bins=15, edgecolor='black', alpha=0.7)
+ax.set_xlabel(r'Perte quadratique $(y - \hat{y})^2$')
+ax.set_ylabel('Fréquence')
+ax.set_title(f'EQM = {np.mean(residuals**2):.1f}')
+
+plt.tight_layout()
+```
+
+Pour la classification, un choix naturel est la **perte 0-1**:
+
+$$
+\ell_{0-1}(y, \hat{y}) = \mathbb{1}_{y \neq \hat{y}} = \begin{cases} 0 & \text{si } y = \hat{y} \\ 1 & \text{si } y \neq \hat{y} \end{cases}
+$$
+
+Cette perte compte simplement les erreurs: elle vaut 1 pour une mauvaise prédiction, 0 sinon.
+
+Le choix de la fonction de perte dépend du problème. En diagnostic médical, manquer une maladie grave (faux négatif) peut avoir des conséquences bien plus importantes que de prescrire un test supplémentaire à un patient sain (faux positif). Une perte asymétrique refléterait cette différence. En régression, si les grandes erreurs sont particulièrement problématiques, la perte quadratique est appropriée; si nous voulons être robustes aux valeurs aberrantes, la perte absolue $|y - \hat{y}|$ est préférable.
+
+## Le risque
+
+La perte évalue une seule prédiction. Pour évaluer un modèle dans son ensemble, nous voulons mesurer sa performance moyenne sur toutes les données possibles, pas seulement sur les exemples que nous avons observés.
+
+### Pourquoi des variables aléatoires?
+
+Une question naturelle se pose: si nous ajustons une fonction déterministe $f$ à des données, pourquoi avons-nous besoin de variables aléatoires et d'espérances? La fonction obtenue n'est-elle pas simplement une courbe fixe?
+
+La réponse tient en un mot: **généralisation**. Nous ne nous intéressons pas vraiment à la performance sur les données d'entraînement car ces points sont déjà connus. Ce qui compte, c'est la performance sur des données *futures* que nous n'avons pas encore observées.
+
+Considérons l'exemple de la distance de freinage. Les 50 mesures dans notre tableau sont un *échantillon* de toutes les mesures possibles. Si nous retournions sur le terrain et mesurions à nouveau, nous obtiendrions des valeurs légèrement différentes. En effet, le même véhicule à 20 mph ne s'arrête pas exactement à la même distance à chaque essai. Il y a de la variabilité intrinsèque: état de la route, température des freins, réflexes du conducteur.
+
+Cette variabilité est capturée par une distribution de probabilité $p(x, y)$. Nos 50 points sont des tirages de cette distribution. La question fondamentale devient alors:
+
+> *Notre modèle $f$ prédira-t-il bien sur de **nouveaux** tirages de cette même distribution?*
+
+La fonction $f$ elle-même est déterministe une fois entraînée. Mais son *évaluation*, savoir si elle prédit bien ou mal, dépend de quelles données futures elle rencontrera. Et ces données futures sont incertaines: elles seront tirées de $p(x, y)$, mais nous ne savons pas lesquelles.
+
+Le **risque** formalise cette idée: c'est la perte moyenne que subira notre modèle $f$ lorsqu'il sera confronté à des données tirées de $p(x, y)$. C'est une mesure de performance *prospective*, tournée vers le futur.
+
+```{admonition} Modèles déterministes vs stochastiques (et pourquoi on s'en fiche un peu)
+:class: note
+
+Il existe deux façons de raconter la même histoire.
+
+- **Modèle déterministe**: on suppose qu'il existe une relation $y \approx f^\star(x)$, et que les écarts proviennent de facteurs non modélisés (mesure bruitée, variabilité du monde réel). Ici, $f$ est une fonction déterministe; l'aléatoire vit dans les données que l'on observe et dans celles que l'on observera demain.
+
+- **Modèle stochastique**: on suppose plutôt que $Y$ est une variable aléatoire conditionnellement à $X=x$, via une distribution $p(y\mid x)$. La \"bonne\" prédiction devient alors une question de moyenne/quantile/probabilité, selon la perte.
+
+Dans la pratique, ces deux points de vue sont surtout des **langages** différents. Le formalisme probabiliste est souvent plus commode: il permet d'exprimer simplement \"la performance moyenne sur des données futures\" via une espérance. Ce chapitre adopte ce langage parce qu'il rend la généralisation et les garanties mathématiques plus propres, sans changer l'objectif final: produire une règle de prédiction utile.
+```
+
+### Définition formelle
+
+Le **risque** d'une fonction $f$ est l'espérance de la perte sur la distribution des données:
+
+$$
+\mathcal{R}(f) = \mathbb{E}_{(\mathbf{X},Y) \sim p}\left[\ell(Y, f(\mathbf{X}))\right] = \int \ell(y, f(\mathbf{x})) \, p(\mathbf{x}, y) \, d\mathbf{x} \, dy
+$$
+
+Décomposons cette formule étape par étape:
+
+1. **$\mathbb{E}_{(\mathbf{X},Y) \sim p}$**: L'espérance mathématique signifie "moyenne sur tous les exemples possibles". La notation $(\mathbf{X},Y) \sim p$ indique que nous tirons les paires $(\mathbf{x}, y)$ selon la distribution $p(\mathbf{x}, y)$ de la nature.
+
+2. **$\ell(Y, f(\mathbf{X}))$**: Pour chaque exemple aléatoire $(\mathbf{X}, Y)$, nous calculons la perte entre la vraie valeur $Y$ et la prédiction $f(\mathbf{X})$ du modèle.
+
+3. **L'intégrale $\int \ell(y, f(\mathbf{x})) \, p(\mathbf{x}, y) \, d\mathbf{x} \, dy$**: Cette intégrale calcule une moyenne pondérée. Pour chaque paire possible $(\mathbf{x}, y)$, nous multiplions la perte $\ell(y, f(\mathbf{x}))$ par la probabilité $p(\mathbf{x}, y)$ que cette paire apparaisse dans la nature, puis nous sommons (intégrons) sur toutes les paires possibles.
+
+### Exemple concret
+
+Considérons un problème de classification binaire en 2D. Supposons que $\mathbf{x} \in [0, 1]^2$ et $y \in \{0, 1\}$. Pour calculer le risque, nous devrions:
+
+1. Diviser l'espace $[0,1]^2$ en une grille fine (par exemple, $1000 \times 1000$ points)
+2. Pour chaque point $\mathbf{x}$ de la grille, considérer les deux valeurs possibles de $y$ (0 et 1)
+3. Pour chaque combinaison $(\mathbf{x}, y)$, calculer:
+   - La probabilité $p(\mathbf{x}, y)$ que cette combinaison apparaisse
+   - La perte $\ell(y, f(\mathbf{x}))$ si notre modèle prédit $f(\mathbf{x})$
+4. Faire la somme pondérée: $\sum_{\mathbf{x}} \sum_{y \in \{0,1\}} \ell(y, f(\mathbf{x})) \cdot p(\mathbf{x}, y)$
+
+En pratique, pour un espace continu, cette somme devient une intégrale sur un domaine continu, ce qui est encore plus complexe à calculer.
+
+Visualisons ceci concrètement. La figure suivante montre un problème de classification binaire où chaque classe suit une distribution gaussienne en 2D. Les contours représentent la densité $p(x|y)$ pour chaque classe. La ligne pointillée est la frontière de décision d'un classificateur linéaire. Les régions ombrées indiquent où le classificateur fait des erreurs: la région rouge correspond aux points de classe 0 classés comme classe 1, et la région bleue correspond aux points de classe 1 classés comme classe 0.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Paramètres du mélange gaussien (classification binaire 2D)
+mu0 = np.array([0.0, 0.0])
+mu1 = np.array([2.0, 1.0])
+cov = np.array([[1.0, 0.3], [0.3, 1.0]])
+
+def gaussian_pdf(x, mu, cov):
+    """PDF d'une gaussienne multivariée."""
+    d = len(mu)
+    diff = x - mu
+    cov_inv = np.linalg.inv(cov)
+    mahal = np.einsum('...i,ij,...j->...', diff, cov_inv, diff)
+    return np.exp(-0.5 * mahal) / np.sqrt((2 * np.pi) ** d * np.linalg.det(cov))
+
+# Create grid for visualization
+x_range = np.linspace(-3, 5, 200)
+y_range = np.linspace(-3, 4, 200)
+X_grid, Y_grid = np.meshgrid(x_range, y_range)
+pos = np.dstack([X_grid, Y_grid])
+
+# Compute class-conditional densities
+p_x_given_0 = gaussian_pdf(pos, mu0, cov)
+p_x_given_1 = gaussian_pdf(pos, mu1, cov)
+
+# Joint densities (with equal priors)
+prior = 0.5
+p_x_y0 = p_x_given_0 * (1 - prior)
+p_x_y1 = p_x_given_1 * prior
+
+# Linear decision boundary (Bayes optimal for equal covariances)
+# w^T x + b = 0 where w = Sigma^{-1}(mu1 - mu0)
+cov_inv = np.linalg.inv(cov)
+w = cov_inv @ (mu1 - mu0)
+b = -0.5 * (mu1 @ cov_inv @ mu1 - mu0 @ cov_inv @ mu0)
+
+# Decision boundary: w[0]*x + w[1]*y + b = 0  =>  y = -(w[0]*x + b)/w[1]
+x_boundary = np.linspace(-3, 5, 100)
+y_boundary = -(w[0] * x_boundary + b) / w[1]
+
+# Classifier prediction: classify as 1 if w^T x + b > 0
+predictions = (w[0] * X_grid + w[1] * Y_grid + b) > 0
+
+# Misclassification regions
+# Class 0 misclassified as 1: true class is 0, but prediction is 1
+misclass_0 = predictions  # region where we predict 1
+# Class 1 misclassified as 0: true class is 1, but prediction is 0
+misclass_1 = ~predictions  # region where we predict 0
+
+fig, ax = plt.subplots(figsize=(8, 6))
+
+# Plot class-conditional densities as contours
+levels = [0.01, 0.05, 0.1, 0.15]
+ax.contour(X_grid, Y_grid, p_x_given_0, levels=levels, colors='C0', alpha=0.7)
+ax.contour(X_grid, Y_grid, p_x_given_1, levels=levels, colors='C1', alpha=0.7)
+
+# Shade misclassification regions weighted by probability
+# Red: class 0 points incorrectly classified as 1
+error_region_0 = np.where(misclass_0, p_x_y0, 0)
+# Blue: class 1 points incorrectly classified as 0  
+error_region_1 = np.where(misclass_1, p_x_y1, 0)
+
+ax.contourf(X_grid, Y_grid, error_region_0, levels=[0.001, 0.01, 0.05, 0.1], 
+            colors=['#ff000010', '#ff000030', '#ff000050'], extend='max')
+ax.contourf(X_grid, Y_grid, error_region_1, levels=[0.001, 0.01, 0.05, 0.1],
+            colors=['#0000ff10', '#0000ff30', '#0000ff50'], extend='max')
+
+# Decision boundary
+ax.plot(x_boundary, y_boundary, 'k--', linewidth=2, label='Frontière de décision')
+
+# Class centers
+ax.scatter(*mu0, s=100, c='C0', marker='x', linewidths=3, zorder=5, label='Centre classe 0')
+ax.scatter(*mu1, s=100, c='C1', marker='x', linewidths=3, zorder=5, label='Centre classe 1')
+
+ax.set_xlim(-3, 5)
+ax.set_ylim(-3, 4)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.legend(loc='upper left')
+ax.set_aspect('equal')
+
+plt.tight_layout()
+```
+
+Le risque est l'intégrale de la perte sur tout l'espace, pondérée par $p(\mathbf{x}, y)$. Les régions ombrées contribuent au risque: chaque point dans ces régions est mal classé, et sa contribution dépend de la densité de probabilité à cet endroit. Les régions denses proches de la frontière contribuent le plus au risque.
+
+### Pourquoi le risque est important
+
+Le risque mesure ce que nous obtiendrons en moyenne si nous appliquons $f$ à de nouvelles données tirées de la même distribution. Un modèle avec un faible risque fait de bonnes prédictions en général, pas seulement sur les exemples d'entraînement. C'est exactement ce que nous voulons optimiser: un modèle qui performe bien sur des données jamais vues, pas seulement sur celles qu'il a déjà observées.
+
+Cette quantité est ce que nous voulons minimiser. Le problème fondamental est que nous ne connaissons pas la distribution $p(\mathbf{x}, y)$ de la nature. Nous n'y avons accès qu'indirectement, via un échantillon fini $\mathcal{D}$.
+
+## Le risque empirique
+
+Puisque le risque est inaccessible, nous l'approximons par une moyenne sur les données disponibles. Le **risque empirique** est:
+
+$$
+\hat{\mathcal{R}}(f, \mathcal{D}) = \frac{1}{N} \sum_{i=1}^{N} \ell(y_i, f(\mathbf{x}_i))
+$$
+
+Cette quantité est calculable: c'est la moyenne des pertes sur l'échantillon d'entraînement. Pour la perte 0-1, le risque empirique est le taux d'erreur sur les données d'entraînement. Pour la perte quadratique, c'est l'erreur quadratique moyenne.
+
+### Pourquoi le risque est-il inaccessible?
+
+La nécessité d'utiliser le risque empirique découle de deux obstacles fondamentaux, l'un conceptuel et l'autre computationnel.
+
+#### Obstacle 1: La distribution $p(\mathbf{x}, y)$ est inconnue
+
+La nature possède une distribution $p(\mathbf{x}, y)$ qui génère les données, mais nous ne la connaissons pas. Nous n'observons qu'un échantillon fini $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$ tiré de cette distribution. 
+
+L'ensemble $\mathcal{D}$ est une **variable aléatoire**: si nous répétions l'expérience de collecte de données, nous obtiendrions un échantillon différent. Cette perspective, adoptée notamment dans {cite:t}`murphy2022probabilistic`, rappelle que nos conclusions dépendent de l'échantillon particulier que nous avons observé. C'est comme si nous regardions quelques gouttes d'eau d'un océan: nous pouvons analyser ces gouttes, mais un autre prélèvement donnerait des gouttes différentes.
+
+Même si nous tentions d'estimer $p(\mathbf{x}, y)$ à partir des données (par exemple, via des techniques d'estimation de densité comme les mélanges de gaussiennes ou les estimateurs à noyau), nous n'obtiendrions qu'une approximation $\hat{p}(\mathbf{x}, y)$ de la vraie distribution. Cette approximation serait elle-même imparfaite et dépendrait de nos hypothèses sur la forme de la distribution.
+
+La figure suivante illustre ce problème. À gauche, la vraie distribution $p(\mathbf{x}, y)$ que la nature utilise pour générer les données (que nous ne connaissons pas). À droite, un échantillon de $N = 50$ points tirés de cette distribution (ce que nous observons).
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Paramètres du mélange gaussien
+mu0, mu1 = np.array([0.0, 0.0]), np.array([2.0, 1.0])
+cov = np.array([[1.0, 0.3], [0.3, 1.0]])
+
+def gaussian_pdf(x, mu, cov):
+    d = len(mu)
+    diff = x - mu
+    cov_inv = np.linalg.inv(cov)
+    mahal = np.einsum('...i,ij,...j->...', diff, cov_inv, diff)
+    return np.exp(-0.5 * mahal) / np.sqrt((2 * np.pi) ** d * np.linalg.det(cov))
+
+# Générer un échantillon
+rng = np.random.default_rng(42)
+n = 50
+X0 = rng.multivariate_normal(mu0, cov, n // 2)
+X1 = rng.multivariate_normal(mu1, cov, n // 2)
+X = np.vstack([X0, X1])
+y = np.concatenate([np.zeros(n // 2), np.ones(n // 2)])
+
+# Grille pour visualisation
+x_range = np.linspace(-3, 5, 150)
+y_range = np.linspace(-3, 4, 150)
+X_grid, Y_grid = np.meshgrid(x_range, y_range)
+pos = np.dstack([X_grid, Y_grid])
+
+p_x_given_0 = gaussian_pdf(pos, mu0, cov)
+p_x_given_1 = gaussian_pdf(pos, mu1, cov)
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+# Left: True distribution (what nature knows)
+ax = axes[0]
+ax.contourf(X_grid, Y_grid, p_x_given_0, levels=15, cmap='Blues', alpha=0.6)
+ax.contourf(X_grid, Y_grid, p_x_given_1, levels=15, cmap='Oranges', alpha=0.6)
+ax.contour(X_grid, Y_grid, p_x_given_0, levels=5, colors='C0', alpha=0.8)
+ax.contour(X_grid, Y_grid, p_x_given_1, levels=5, colors='C1', alpha=0.8)
+ax.scatter(*mu0, s=100, c='C0', marker='x', linewidths=3, zorder=5)
+ax.scatter(*mu1, s=100, c='C1', marker='x', linewidths=3, zorder=5)
+ax.set_xlim(-3, 5)
+ax.set_ylim(-3, 4)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title('Distribution vraie $p(x, y)$\n(inconnue)')
+ax.set_aspect('equal')
+
+# Right: Finite sample (what we observe)
+ax = axes[1]
+ax.scatter(X[y == 0, 0], X[y == 0, 1], c='C0', alpha=0.7, s=50, label='Classe 0')
+ax.scatter(X[y == 1, 0], X[y == 1, 1], c='C1', alpha=0.7, s=50, label='Classe 1')
+ax.set_xlim(-3, 5)
+ax.set_ylim(-3, 4)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title(f'Échantillon observé $\\mathcal{{D}}$\n($N = {len(X)}$ points)')
+ax.legend()
+ax.set_aspect('equal')
+
+plt.tight_layout()
+```
+
+Nous ne voyons que les points à droite. La structure continue à gauche, incluant les contours, les densités, ainsi que les régions de haute et basse probabilité, nous est cachée. C'est à partir de ces quelques points que nous devons estimer la performance de notre modèle.
+
+#### Obstacle 2: L'intégration est computationnellement intractable
+
+Supposons, par un miracle, que nous connaissions exactement $p(\mathbf{x}, y)$. Pourrions-nous alors calculer le risque $\mathcal{R}(f) = \int \ell(y, f(\mathbf{x})) \, p(\mathbf{x}, y) \, d\mathbf{x} \, dy$?
+
+La réponse est généralement non, pour plusieurs raisons:
+
+**Pour les espaces continus**: L'intégrale est une intégrale de grande dimension. Si $\mathbf{x} \in \mathbb{R}^d$ avec $d$ grand (par exemple, $d = 1000$ pour des images ou $d = 10^6$ pour des données textuelles), nous devons intégrer sur un espace de dimension $d+1$.
+
+Pour vous rappeler l'idée, en calcul on approche une intégrale en 1D par une somme: on découpe l'intervalle en petites tranches et on additionne des aires de rectangles ou de trapèzes. Par exemple, sur $[a,b]$:
+
+$$
+\int_a^b g(x)\,dx \;\approx\; \sum_{m=1}^{M} g(x_m)\,\Delta x
+$$
+
+Cette idée générale, qui consiste à remplacer une intégrale par une somme pondérée de valeurs de $g$ évaluées à des points $x_m$, s'appelle **l'intégration numérique** (ou **quadrature**).
+
+Le problème en apprentissage est que notre intégrale n'est pas en 1D. Si on applique le même raisonnement en dimension $d$ en mettant, disons, $M$ points par dimension, on obtient une grille de taille $M^d$ (et ici $d$ peut être très grand). Le nombre de points à évaluer explose donc exponentiellement avec $d$. C'est exactement la **malédiction de la dimensionnalité**.
+
+**Pour les espaces discrets**: Si $\mathbf{x}$ et $y$ sont discrets mais prennent de nombreuses valeurs, la somme $\sum_{\mathbf{x}} \sum_y \ell(y, f(\mathbf{x})) \cdot p(\mathbf{x}, y)$ peut avoir un nombre exponentiel de termes. Par exemple, si $\mathbf{x}$ est un vecteur binaire de dimension $d$, il y a $2^d$ valeurs possibles pour $\mathbf{x}$. Pour $d = 100$, cela fait déjà $2^{100} \approx 10^{30}$ termes à sommer, ce qui est computationnellement impossible.
+
+**Intégration de Monte Carlo**: On pourrait penser utiliser l'intégration de Monte Carlo: tirer des échantillons $(\mathbf{x}, y)$ selon $p(\mathbf{x}, y)$ et estimer l'intégrale par la moyenne empirique. Mais pour obtenir une estimation précise du risque, nous aurions besoin d'un très grand nombre d'échantillons (potentiellement infini pour une précision parfaite). De plus, cela nécessiterait de pouvoir échantillonner efficacement depuis $p(\mathbf{x}, y)$, ce qui est lui-même un problème difficile si la distribution est complexe.
+
+La figure suivante illustre la malédiction de la dimensionnalité. Avec seulement 10 points par dimension pour une quadrature numérique, le nombre total de points d'évaluation explose rapidement.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Number of grid points per dimension
+points_per_dim = 10
+
+# Dimensions to consider
+dimensions = np.array([1, 2, 3, 5, 10, 20, 50, 100])
+
+# Total grid points = points_per_dim^d
+total_points = points_per_dim ** dimensions.astype(float)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+bars = ax.bar(range(len(dimensions)), total_points, color='steelblue', edgecolor='black')
+
+# Add reference lines
+ax.axhline(y=1e9, color='C1', linestyle='--', alpha=0.7, label='1 milliard (limite pratique)')
+ax.axhline(y=1e80, color='C3', linestyle=':', alpha=0.7, label='$10^{80}$ (atomes dans l\'univers)')
+
+ax.set_yscale('log')
+ax.set_xticks(range(len(dimensions)))
+ax.set_xticklabels([f'd={d}' for d in dimensions])
+ax.set_xlabel('Dimension de l\'espace des entrées')
+ax.set_ylabel('Nombre de points de grille')
+ax.set_title(f'Points nécessaires pour l\'intégration numérique\n({points_per_dim} points par dimension)')
+ax.legend(loc='upper left')
+
+# Annotate a few bars
+for i, (d, n) in enumerate(zip(dimensions, total_points)):
+    if d <= 5:
+        ax.annotate(f'$10^{{{d}}}$', (i, n), ha='center', va='bottom', fontsize=9)
+    elif d == 10:
+        ax.annotate(f'$10^{{{10}}}$', (i, n), ha='center', va='bottom', fontsize=9)
+    elif d == 100:
+        ax.annotate(f'$10^{{{100}}}$', (i, n), ha='center', va='bottom', fontsize=9)
+
+ax.set_ylim(1, 1e105)
+
+plt.tight_layout()
+```
+
+En dimension 10, il faut déjà $10^{10}$ points, soit dix milliards. En dimension 100, il en faut $10^{100}$, un nombre qui dépasse le nombre d'atomes dans l'univers observable. L'intégration numérique directe est donc impossible pour les problèmes de haute dimension, même si nous connaissions $p(\mathbf{x}, y)$ exactement.
+
+### Le risque empirique comme seule option pratique
+
+Face à ces obstacles, le risque empirique est notre seule option calculable. Mais il y a une bonne nouvelle: le risque empirique est une forme d'**intégration de Monte Carlo**, et Monte Carlo a une propriété remarquable.
+
+| Méthode | Complexité | Exigence |
+|---------|------------|----------|
+| Quadrature (règles trapézoïdales, etc.) | $O(M^d)$ | Connaître $p(\mathbf{x},y)$ exactement |
+| Monte Carlo | $O(N)$ | Avoir des échantillons de $p(\mathbf{x},y)$ |
+
+La complexité de Monte Carlo est **indépendante de la dimension** $d$. Elle ne dépend que du nombre d'échantillons $N$. C'est cette propriété qui rend l'apprentissage possible en haute dimension. De plus, nous n'avons pas besoin de connaître la valeur numérique de $p(\mathbf{x},y)$: nous avons seulement besoin de pouvoir tirer des échantillons de cette distribution. C'est exactement ce que nos données d'entraînement nous fournissent.
+
+Le risque empirique remplace l'intégrale sur la distribution inconnue par une moyenne sur l'échantillon fini que nous possédons:
+
+$$
+\hat{\mathcal{R}}(f, \mathcal{D}) = \frac{1}{N} \sum_{i=1}^{N} \ell(y_i, f(\mathbf{x}_i))
+$$
+
+Cette formule est directe à évaluer: nous parcourons nos $N$ exemples d'entraînement, calculons la perte pour chacun, et faisons la moyenne.
+
+Reprenons les données de freinage. Divisons-les en deux parties: les mesures à vitesses faibles (4-19 mph) pour l'entraînement, et les mesures à vitesses élevées (20-25 mph) pour le test. Le risque empirique sur l'ensemble d'entraînement mesure la qualité de l'ajustement. Le risque empirique sur l'ensemble de test estime la performance sur des vitesses non vues pendant l'entraînement.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données de freinage
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+# Split: train on low speeds, test on high speeds
+train_mask = speed < 20
+test_mask = speed >= 20
+
+speed_train, dist_train = speed[train_mask], dist[train_mask]
+speed_test, dist_test = speed[test_mask], dist[test_mask]
+
+# Fit on training data
+coeffs = np.polyfit(speed_train, dist_train, 2)
+
+# Compute MSE on train and test
+pred_train = np.polyval(coeffs, speed_train)
+pred_test = np.polyval(coeffs, speed_test)
+mse_train = np.mean((dist_train - pred_train)**2)
+mse_test = np.mean((dist_test - pred_test)**2)
+
+plt.figure(figsize=(7, 4))
+plt.scatter(speed_train, dist_train, alpha=0.7, label=f'Entraînement (EQM={mse_train:.1f})')
+plt.scatter(speed_test, dist_test, alpha=0.7, marker='s', label=f'Test (EQM={mse_test:.1f})')
+
+speed_grid = np.linspace(4, 28, 100)
+plt.plot(speed_grid, np.polyval(coeffs, speed_grid), 'k--', alpha=0.6, label='Fonction ajustée')
+
+plt.axvline(x=20, color='gray', linestyle=':', alpha=0.5)
+plt.xlabel('Vitesse (mph)')
+plt.ylabel('Distance (ft)')
+plt.legend()
+plt.tight_layout()
+```
+
+Dans cet exemple, l'EQM (*MSE*, erreur quadratique moyenne) sur l'ensemble de test est plus élevé que sur l'ensemble d'entraînement. Cet écart est typique: la fonction a été optimisée pour les données d'entraînement, pas pour les données de test.
+
+Sous l'hypothèse que les exemples $(\mathbf{x}_i, y_i)$ sont tirés indépendamment et identiquement distribués (i.i.d.) selon $p(\mathbf{x}, y)$, le risque empirique est un estimateur non biaisé du vrai risque: $\mathbb{E}[\hat{\mathcal{R}}(f, \mathcal{D})] = \mathcal{R}(f)$. Cela signifie qu'en moyenne, sur tous les échantillons possibles, le risque empirique est égal au vrai risque.
+
+Par la loi des grands nombres, lorsque $N \to \infty$, le risque empirique converge vers le vrai risque (presque sûrement). Avec suffisamment de données, si l'échantillon est représentatif de la distribution, le risque empirique devrait être proche du risque.
+
+La figure suivante illustre cette convergence. Nous utilisons le problème de classification gaussienne pour lequel nous pouvons calculer le vrai risque analytiquement. Chaque courbe montre l'évolution du risque empirique pour un échantillon de taille croissante. Toutes les courbes convergent vers le vrai risque (ligne pointillée), mais avec des fluctuations qui diminuent à mesure que $N$ augmente.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+
+# Paramètres du mélange gaussien
+mu0, mu1 = np.array([0.0, 0.0]), np.array([2.0, 1.0])
+cov = np.array([[1.0, 0.3], [0.3, 1.0]])
+
+def gaussian_pdf(x, mu, cov):
+    d = len(mu)
+    diff = x - mu
+    cov_inv = np.linalg.inv(cov)
+    mahal = np.einsum('...i,ij,...j->...', diff, cov_inv, diff)
+    return np.exp(-0.5 * mahal) / np.sqrt((2 * np.pi) ** d * np.linalg.det(cov))
+
+# Compute Bayes-optimal classifier error rate (true risk)
+# For Gaussian classes with equal covariance, the Bayes error is:
+# P(error) = Phi(-d/2) where d is the Mahalanobis distance between means
+cov_inv = np.linalg.inv(cov)
+d_squared = (mu1 - mu0) @ cov_inv @ (mu1 - mu0)
+d = np.sqrt(d_squared)
+true_risk = norm.cdf(-d / 2)
+
+# Simulate empirical risk for different sample sizes
+sample_sizes = np.arange(10, 1001, 10)
+n_runs = 20
+
+fig, ax = plt.subplots(figsize=(9, 5))
+
+# Store all runs for confidence band
+all_risks = np.zeros((n_runs, len(sample_sizes)))
+
+for run in range(n_runs):
+    empirical_risks = []
+    # Generate a large dataset and compute cumulative empirical risk
+    rng = np.random.default_rng(run)
+    n_total = 1000
+    X0 = rng.multivariate_normal(mu0, cov, n_total // 2)
+    X1 = rng.multivariate_normal(mu1, cov, n_total // 2)
+    X = np.vstack([X0, X1])
+    y = np.concatenate([np.zeros(n_total // 2), np.ones(n_total // 2)])
+    perm = rng.permutation(n_total)
+    X, y = X[perm], y[perm]
+    
+    # Bayes-optimal classifier: predict 1 if w^T x + b > 0
+    w = cov_inv @ (mu1 - mu0)
+    b = -0.5 * (mu1 @ cov_inv @ mu1 - mu0 @ cov_inv @ mu0)
+    
+    for n in sample_sizes:
+        X_n, y_n = X[:n], y[:n]
+        predictions = (X_n @ w + b > 0).astype(float)
+        emp_risk = np.mean(predictions != y_n)
+        empirical_risks.append(emp_risk)
+    
+    all_risks[run] = empirical_risks
+    ax.plot(sample_sizes, empirical_risks, 'C0-', alpha=0.15, linewidth=0.8)
+
+# Mean and confidence bands
+mean_risk = np.mean(all_risks, axis=0)
+std_risk = np.std(all_risks, axis=0)
+ax.fill_between(sample_sizes, mean_risk - 2*std_risk, mean_risk + 2*std_risk, 
+                alpha=0.3, color='C0', label='Intervalle ± 2 écarts-types')
+ax.plot(sample_sizes, mean_risk, 'C0-', linewidth=2, label='Moyenne empirique')
+
+# True risk
+ax.axhline(y=true_risk, color='C3', linestyle='--', linewidth=2, 
+           label=f'Vrai risque = {true_risk:.3f}')
+
+ax.set_xlabel('Taille de l\'échantillon $N$')
+ax.set_ylabel('Risque empirique (taux d\'erreur)')
+ax.set_title('Convergence du risque empirique vers le vrai risque')
+ax.legend(loc='upper right')
+ax.set_xlim(0, 1000)
+ax.set_ylim(0, 0.35)
+
+plt.tight_layout()
+```
+
+Avec $N = 50$, le risque empirique peut facilement varier de 0.10 à 0.25 selon l'échantillon. Avec $N = 500$, la variabilité est beaucoup plus faible. C'est la loi des grands nombres en action: plus l'échantillon est grand, plus l'estimation est précise.
+
+### Le compromis fondamental
+
+Cette situation crée un compromis fondamental en apprentissage automatique:
+
+- **Ce que nous voulons minimiser**: Le risque $\mathcal{R}(f)$, qui mesure la performance sur toutes les données possibles
+- **Ce que nous pouvons minimiser**: Le risque empirique $\hat{\mathcal{R}}(f, \mathcal{D})$, qui mesure la performance sur nos données d'entraînement
+
+L'écart entre ces deux quantités est au cœur de l'apprentissage automatique. Un modèle peut avoir un risque empirique très faible (il performe bien sur les données d'entraînement) tout en ayant un risque élevé (il performe mal sur de nouvelles données). C'est le problème du surapprentissage, que nous explorerons plus en détail dans le chapitre sur la généralisation.
+
+La question de savoir quand et à quelle vitesse l'approximation du risque par le risque empirique est fiable relève de la théorie de la généralisation, que nous aborderons au chapitre suivant.
+
+## Minimisation du risque empirique
+
+Nous avons maintenant les éléments pour formuler l'apprentissage comme un problème d'optimisation. Nous cherchons la fonction $f$ dans une classe $\mathcal{F}$ qui minimise le risque:
+
+$$
+f^\star = \arg\min_{f \in \mathcal{F}} \mathcal{R}(f)
+$$
+
+Puisque le risque est inaccessible, nous le remplaçons par le risque empirique:
+
+$$
+\hat{f} = \arg\min_{f \in \mathcal{F}} \hat{\mathcal{R}}(f, \mathcal{D})
+$$
+
+Ce principe est la **minimisation du risque empirique** (MRE): choisir la fonction qui fait le moins d'erreurs sur les données d'entraînement, en espérant que cette performance se transfère aux nouvelles données.
+
+La classe $\mathcal{F}$ est notre **classe d'hypothèses**. Elle représente l'ensemble des fonctions que nous sommes prêts à considérer. Le choix de $\mathcal{F}$ encode nos hypothèses sur la forme de la relation entre entrées et sorties.
+
+### Un premier exemple: les modèles linéaires
+
+Pour rendre ces concepts concrets, considérons la classe la plus simple: les **modèles linéaires**. Un modèle linéaire suppose que la sortie est une combinaison linéaire des entrées:
+
+$$
+f(\mathbf{x}; \boldsymbol{\theta}) = \theta_0 + \sum_{j=1}^d \theta_j x_j = \boldsymbol{\theta}^\top \mathbf{x}
+$$
+
+où $\mathbf{x} \in \mathbb{R}^{d+1}$ est le vecteur d'entrée augmenté d'un 1 pour le biais ($x_0 = 1$), et $\boldsymbol{\theta} \in \mathbb{R}^{d+1}$ est le vecteur de paramètres contenant le biais $\theta_0$ et les poids $\theta_1, \ldots, \theta_d$.
+
+Cette forme est restrictive: elle suppose que la relation entre entrées et sorties est linéaire. Pour les données de freinage, cela signifierait que la distance est proportionnelle à la vitesse, ce qui n'est pas le cas (la relation est plutôt quadratique). Néanmoins, les modèles linéaires sont utiles comme point de départ, et nous verrons comment les étendre pour capturer des relations non linéaires.
+
+Avec cette classe $\mathcal{F}$ fixée, l'apprentissage consiste à trouver les paramètres $\boldsymbol{\theta}$ qui minimisent le risque empirique. Pour la perte quadratique, cela revient à minimiser la somme des carrés des résidus.
+
+Mais quand le minimiseur du risque empirique a-t-il un faible risque? Si $\hat{f}$ minimise $\hat{\mathcal{R}}$ et $f^\star$ minimise $\mathcal{R}$, nous voulons que $\mathcal{R}(\hat{f})$ soit proche de $\mathcal{R}(f^\star)$. La réponse dépend de la taille de l'échantillon $N$, de la complexité de la classe $\mathcal{F}$, et de propriétés de la distribution $p$.
+
+### Résoudre le problème d'optimisation
+
+Quand nous écrivons $\arg\min_{\boldsymbol{\theta}}$, nous cherchons les paramètres qui rendent la fonction objectif aussi petite que possible. Mais comment trouver ces paramètres en pratique?
+
+La réponse dépend de la forme du problème:
+
+- Pour certains problèmes, comme la régression linéaire avec perte quadratique, nous pouvons dériver une **solution analytique** en posant le gradient égal à zéro et en résolvant le système d'équations résultant.
+- Pour d'autres, nous devons recourir à des **algorithmes itératifs** (comme la descente de gradient) ou à des **solveurs spécialisés** (comme la programmation quadratique pour les SVM).
+
+#### Exemple: solution analytique pour la régression linéaire (MCO)
+
+Pour illustrer les solutions analytiques, considérons la régression linéaire avec perte quadratique. L'objectif est de minimiser la somme des carrés des résidus:
+
+$$
+\text{RSS}(\boldsymbol{\theta}) = \sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2
+$$
+
+où $\mathbf{X}$ est la matrice $N \times (d+1)$ des entrées (avec une colonne de 1 pour le biais) et $\mathbf{y}$ est le vecteur des sorties.
+
+En développant et en calculant le gradient:
+
+$$
+\nabla_{\boldsymbol{\theta}} \text{RSS}(\boldsymbol{\theta}) = -2\mathbf{X}^\top \mathbf{y} + 2\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta}
+$$
+
+En posant le gradient égal à zéro, nous obtenons les **équations normales**:
+
+$$
+\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta} = \mathbf{X}^\top \mathbf{y}
+$$
+
+Si la matrice $\mathbf{X}^\top \mathbf{X}$ est inversible, la solution unique est:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}
+$$
+
+Cette solution porte le nom d'estimateur des **moindres carrés ordinaires** (MCO, ou *ordinary least squares*, OLS). Elle peut être calculée directement sans itération, ce qui en fait un exemple classique de solution analytique.
+
+Le chapitre sur l'optimisation présentera ces méthodes en détail. Pour l'instant, nous nous concentrons sur la **formulation** des problèmes d'apprentissage comme problèmes d'optimisation, en gardant à l'esprit que des outils existent pour les résoudre.
+
+### Généralisation
+
+La différence entre le risque et le risque empirique est l'**écart de généralisation**:
+
+$$
+\text{Écart} = \mathcal{R}(f) - \hat{\mathcal{R}}(f; \mathcal{D}_{\text{train}})
+$$
+
+Un modèle qui minimise le risque empirique peut avoir un risque élevé si cet écart est grand. Ce phénomène est le **surapprentissage**: le modèle s'ajuste aux particularités de l'échantillon d'entraînement, y compris le bruit, plutôt qu'aux régularités sous-jacentes. L'erreur d'entraînement est faible, mais l'erreur sur de nouvelles données est élevée.
+
+À l'inverse, un modèle trop simple peut avoir un risque empirique et un risque tous deux élevés. C'est le **sous-apprentissage**: le modèle n'a pas la capacité de capturer la structure des données.
+
+#### Extrapolation
+
+Un cas particulier de mauvaise généralisation est l'**extrapolation**: prédire pour des entrées en dehors de la plage des données d'entraînement. Même un modèle bien ajusté peut échouer spectaculairement lorsqu'on lui demande de prédire au-delà de ce qu'il a vu.
+
+Considérons des essais en soufflerie pour mesurer la portance d'une aile à différentes vitesses. Les tests sont effectués entre 20 et 60 m/s. L'ingénieur veut prédire la portance à 100 m/s.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données de portance aérodynamique (simulées)
+np.random.seed(42)
+rho, S, C_L = 1.225, 20.0, 0.5
+v_train = np.linspace(20, 60, 8)
+L_true_train = 0.5 * rho * v_train**2 * S * C_L
+L_train = L_true_train + np.random.normal(0, 400, len(v_train))
+
+coeffs_2 = np.polyfit(v_train, L_train, 2)
+coeffs_5 = np.polyfit(v_train, L_train, 5)
+
+v_extrap = np.linspace(15, 110, 200)
+L_true_extrap = 0.5 * rho * v_extrap**2 * S * C_L
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+for ax, coeffs, deg in zip(axes, [coeffs_2, coeffs_5], [2, 5]):
+    ax.scatter(v_train, L_train, s=50, zorder=5, label='Observations')
+    ax.plot(v_extrap, L_true_extrap, 'g-', alpha=0.5, label='Vraie relation')
+    L_pred = np.polyval(coeffs, v_extrap)
+    ax.plot(v_extrap, L_pred, 'k--', label=f'Polynôme degré {deg}')
+    ax.axvline(60, color='gray', linestyle=':', alpha=0.5)
+    ax.axvspan(60, 110, alpha=0.1, color='red')
+    ax.set_xlabel('Vitesse (m/s)')
+    ax.set_ylabel('Portance (N)')
+    ax.set_title(f'Degré {deg}')
+    ax.legend(loc='upper left')
+    ax.set_ylim(-5000, 80000)
+    ax.text(85, 5000, 'Extrapolation', ha='center', fontsize=10, color='red', alpha=0.7)
+
+plt.tight_layout()
+```
+
+Le polynôme de degré 2 (qui correspond au vrai modèle physique $L \propto v^2$) extrapole correctement. Le polynôme de degré 5, bien qu'il ajuste aussi bien les données d'entraînement, diverge complètement en dehors de la plage observée.
+
+### Régularisation
+
+Une manière de contrôler le surapprentissage consiste à pénaliser la complexité du modèle directement dans la fonction objectif. Le **risque empirique régularisé** est:
+
+$$
+\hat{\mathcal{R}}_\lambda(\boldsymbol{\theta}) = \hat{\mathcal{R}}(\boldsymbol{\theta}) + \lambda \, C(\boldsymbol{\theta})
+$$
+
+où $C(\boldsymbol{\theta})$ mesure la complexité du modèle et $\lambda \geq 0$ contrôle l'intensité de la pénalisation. Un choix courant est la **régularisation $\ell_2$** (ou *weight decay*):
+
+$$
+C(\boldsymbol{\theta}) = \|\boldsymbol{\theta}\|_2^2 = \sum_j \theta_j^2
+$$
+
+Cette pénalisation pousse les paramètres vers zéro, ce qui a pour effet de lisser la fonction apprise. En régression linéaire, l'ajout de cette pénalité donne la **régression ridge**:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{ridge}} = \arg\min_{\boldsymbol{\theta}} \frac{1}{N}\sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 + \lambda \|\boldsymbol{\theta}\|_2^2
+$$
+
+Illustrons l'effet de la régularisation sur le même problème de régression polynomiale. Avec un polynôme de degré 15 et différentes valeurs de $\lambda$:
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données de freinage
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+# Train/test split
+np.random.seed(42)
+indices = np.random.permutation(len(speed))
+train_idx, test_idx = indices[:35], indices[35:]
+speed_train, dist_train = speed[train_idx], dist[train_idx]
+speed_test, dist_test = speed[test_idx], dist[test_idx]
+
+# Build polynomial features (degree 15)
+degree = 15
+def poly_features(x, deg):
+    return np.vstack([x**i for i in range(deg+1)]).T
+
+X_train = poly_features(speed_train, degree)
+X_test = poly_features(speed_test, degree)
+
+# Ridge regression for different lambda values
+lambdas = [0, 1e-6, 1e-3, 1]
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+for ax, lam in zip(axes.flat, lambdas):
+    # Ridge solution: (X^T X + lambda I)^{-1} X^T y
+    I = np.eye(X_train.shape[1])
+    I[0, 0] = 0  # Don't regularize bias
+    w = np.linalg.solve(X_train.T @ X_train + lam * I, X_train.T @ dist_train)
+    
+    # Predictions
+    pred_train = X_train @ w
+    pred_test = X_test @ w
+    mse_train = np.mean((dist_train - pred_train)**2)
+    mse_test = np.mean((dist_test - pred_test)**2)
+    
+    # Plot
+    ax.scatter(speed_train, dist_train, alpha=0.6, s=30, label='Entraînement')
+    ax.scatter(speed_test, dist_test, alpha=0.6, s=30, marker='s', label='Test')
+    
+    speed_grid = np.linspace(3, 26, 200)
+    X_grid = poly_features(speed_grid, degree)
+    pred_grid = X_grid @ w
+    pred_grid = np.clip(pred_grid, -50, 200)
+    ax.plot(speed_grid, pred_grid, 'k-', alpha=0.7)
+    
+    ax.set_xlim(3, 26)
+    ax.set_ylim(-20, 150)
+    ax.set_xlabel('Vitesse (mph)')
+    ax.set_ylabel('Distance (ft)')
+    ax.set_title(f'$\\lambda$ = {lam}: Entr. EQM={mse_train:.1f}, Test EQM={mse_test:.1f}')
+    if lam == 0:
+        ax.legend()
+
+plt.tight_layout()
+```
+
+Sans régularisation ($\lambda = 0$), le polynôme de degré 15 oscille fortement. Avec une régularisation modérée ($\lambda = 10^{-3}$), les oscillations sont atténuées et l'erreur de test diminue. Avec une régularisation trop forte ($\lambda = 1$), le modèle devient trop contraint et sous-apprend.
+
+#### Solution analytique de la régression ridge
+
+Comme pour les moindres carrés ordinaires, la régression ridge admet une solution analytique. L'objectif régularisé est:
+
+$$
+\text{RSS}_\lambda(\boldsymbol{\theta}) = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2 + \lambda \|\boldsymbol{\theta}\|_2^2
+$$
+
+En développant et en calculant le gradient:
+
+$$
+\nabla_{\boldsymbol{\theta}} \text{RSS}_\lambda(\boldsymbol{\theta}) = -2\mathbf{X}^\top \mathbf{y} + 2\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta} + 2\lambda \boldsymbol{\theta} = -2\mathbf{X}^\top \mathbf{y} + 2(\mathbf{X}^\top \mathbf{X} + \lambda \mathbf{I}) \boldsymbol{\theta}
+$$
+
+En posant le gradient égal à zéro, nous obtenons les **équations normales régularisées**:
+
+$$
+(\mathbf{X}^\top \mathbf{X} + \lambda \mathbf{I}) \boldsymbol{\theta} = \mathbf{X}^\top \mathbf{y}
+$$
+
+La solution est:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{ridge}} = (\mathbf{X}^\top \mathbf{X} + \lambda \mathbf{I})^{-1} \mathbf{X}^\top \mathbf{y}
+$$
+
+Comparons avec la solution MCO: $\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}$. La seule différence est l'ajout du terme $\lambda \mathbf{I}$ à la matrice $\mathbf{X}^\top \mathbf{X}$.
+
+##### Solution via décomposition en valeurs singulières (SVD)
+
+Les solutions MCO et Ridge peuvent également être exprimées en utilisant la **décomposition en valeurs singulières** (SVD) de la matrice $\mathbf{X}$. Cette approche offre une interprétation géométrique et révèle pourquoi la régularisation fonctionne.
+
+La SVD décompose $\mathbf{X}$ en trois matrices:
+
+$$
+\mathbf{X} = \mathbf{U} \mathbf{D} \mathbf{V}^\top
+$$
+
+où:
+- $\mathbf{U}$ est une matrice $N \times d$ dont les colonnes $\mathbf{u}_j$ sont orthonormales (directions dans l'espace des observations)
+- $\mathbf{D}$ est une matrice diagonale $d \times d$ contenant les **valeurs singulières** $d_1 \geq d_2 \geq \cdots \geq d_d \geq 0$
+- $\mathbf{V}$ est une matrice $d \times d$ dont les colonnes $\mathbf{v}_j$ sont orthonormales (directions principales dans l'espace des coefficients)
+
+**Solution MCO via SVD**: En substituant cette décomposition dans la solution MCO:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y} = (\mathbf{V} \mathbf{D}^2 \mathbf{V}^\top)^{-1} \mathbf{V} \mathbf{D} \mathbf{U}^\top \mathbf{y} = \mathbf{V} \mathbf{D}^{-1} \mathbf{U}^\top \mathbf{y}
+$$
+
+Ce qui s'écrit sous forme de somme:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = \sum_{j=1}^d \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
+$$
+
+**Solution Ridge via SVD**: Pour Ridge, on peut montrer que:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{ridge}} = \sum_{j=1}^d \frac{d_j^2}{d_j^2 + \lambda} \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
+$$
+
+La différence avec MCO est le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ qui multiplie chaque terme. Ce facteur est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro.
+
+**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Les longueurs des demi-axes sont proportionnelles à $1/d_j$ pour MCO. Avec Ridge, elles deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda} = \frac{1}{d_j} \cdot \frac{d_j^2}{d_j^2 + \lambda}$: l'ellipse se rétrécit, et plus rapidement le long des directions associées aux petites valeurs singulières.
+
+**Avantages numériques**: La SVD est plus stable numériquement que l'inversion directe de $\mathbf{X}^\top \mathbf{X}$, surtout quand cette matrice est mal conditionnée. Les algorithmes SVD gèrent mieux les cas où certaines valeurs singulières sont très petites.
+
+#### Pourquoi $\lambda \mathbf{I}$ aide
+
+Ce terme diagonal a plusieurs effets bénéfiques:
+
+1. **Amélioration du conditionnement**: La matrice $\mathbf{X}^\top \mathbf{X}$ peut être mal conditionnée (ses valeurs propres varient sur plusieurs ordres de grandeur) ou même singulière. L'ajout de $\lambda \mathbf{I}$ augmente toutes les valeurs propres de $\lambda$, rendant la matrice inversible et mieux conditionnée.
+
+2. **Rétrécissement des coefficients** (*shrinkage*): Comme nous l'avons vu dans la section SVD ci-dessus, la solution Ridge s'écrit:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{ridge}} = \sum_{j=1}^d \frac{d_j^2}{d_j^2 + \lambda} \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
+$$
+
+Le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro. L'effet est différencié selon les directions:
+
+- Pour une grande valeur singulière $d_j$ (fort signal), le facteur $\frac{d_j^2}{d_j^2 + \lambda}$ reste proche de 1 même pour des valeurs modérées de $\lambda$. La direction est peu affectée.
+- Pour une petite valeur singulière $d_j$ (faible signal), le facteur $\frac{d_j^2}{d_j^2 + \lambda}$ décroît rapidement avec $\lambda$. La direction est fortement pénalisée.
+
+Cette propriété correspond géométriquement à un rétrécissement non uniforme de l'ellipse de confiance: l'axe associé à la petite valeur singulière se rétrécit plus rapidement que celui associé à la grande valeur singulière.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Ellipse
+from IPython.display import Image
+
+# Simuler une matrice X avec des valeurs singulières décroissantes
+np.random.seed(42)
+n, d = 30, 2  # 2D pour la visualisation géométrique
+
+# Créer une matrice avec des valeurs singulières différentes
+U, _ = np.linalg.qr(np.random.randn(n, d))
+V, _ = np.linalg.qr(np.random.randn(d, d))
+# Valeurs singulières: une grande, une petite
+d_vals = np.array([5.0, 0.5])
+D = np.diag(d_vals)
+X = U @ D @ V.T
+
+# Générer y
+theta_true = np.array([2.0, 1.5])
+y = X @ theta_true + 0.3 * np.random.randn(n)
+
+# SVD
+U_svd, d_svd, Vt_svd = np.linalg.svd(X, full_matrices=False)
+V_svd = Vt_svd.T
+
+# Calculer les coefficients dans l'espace des directions principales
+# OLS: theta_ols = V @ (D^-1 @ U^T @ y)
+theta_ols_coords = np.diag(1 / d_svd) @ U_svd.T @ y
+theta_ols = V_svd @ theta_ols_coords
+
+# Préparer la figure
+fig = plt.figure(figsize=(14, 6))
+
+# Vue 1: Espace des coefficients avec ellipse
+ax1 = fig.add_subplot(1, 2, 1)
+
+# Calculer l'angle de rotation de l'ellipse (angle de v1 par rapport à l'axe x)
+v1, v2 = V_svd[:, 0], V_svd[:, 1]
+angle_deg = np.degrees(np.arctan2(v1[1], v1[0]))
+
+# Longueurs initiales des demi-axes (proportionnelles à 1/d_j)
+scale_factor = 0.8  # Facteur d'échelle pour la visualisation
+axis1_length_initial = scale_factor / d_svd[0]
+axis2_length_initial = scale_factor / d_svd[1]
+
+# Solution OLS (statique)
+ax1.plot(theta_ols[0], theta_ols[1], 'ko', markersize=10, label='MCO', zorder=5)
+ax1.text(theta_ols[0]+0.15, theta_ols[1]+0.15, '$\\hat{\\boldsymbol{\\theta}}_{\\text{MCO}}$', 
+         fontsize=12, ha='left')
+
+# Ellipse initiale (MCO, lambda=0)
+ellipse1 = Ellipse((0, 0), 2*axis1_length_initial, 2*axis2_length_initial, 
+                   angle=angle_deg, fill=False, edgecolor='blue', 
+                   linestyle='--', linewidth=2, alpha=0.5, zorder=2)
+ax1.add_patch(ellipse1)
+
+# Ellipse Ridge (animée)
+ellipse_ridge = Ellipse((0, 0), 2*axis1_length_initial, 2*axis2_length_initial,
+                        angle=angle_deg, fill=False, edgecolor='red', 
+                        linewidth=2, alpha=0.8, zorder=3)
+ax1.add_patch(ellipse_ridge)
+
+# Point Ridge (animé)
+point1, = ax1.plot([], [], 'ro', markersize=8, label='Ridge', zorder=4)
+arrow1 = ax1.annotate('', xy=(0, 0), xytext=(0, 0), 
+                      arrowprops=dict(arrowstyle='->', color='red', 
+                                     linestyle='--', linewidth=2, alpha=0.6))
+
+# Annotations
+ax1.text(v1[0]*3.3, v1[1]*3.3, f'$\\mathbf{{v}}_1$ ($d_1={d_svd[0]:.1f}$)', 
+         fontsize=11, ha='center', color='gray')
+ax1.text(v2[0]*3.3, v2[1]*3.3, f'$\\mathbf{{v}}_2$ ($d_2={d_svd[1]:.1f}$)', 
+         fontsize=11, ha='center', color='gray')
+
+title1 = ax1.set_title('Rétrécissement de l\'ellipse de confiance', fontsize=13)
+lambda_text1 = ax1.text(0.02, 0.98, '', transform=ax1.transAxes, 
+                        fontsize=11, va='top', ha='left',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+ax1.set_xlabel('$\\theta_1$', fontsize=12)
+ax1.set_ylabel('$\\theta_2$', fontsize=12)
+ax1.legend(loc='upper right', fontsize=10)
+ax1.grid(True, alpha=0.3)
+ax1.set_aspect('equal')
+ax1.axis([-1, 3.5, -1, 2.5])
+ax1.plot(0, 0, 'k+', markersize=12, markeredgewidth=2)
+
+# Vue 2: Facteurs de rétrécissement
+ax2 = fig.add_subplot(1, 2, 2)
+
+# Préparer les courbes de rétrécissement
+lambda_range = np.linspace(0, 5, 200)
+shrink1_curve = d_svd[0]**2 / (d_svd[0]**2 + lambda_range)
+shrink2_curve = d_svd[1]**2 / (d_svd[1]**2 + lambda_range)
+
+# Tracer les courbes
+line1, = ax2.plot(lambda_range, shrink1_curve, 'b-', linewidth=2, 
+                  label=f'$\\frac{{d_1^2}}{{d_1^2+\\lambda}}$ ($d_1={d_svd[0]:.1f}$)', zorder=2)
+line2, = ax2.plot(lambda_range, shrink2_curve, 'r-', linewidth=2, 
+                  label=f'$\\frac{{d_2^2}}{{d_2^2+\\lambda}}$ ($d_2={d_svd[1]:.1f}$)', zorder=2)
+
+# Point animé sur les courbes
+point_lambda1, = ax2.plot([], [], 'bo', markersize=10, zorder=3)
+point_lambda2, = ax2.plot([], [], 'ro', markersize=10, zorder=3)
+
+ax2.axhline(1.0, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+ax2.set_xlabel('$\\lambda$', fontsize=12)
+ax2.set_ylabel('Facteur de rétrécissement', fontsize=12)
+ax2.set_title('Facteurs de rétrécissement en fonction de $\\lambda$', fontsize=13)
+ax2.legend(loc='upper right', fontsize=10)
+ax2.grid(True, alpha=0.3)
+ax2.set_xlim(0, 5)
+ax2.set_ylim(0, 1.1)
+
+# Annotation pour lambda actuel
+lambda_text2 = ax2.text(0.02, 0.98, '', transform=ax2.transAxes, 
+                        fontsize=11, va='top', ha='left',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+# Fonction d'animation
+def animate(frame):
+    # Lambda augmente de 0 à lambda_max
+    lambda_max = 5.0
+    lam = (frame / 100) * lambda_max
+    
+    # Calculer les facteurs de rétrécissement
+    shrink1 = d_svd[0]**2 / (d_svd[0]**2 + lam)
+    shrink2 = d_svd[1]**2 / (d_svd[1]**2 + lam)
+    
+    # Calculer la solution Ridge
+    shrinkage = d_svd**2 / (d_svd**2 + lam)
+    theta_ridge_coords = shrinkage * theta_ols_coords
+    theta_ridge = V_svd @ theta_ridge_coords
+    
+    # Mettre à jour l'ellipse (demi-axes rétrécis)
+    axis1_length = axis1_length_initial * shrink1
+    axis2_length = axis2_length_initial * shrink2
+    ellipse_ridge.set_width(2 * axis1_length)
+    ellipse_ridge.set_height(2 * axis2_length)
+    
+    # Mettre à jour le point Ridge
+    point1.set_data([theta_ridge[0]], [theta_ridge[1]])
+    arrow1.xy = (theta_ridge[0], theta_ridge[1])
+    arrow1.xytext = (theta_ols[0], theta_ols[1])
+    lambda_text1.set_text(f'$\\lambda = {lam:.2f}$')
+    
+    # Mettre à jour les points sur les courbes de rétrécissement
+    point_lambda1.set_data([lam], [shrink1])
+    point_lambda2.set_data([lam], [shrink2])
+    lambda_text2.set_text(f'$\\lambda = {lam:.2f}$\n$\\frac{{d_1^2}}{{d_1^2+\\lambda}}={shrink1:.2f}$\n$\\frac{{d_2^2}}{{d_2^2+\\lambda}}={shrink2:.2f}$')
+    
+    return (point1, arrow1, ellipse_ridge, point_lambda1, point_lambda2, 
+            lambda_text1, lambda_text2)
+
+# Créer l'animation
+anim = FuncAnimation(fig, animate, frames=100, interval=50, blit=False, repeat=True)
+anim.save('_static/ridge_shrinkage_ellipse.gif', writer='pillow', fps=20, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/ridge_shrinkage_ellipse.gif')
+```
+
+L'animation illustre le rétrécissement différencié de l'ellipse de confiance lorsque $\lambda$ augmente de 0 à 5. La figure de gauche montre l'ellipse dans l'espace des coefficients $(\theta_1, \theta_2)$: l'ellipse bleue en pointillés correspond à la solution MCO ($\lambda = 0$), avec des demi-axes proportionnels à $1/d_1$ et $1/d_2$. L'ellipse rouge (Ridge) se rétrécit de façon non uniforme: l'axe associé à $\mathbf{v}_2$ (petite valeur singulière $d_2 = 0.5$) se rétrécit beaucoup plus rapidement que l'axe associé à $\mathbf{v}_1$ (grande valeur singulière $d_1 = 5.0$). Le point Ridge (rouge) suit ce rétrécissement, se rapprochant progressivement de l'origine.
+
+La figure de droite montre les facteurs de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ en fonction de $\lambda$. On observe que la courbe pour $d_2$ (petite valeur singulière) décroît beaucoup plus rapidement que celle pour $d_1$ (grande valeur singulière), confirmant que les directions avec faible signal sont plus fortement pénalisées.
+
+3. **Stabilité numérique**: Quand $\mathbf{X}^\top \mathbf{X}$ est presque singulière, de petites perturbations dans les données causent de grandes variations dans $\hat{\boldsymbol{\theta}}_{\text{MCO}}$. La régularisation réduit cette sensibilité.
+
+### Évaluation et choix de modèle
+
+En pratique, nous estimons le risque par le risque empirique sur un **ensemble de test** $\mathcal{D}_{\text{test}}$ disjoint de l'ensemble d'entraînement. Un troisième ensemble, l'**ensemble de validation**, sert à choisir parmi plusieurs modèles ou à régler des hyperparamètres. L'ensemble de test doit rester intact jusqu'à l'évaluation finale, pour fournir une estimation non biaisée.
+
+Cette séparation est importante. Si nous utilisons l'ensemble de test pour faire des choix (quel modèle garder, quelle valeur d'hyperparamètre utiliser), l'estimation de performance sur ce même ensemble devient optimiste.
+
+#### Hyperparamètres et validation
+
+De nombreux modèles ont des **hyperparamètres**: des choix qui doivent être faits avant l'entraînement et qui ne sont pas appris à partir des données. Le degré $k$ d'un polynôme, le nombre de voisins dans les $k$ plus proches voisins, ou le coefficient de régularisation $\lambda$ sont des exemples d'hyperparamètres.
+
+Un hyperparamètre mal choisi peut mener au surapprentissage (modèle trop complexe) ou au sous-apprentissage (modèle trop simple). La méthode standard pour choisir un hyperparamètre est la **validation**: on réserve une partie des données (typiquement 20%) comme ensemble de validation, on entraîne le modèle pour plusieurs valeurs de l'hyperparamètre, et on retient celle qui minimise l'erreur sur l'ensemble de validation.
+
+Plus formellement, pour un hyperparamètre $h$, définissons le **risque de validation**:
+
+$$
+\hat{\mathcal{R}}^{\text{val}}_h = \hat{\mathcal{R}}\left(\hat{f}_h(\mathcal{D}_{\text{train}}), \mathcal{D}_{\text{valid}}\right)
+$$
+
+où $\hat{f}_h(\mathcal{D}_{\text{train}})$ est le modèle entraîné avec l'hyperparamètre $h$. La **recherche par grille** consiste à évaluer ce risque pour un ensemble de valeurs candidates et à retenir:
+
+$$
+h^* = \arg\min_{h \in \{h_1, \ldots, h_K\}} \hat{\mathcal{R}}^{\text{val}}_h
+$$
+
+Une fois $h^*$ choisi, on peut ré-entraîner le modèle sur l'ensemble des données (entraînement + validation) pour obtenir le modèle final.
+
+#### Validation croisée
+
+Quand les données sont peu nombreuses, réserver 20% pour la validation peut être coûteux. La **validation croisée** offre une alternative.
+
+L'idée est de partitionner les données en $K$ **blocs**. Pour chaque bloc $k$, on entraîne le modèle sur les $K-1$ autres blocs et on évalue sur le bloc $k$. Le **risque de validation croisée** est la moyenne des $K$ évaluations:
+
+$$
+\hat{\mathcal{R}}^{\text{cv}}_h = \frac{1}{K} \sum_{k=1}^K \hat{\mathcal{R}}\left(\hat{f}_h(\mathcal{D}_{-k}), \mathcal{D}_k\right)
+$$
+
+où $\mathcal{D}_{-k}$ désigne toutes les données sauf le bloc $k$.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 3))
+
+K = 5
+for fold in range(K):
+    for k in range(K):
+        if k == fold:
+            ax.barh(fold, 1, left=k, color='C1', edgecolor='black', linewidth=1, label='Validation' if fold == 0 else '')
+        else:
+            ax.barh(fold, 1, left=k, color='C0', edgecolor='black', linewidth=1, label='Entraînement' if fold == 0 and k == 0 else '')
+
+ax.set_yticks(range(K))
+ax.set_yticklabels([f'Itération {k+1}' for k in range(K)])
+ax.set_xticks(np.arange(K) + 0.5)
+ax.set_xticklabels([f'Bloc {k+1}' for k in range(K)])
+ax.set_xlabel('Blocs de données')
+ax.legend(loc='upper right')
+ax.set_title(f'Validation croisée à {K} blocs')
+ax.set_xlim(0, K)
+
+plt.tight_layout()
+```
+
+Le cas particulier $K = N$ (un bloc par exemple) est appelé **validation croisée leave-one-out**. Elle utilise au maximum les données disponibles, mais est coûteuse en calcul. En pratique, $K = 5$ ou $K = 10$ offrent un bon compromis.
+
+```{admonition} Mise en garde: la fuite d'information
+:class: warning
+
+Les outils modernes de génération de code peuvent produire des pipelines d'apprentissage automatique complets en quelques minutes. Mais ces pipelines peuvent contenir des erreurs subtiles qui mènent à des résultats trop beaux pour être vrais.
+
+Un exemple: un praticien utilise un assistant de programmation pour construire un modèle prédictif. L'erreur d'entraînement passe de 0.20 à 0.01 en quelques itérations. Mais en examinant le code, il découvre que le modèle utilise des caractéristiques qui ne seraient pas disponibles au moment du déploiement.
+
+Ce phénomène s'appelle la **fuite d'information**. Le modèle ne généralise pas: il triche. Les métriques d'entraînement sont excellentes, mais le modèle échouera en déploiement.
+
+**Votre rôle**: auditer les pipelines, vérifier que les caractéristiques utilisées seront disponibles en production, et maintenir une séparation stricte entre les données d'entraînement et de test.
+```
+
+### Biais inductifs
+
+Il n'existe pas de modèle universel qui fonctionne optimalement pour tous les problèmes. Ce résultat, connu sous le nom de **théorème du no free lunch**, affirme qu'un algorithme d'apprentissage qui performe bien sur une classe de problèmes performe nécessairement moins bien sur d'autres.
+
+Tout modèle encode des **biais inductifs**: des hypothèses implicites ou explicites sur la structure du problème. La régression linéaire suppose que la relation entre entrées et sorties est linéaire. Les k plus proches voisins supposent que les points proches dans l'espace des entrées ont des sorties similaires. Les modèles plus complexes, comme les réseaux de neurones, encodent d'autres hypothèses sur la structure des données.
+
+Ces hypothèses sont nécessaires pour que l'apprentissage soit possible. Sans elles, nous n'aurions aucune raison de croire que la performance sur l'échantillon d'entraînement prédit la performance sur de nouvelles données. Le choix du modèle et de ses hypothèses est une décision que l'algorithme ne peut pas prendre seul; elle requiert une connaissance du domaine.
+
+## Fonctions de perte de substitution
+
+La perte 0-1 pose un problème pratique. Les méthodes d'optimisation itératives, comme la descente de gradient, requièrent que la fonction objectif soit différentiable. Or la perte 0-1 est constante par morceaux: sa dérivée est nulle presque partout et indéfinie aux points de discontinuité.
+
+Nous contournons ce problème en utilisant des **fonctions de perte de substitution**: des approximations convexes et différentiables de la perte originale.
+
+Pour la classification binaire, plutôt que de prédire directement une classe, les modèles produisent souvent un **score** $s = f(\mathbf{x})$ (un nombre réel). La prédiction de classe se fait ensuite en prenant le signe de ce score: si $s > 0$, on prédit la classe $+1$; si $s < 0$, on prédit la classe $-1$. La valeur absolue de $s$ mesure la confiance: plus $|s|$ est grand, plus le modèle est confiant dans sa prédiction.
+
+Pour la classification binaire avec $y \in \{-1, +1\}$, la **perte logistique** est:
+
+$$
+\ell_{\text{log}}(y, s) = \log(1 + e^{-y \cdot s})
+$$
+
+où $s = f(\mathbf{x})$ est le score produit par le modèle. Cette fonction est convexe et différentiable partout. Lorsque $y$ et $s$ ont le même signe (prédiction correcte avec confiance), la perte est faible. Lorsqu'ils ont des signes opposés (erreur), la perte croît linéairement avec l'amplitude de l'erreur.
+
+La **perte à charnière** (hinge loss) est utilisée dans les machines à vecteurs de support:
+
+$$
+\ell_{\text{hinge}}(y, s) = \max(0, 1 - y \cdot s)
+$$
+
+Cette fonction est convexe mais non différentiable au point $y \cdot s = 1$. Elle est nulle lorsque la prédiction est correcte avec une marge suffisante ($y \cdot s \geq 1$), et croît linéairement sinon.
+
+Ces deux fonctions majorent la perte 0-1: pour tout $y$ et $s$, nous avons $\ell_{0-1} \leq \ell_{\text{log}}$ et $\ell_{0-1} \leq \ell_{\text{hinge}}$. Minimiser ces substituts garantit donc un certain contrôle sur la perte originale.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Margin: y * s (positive = correct prediction, negative = error)
+margin = np.linspace(-3, 3, 500)
+
+# 0-1 loss: 1 if margin < 0, else 0
+loss_01 = (margin < 0).astype(float)
+
+# Logistic loss: log(1 + exp(-margin))
+loss_log = np.log(1 + np.exp(-margin))
+
+# Hinge loss: max(0, 1 - margin)
+loss_hinge = np.maximum(0, 1 - margin)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+ax.plot(margin, loss_01, 'k-', linewidth=2, label='Perte 0-1')
+ax.plot(margin, loss_log, 'C0-', linewidth=2, label='Perte logistique')
+ax.plot(margin, loss_hinge, 'C1-', linewidth=2, label='Perte à charnière')
+
+ax.axvline(0, color='gray', linestyle=':', alpha=0.5)
+ax.axhline(1, color='gray', linestyle=':', alpha=0.3)
+
+ax.set_xlabel(r'Marge $y \cdot s$')
+ax.set_ylabel('Perte')
+ax.set_xlim(-3, 3)
+ax.set_ylim(-0.1, 4)
+ax.legend()
+ax.set_title('Fonctions de perte de substitution comme bornes supérieures convexes')
+
+# Annotate regions
+ax.text(-1.5, 3.5, 'Erreur\n(prédiction incorrecte)', ha='center', fontsize=9, color='gray')
+ax.text(1.5, 0.3, 'Correct\n(prédiction juste)', ha='center', fontsize=9, color='gray')
+
+plt.tight_layout()
+```
+
+La figure montre les trois fonctions de perte en fonction de la marge $y \cdot s$. Une marge positive indique une prédiction correcte (le signe de $s$ correspond à $y$), une marge négative indique une erreur. La perte 0-1 est discontinue au point $y \cdot s = 0$. Les pertes logistique et à charnière sont continues et convexes, ce qui permet d'utiliser des méthodes d'optimisation par gradient. Elles majorent partout la perte 0-1.
+
+## Le cadre probabiliste
+
+Jusqu'ici, nous avons choisi des fonctions de perte de manière ad hoc: la perte quadratique semble raisonnable pour la régression, la perte logistique pour la classification. Mais d'où viennent ces choix? Existe-t-il un principe unificateur?
+
+Le **cadre probabiliste** offre une réponse: plutôt que de choisir une perte arbitraire, nous modélisons explicitement comment les données ont été générées. Cette section présente d'abord le cadre général de l'inférence bayésienne, puis développe deux approches concrètes: le maximum de vraisemblance (EMV) et le maximum a posteriori (MAP).
+
+### Le cadre bayésien
+
+La **statistique bayésienne** propose un cadre général pour l'estimation de paramètres. Au lieu d'estimer un point unique, elle caractérise notre **incertitude** sur les paramètres par une distribution de probabilité.
+
+Le théorème de Bayes nous dit comment mettre à jour nos croyances sur les paramètres $\boldsymbol{\theta}$ après avoir observé des données $\mathcal{D}$:
+
+$$
+p(\boldsymbol{\theta} | \mathcal{D}) = \frac{p(\boldsymbol{\theta}) \, p(\mathcal{D} | \boldsymbol{\theta})}{p(\mathcal{D})}
+$$
+
+Chaque terme a un nom et un rôle précis:
+
+- $p(\boldsymbol{\theta} | \mathcal{D})$ est la **distribution a posteriori**: notre croyance sur $\boldsymbol{\theta}$ après avoir vu les données
+- $p(\boldsymbol{\theta})$ est la **distribution a priori**: notre croyance sur $\boldsymbol{\theta}$ avant d'observer les données
+- $p(\mathcal{D} | \boldsymbol{\theta})$ est la **vraisemblance**: la probabilité des données pour un choix de paramètres
+- $p(\mathcal{D}) = \int p(\boldsymbol{\theta}') p(\mathcal{D} | \boldsymbol{\theta}') d\boldsymbol{\theta}'$ est la **vraisemblance marginale**: une constante de normalisation
+
+L'a priori encode notre connaissance préalable. Pour une pièce de monnaie, nous pourrions croire que $\theta$ est probablement proche de 0.5. L'a posteriori combine cette croyance avec l'évidence des données.
+
+### Le prédicteur de Bayes optimal
+
+Commençons par un idéal théorique. Si nous connaissions la **vraie** distribution conjointe $p(\mathbf{x}, y)$, quelle fonction $f$ minimiserait le risque?
+
+$$
+\mathcal{R}(f) = \mathbb{E}_{p(\mathbf{x}, y)}[\ell(y, f(\mathbf{x}))] = \int \int \ell(y, f(\mathbf{x})) \, p(y | \mathbf{x}) \, p(\mathbf{x}) \, dy \, d\mathbf{x}
+$$
+
+Puisque $p(\mathbf{x})$ est toujours positif, minimiser cette intégrale revient à minimiser, pour chaque $\mathbf{x}$, l'espérance conditionnelle de la perte. Le **prédicteur de Bayes optimal** est donc:
+
+$$
+f^*(\mathbf{x}) = \arg\min_{\hat{y}} \mathbb{E}_{p(y|\mathbf{x})}[\ell(y, \hat{y})]
+$$
+
+La réponse dépend de la fonction de perte choisie.
+
+Pour la **perte quadratique** $\ell(y, \hat{y}) = (y - \hat{y})^2$, développons l'espérance:
+
+$$
+\mathbb{E}[(y - \hat{y})^2 | \mathbf{x}] = \mathbb{E}[y^2 | \mathbf{x}] - 2\hat{y}\mathbb{E}[y | \mathbf{x}] + \hat{y}^2
+$$
+
+C'est une fonction quadratique en $\hat{y}$. En dérivant et en posant la dérivée égale à zéro:
+
+$$
+\frac{\partial}{\partial \hat{y}} \mathbb{E}[(y - \hat{y})^2 | \mathbf{x}] = -2\mathbb{E}[y | \mathbf{x}] + 2\hat{y} = 0 \quad \Rightarrow \quad \hat{y}^* = \mathbb{E}[y | \mathbf{x}]
+$$
+
+Le prédicteur optimal est la **moyenne conditionnelle**.
+
+Pour la **perte 0-1** en classification $\ell(y, \hat{y}) = \mathbf{1}[y \neq \hat{y}]$, l'espérance est:
+
+$$
+\mathbb{E}[\mathbf{1}[y \neq \hat{y}] | \mathbf{x}] = P(y \neq \hat{y} | \mathbf{x}) = 1 - P(y = \hat{y} | \mathbf{x})
+$$
+
+Minimiser cette quantité revient à maximiser $P(y = \hat{y} | \mathbf{x})$, donc à choisir la classe la plus probable:
+
+$$
+\hat{y}^* = \arg\max_c \, p(y = c | \mathbf{x})
+$$
+
+Le prédicteur optimal est le **mode conditionnel**. Chaque perte définit son propre prédicteur optimal.
+
+Ce prédicteur est un **repère théorique**: aucun algorithme ne peut faire mieux, car il suppose l'accès à la vraie distribution. La différence entre le risque d'un prédicteur appris et ce **risque de Bayes** mesure ce que nous perdons en ne connaissant pas la vraie distribution.
+
+### Prédiction bayésienne et distribution prédictive a posteriori
+
+En pratique, nous ne connaissons pas $p(y|\mathbf{x})$. Nous avons un modèle paramétrique $p(y|\mathbf{x}, \boldsymbol{\theta})$ et une distribution a posteriori $p(\boldsymbol{\theta}|\mathcal{D})$ sur les paramètres. L'approche bayésienne complète consiste à **moyenner les prédictions sur tous les paramètres possibles**, pondérés par leur probabilité a posteriori:
+
+$$
+p(y|\mathbf{x}, \mathcal{D}) = \int p(y|\mathbf{x}, \boldsymbol{\theta}) \, p(\boldsymbol{\theta}|\mathcal{D}) \, d\boldsymbol{\theta}
+$$
+
+Cette **distribution prédictive a posteriori** intègre l'incertitude sur les paramètres. Elle ne s'engage pas sur une valeur unique de $\boldsymbol{\theta}$, mais considère toutes les valeurs plausibles.
+
+Le problème: cette intégrale est rarement calculable analytiquement. Elle nécessite de sommer sur un espace de paramètres de grande dimension, ce qui est coûteux ou impossible en pratique. C'est pourquoi nous recourons souvent à des **estimateurs ponctuels**: plutôt que d'intégrer sur tous les $\boldsymbol{\theta}$, nous en choisissons un seul, comme l'EMV ou le MAP.
+
+### Utilité du modèle probabiliste
+
+Si nous finissons souvent par utiliser un estimateur ponctuel, pourquoi adopter le cadre probabiliste? Plusieurs raisons:
+
+1. **Justifier la fonction de perte**: La perte quadratique découle naturellement de l'hypothèse de bruit gaussien. La perte logarithmique vient du principe de maximum de vraisemblance. Le cadre probabiliste explique *pourquoi* ces choix sont raisonnables.
+
+2. **Quantifier l'incertitude**: Au-delà de la prédiction ponctuelle $\hat{y} = f(\mathbf{x}; \hat{\boldsymbol{\theta}})$, nous pouvons donner un **intervalle de prédiction**. Sous un modèle gaussien, $y$ a environ 95% de chances de tomber dans $[f(\mathbf{x}) - 2\sigma, f(\mathbf{x}) + 2\sigma]$.
+
+3. **Comparer des modèles**: La vraisemblance marginale $p(\mathcal{D})$ permet de comparer des modèles de complexités différentes, pénalisant automatiquement les modèles trop complexes.
+
+4. **Ouvrir la porte à l'inférence complète**: Quand les ressources le permettent (méthodes de Monte Carlo, inférence variationnelle), nous pouvons approximer la distribution prédictive complète plutôt que de nous limiter à un point.
+
+### Maximum de vraisemblance
+
+Le **maximum de vraisemblance** est la première approche concrète dans le cadre probabiliste: nous cherchons les paramètres qui rendent nos observations les plus probables.
+
+#### Construction de la vraisemblance
+
+Supposons que nous avons un modèle paramétrique $p(y|\mathbf{x}; \boldsymbol{\theta})$ qui, pour chaque entrée $\mathbf{x}$ et choix de paramètres $\boldsymbol{\theta}$, définit une distribution sur les sorties possibles $y$. Par exemple, en régression, ce pourrait être une gaussienne centrée sur $f(\mathbf{x}; \boldsymbol{\theta})$.
+
+Considérons un seul exemple $(\mathbf{x}_1, y_1)$. Pour des paramètres $\boldsymbol{\theta}$ fixés, nous pouvons évaluer $p(y_1 | \mathbf{x}_1; \boldsymbol{\theta})$: la probabilité (ou densité) que le modèle assigne à l'observation $y_1$. Si cette valeur est élevée, les paramètres $\boldsymbol{\theta}$ "expliquent bien" cette observation. Si elle est faible, $y_1$ est une valeur improbable sous ce modèle.
+
+Avec deux exemples indépendants $(\mathbf{x}_1, y_1)$ et $(\mathbf{x}_2, y_2)$, la probabilité conjointe est le produit:
+
+$$
+p(y_1, y_2 | \mathbf{x}_1, \mathbf{x}_2; \boldsymbol{\theta}) = p(y_1 | \mathbf{x}_1; \boldsymbol{\theta}) \cdot p(y_2 | \mathbf{x}_2; \boldsymbol{\theta})
+$$
+
+Avec $N$ exemples indépendants, nous obtenons la **vraisemblance**:
+
+$$
+\mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Cette quantité est une fonction de $\boldsymbol{\theta}$. Elle répond à la question: pour ce choix de paramètres, quelle est la probabilité d'avoir observé exactement ces données?
+
+#### Pourquoi maximiser?
+
+Si $\mathcal{L}(\boldsymbol{\theta}_A) > \mathcal{L}(\boldsymbol{\theta}_B)$, alors les données observées sont plus probables sous $\boldsymbol{\theta}_A$ que sous $\boldsymbol{\theta}_B$. Les paramètres $\boldsymbol{\theta}_A$ rendent les observations moins "surprenantes".
+
+L'**estimateur du maximum de vraisemblance** (EMV, ou *MLE* pour *maximum likelihood estimator* en anglais) choisit les paramètres qui maximisent cette probabilité:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{EMV}} = \arg\max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}) = \arg\max_{\boldsymbol{\theta}} \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+C'est le choix de paramètres sous lequel nos données sont les plus "attendues".
+
+#### Du produit à la somme
+
+En pratique, multiplier $N$ probabilités (souvent petites) pose des problèmes numériques: le résultat devient rapidement trop petit pour être représenté par un ordinateur. Le logarithme résout ce problème: il transforme le produit en somme et, comme c'est une fonction croissante, il ne change pas le maximiseur:
+
+$$
+\log \mathcal{L}(\boldsymbol{\theta}) = \sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Pour l'optimisation, nous préférons minimiser plutôt que maximiser (par convention). La **log-vraisemblance négative** (NLV, ou *NLL* pour *negative log-likelihood* en anglais) est notre fonction objectif:
+
+$$
+\text{NLV}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Remarquez la structure: c'est une somme sur les exemples d'une quantité $-\log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})$ qui dépend de chaque observation. Cette quantité joue le rôle d'une fonction de perte. Le maximum de vraisemblance est donc un cas particulier de la minimisation du risque empirique, où la perte est définie par le modèle probabiliste lui-même.
+
+#### Régression avec bruit gaussien: d'où vient la perte quadratique?
+
+Appliquons ce principe à la régression. Le modèle de génération des données suppose que la sortie observée est la prédiction "vraie" du modèle, corrompue par un bruit aléatoire gaussien:
+
+$$
+y = f(\mathbf{x}; \boldsymbol{\theta}) + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+Ce modèle dit que si nous connaissions les vrais paramètres $\boldsymbol{\theta}$ et que nous mesurions $y$ pour un $\mathbf{x}$ donné, nous obtiendrions $f(\mathbf{x}; \boldsymbol{\theta})$ plus ou moins $\sigma$ la plupart du temps.
+
+La distribution conditionnelle qui en découle est:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(y - f(\mathbf{x}; \boldsymbol{\theta}))^2}{2\sigma^2}\right)
+$$
+
+Calculons la log-vraisemblance négative:
+
+$$
+\text{NLV}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta}) = \frac{1}{2\sigma^2} \sum_{i=1}^N (y_i - f(\mathbf{x}_i; \boldsymbol{\theta}))^2 + \frac{N}{2}\log(2\pi\sigma^2)
+$$
+
+Le second terme ne dépend pas de $\boldsymbol{\theta}$. Minimiser la NLV revient donc exactement à minimiser la somme des erreurs quadratiques.
+
+C'est un résultat fondamental: **la perte quadratique n'est pas un choix arbitraire**. Elle découle naturellement de l'hypothèse que les erreurs de mesure suivent une loi gaussienne. Le maximum de vraisemblance sous bruit gaussien coïncide avec les moindres carrés.
+
+Dans ce modèle, nous avons supposé que la variance $\sigma^2$ est constante pour toutes les entrées $\mathbf{x}$. C'est ce qu'on appelle la **régression homoscédastique** (du grec *homos*, même, et *skedasis*, dispersion). C'est l'hypothèse standard en régression linéaire.
+
+En pratique, l'incertitude peut varier selon l'entrée. Par exemple, les mesures à haute vitesse peuvent être plus bruitées que celles à basse vitesse. La **régression hétéroscédastique** modélise cette variation en faisant dépendre la variance de $\mathbf{x}$:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \mathcal{N}(y | f_\mu(\mathbf{x}; \boldsymbol{\theta}), f_\sigma(\mathbf{x}; \boldsymbol{\theta})^2)
+$$
+
+où $f_\mu$ prédit la moyenne et $f_\sigma$ prédit l'écart-type. Ce modèle est plus flexible mais requiert d'apprendre des paramètres supplémentaires.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from scipy.stats import norm
+from IPython.display import HTML
+
+# Générer des données synthétiques
+np.random.seed(42)
+N = 100
+x_data = np.random.uniform(0.5, 9.5, N)
+f_mu = lambda x: 0.5 * x + 1
+
+# Homoscédastique: variance constante
+sigma_homo = 0.7
+y_homo = f_mu(x_data) + np.random.normal(0, sigma_homo, N)
+
+# Hétéroscédastique: variance croissante
+f_sigma = lambda x: 0.3 + 0.12 * x
+y_hetero = f_mu(x_data) + np.random.normal(0, f_sigma(x_data))
+
+# Configuration de la figure
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+x_line = np.linspace(0, 10, 100)
+y_pdf_range = np.linspace(-3, 9, 200)
+scale = 2.5  # échelle pour afficher les PDFs
+
+def init():
+    for ax in axes:
+        ax.clear()
+    return []
+
+def animate(frame):
+    x_current = 0.5 + frame * 9 / 59  # balayer de 0.5 à 9.5
+    
+    for idx, (ax, y_data, title, color, get_sigma) in enumerate([
+        (axes[0], y_homo, 'Régression homoscédastique', 'steelblue', lambda x: sigma_homo),
+        (axes[1], y_hetero, 'Régression hétéroscédastique', 'coral', f_sigma)
+    ]):
+        ax.clear()
+        
+        # Données et ligne de régression
+        ax.scatter(x_data, y_data, alpha=0.4, s=20, c='gray', zorder=1)
+        ax.plot(x_line, f_mu(x_line), 'k-', linewidth=2, zorder=2)
+        
+        # Gaussienne à la position actuelle
+        mu = f_mu(x_current)
+        sigma = get_sigma(x_current)
+        pdf = norm.pdf(y_pdf_range, mu, sigma)
+        
+        # Afficher la gaussienne "horizontalement"
+        ax.fill_betweenx(y_pdf_range, x_current, x_current + scale * pdf, 
+                         alpha=0.5, color=color, zorder=3)
+        ax.plot(x_current + scale * pdf, y_pdf_range, color=color, linewidth=2, zorder=4)
+        
+        # Ligne verticale indiquant la position
+        ax.axvline(x_current, color=color, linestyle='--', alpha=0.5, linewidth=1)
+        
+        # Point sur la courbe de régression
+        ax.scatter([x_current], [mu], color='black', s=50, zorder=5)
+        
+        # Bande ±2σ
+        ax.fill_between([x_current - 0.1, x_current + 0.1], 
+                        [mu - 2*sigma, mu - 2*sigma], 
+                        [mu + 2*sigma, mu + 2*sigma],
+                        alpha=0.2, color=color, zorder=0)
+        
+        ax.set_xlim(-0.5, 12)
+        ax.set_ylim(-2, 8)
+        ax.set_xlabel(r'$x$', fontsize=11)
+        ax.set_ylabel(r'$y$', fontsize=11)
+        sigma_label = r'$\sigma^2$ constant' if idx == 0 else r'$\sigma^2(x)$ variable'
+        ax.set_title(f'{title}\n{sigma_label}', fontsize=11)
+    
+    fig.tight_layout()
+    return []
+
+anim = FuncAnimation(fig, animate, init_func=init, frames=60, interval=80, blit=True)
+anim.save('_static/regression_scedasticity.gif', writer='pillow', fps=12, dpi=100)
+plt.close()
+
+# Afficher le GIF
+from IPython.display import Image
+Image(filename='_static/regression_scedasticity.gif')
+```
+
+```{margin} Pourquoi la gaussienne est-elle verticale?
+La gaussienne représente $p(y|x)$: la distribution de $y$ sachant $x$. En régression standard, on suppose que $x$ est mesuré sans erreur et que seul $y$ est bruité. L'objectif des moindres carrés ordinaires minimise donc les distances **verticales**:
+
+$$\sum_{i=1}^N (y_i - f(x_i))^2$$
+
+Si les deux variables avaient de l'incertitude, on utiliserait la **régression orthogonale** (*total least squares*). Dans ce cas, on minimise les distances **perpendiculaires** à la droite:
+
+$$\sum_{i=1}^N \frac{(y_i - \theta_0 - \theta_1 x_i)^2}{1 + \theta_1^2}$$
+
+Le dénominateur $1 + \theta_1^2$ convertit la distance verticale en distance perpendiculaire. Ce modèle est approprié quand $x$ et $y$ sont tous deux des mesures bruitées, par exemple deux instruments mesurant la même quantité physique.
+```
+
+L'animation illustre la différence fondamentale entre les deux modèles. À chaque position $x$, la distribution conditionnelle $p(y|x)$ est une gaussienne (la "cloche" colorée) centrée sur la courbe de régression $f_\mu(x)$. Dans le cas **homoscédastique** (gauche), la cloche garde la même largeur partout. Dans le cas **hétéroscédastique** (droite), la largeur varie avec $x$. Ici, l'incertitude augmente vers la droite, ce qui se traduit par une dispersion plus grande des points.
+
+#### Régression linéaire homoscédastique
+
+Appliquons maintenant le maximum de vraisemblance au cas le plus courant: la **régression linéaire homoscédastique**. Le modèle probabiliste est:
+
+$$
+p(y | \mathbf{x}; \boldsymbol{\theta}, \sigma^2) = \mathcal{N}(y | \boldsymbol{\theta}^\top \mathbf{x}, \sigma^2)
+$$
+
+La fonction de moyenne est linéaire: $f_\mu(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} = \sum_{j=0}^d \theta_j x_j$, où nous avons absorbé le biais en posant $x_0 = 1$. Le vecteur $\boldsymbol{\theta} \in \mathbb{R}^{d+1}$ contient donc le biais $\theta_0$ et les poids $\theta_1, \ldots, \theta_d$. La variance $\sigma^2$ est constante.
+
+##### Formulation matricielle
+
+Avec $N$ observations $\{(\mathbf{x}_i, y_i)\}_{i=1}^N$, nous pouvons écrire le modèle sous forme matricielle. Définissons la **matrice de conception** (*design matrix*) $\mathbf{X} \in \mathbb{R}^{N \times (d+1)}$ dont chaque ligne contient une observation augmentée d'un 1 pour le biais:
+
+$$
+\mathbf{X} = \begin{pmatrix} 1 & x_{11} & x_{12} & \cdots & x_{1d} \\ 1 & x_{21} & x_{22} & \cdots & x_{2d} \\ \vdots & \vdots & \vdots & \ddots & \vdots \\ 1 & x_{N1} & x_{N2} & \cdots & x_{Nd} \end{pmatrix}, \quad \mathbf{y} = \begin{pmatrix} y_1 \\ y_2 \\ \vdots \\ y_N \end{pmatrix}, \quad \boldsymbol{\theta} = \begin{pmatrix} \theta_0 \\ \theta_1 \\ \vdots \\ \theta_d \end{pmatrix}
+$$
+
+Le vecteur des prédictions est $\hat{\mathbf{y}} = \mathbf{X}\boldsymbol{\theta}$, et le vecteur des résidus est $\mathbf{r} = \mathbf{y} - \mathbf{X}\boldsymbol{\theta}$.
+
+La **somme des carrés des résidus** (*residual sum of squares*, RSS) s'écrit:
+
+$$
+\text{RSS}(\boldsymbol{\theta}) = \sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2 = (\mathbf{y} - \mathbf{X}\boldsymbol{\theta})^\top (\mathbf{y} - \mathbf{X}\boldsymbol{\theta})
+$$
+
+Comme nous l'avons vu, minimiser la NLV sous bruit gaussien homoscédastique revient à minimiser le RSS (ou de manière équivalente, l'EQM = RSS/$N$).
+
+##### Solution analytique: les équations normales
+
+Pour trouver le minimum, nous calculons le gradient du RSS par rapport à $\boldsymbol{\theta}$ et l'égalons à zéro. En développant:
+
+$$
+\text{RSS}(\boldsymbol{\theta}) = \mathbf{y}^\top \mathbf{y} - 2\boldsymbol{\theta}^\top \mathbf{X}^\top \mathbf{y} + \boldsymbol{\theta}^\top \mathbf{X}^\top \mathbf{X} \boldsymbol{\theta}
+$$
+
+Le gradient est:
+
+$$
+\nabla_{\boldsymbol{\theta}} \text{RSS}(\boldsymbol{\theta}) = -2\mathbf{X}^\top \mathbf{y} + 2\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta}
+$$
+
+En posant ce gradient égal à zéro, nous obtenons les **équations normales**:
+
+$$
+\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta} = \mathbf{X}^\top \mathbf{y}
+$$
+
+Si la matrice $\mathbf{X}^\top \mathbf{X}$ est inversible, la solution unique est:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{EMV}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}
+$$
+
+Cette solution porte le nom d'estimateur des **moindres carrés ordinaires** (MCO, ou *ordinary least squares*, OLS). Elle est exactement équivalente à l'EMV sous l'hypothèse de bruit gaussien homoscédastique.
+
+##### Conditions d'existence de la solution
+
+La matrice $\mathbf{X}^\top \mathbf{X}$ est de taille $(d+1) \times (d+1)$. Elle est inversible si et seulement si $\mathbf{X}$ est de rang plein colonne, c'est-à-dire si les colonnes de $\mathbf{X}$ sont linéairement indépendantes. Cela requiert:
+
+1. **Plus d'observations que de paramètres**: $N \geq d + 1$
+2. **Pas de colinéarité parfaite**: aucune caractéristique ne doit être une combinaison linéaire exacte des autres
+
+Quand $\mathbf{X}^\top \mathbf{X}$ est mal conditionnée (presque singulière), de petites perturbations dans les données peuvent causer de grandes variations dans la solution. C'est l'un des problèmes que la régularisation permet de résoudre.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Données synthétiques: relation linéaire avec bruit
+np.random.seed(42)
+N = 30
+x = np.random.uniform(0, 10, N)
+y_true = 2.5 * x + 3  # vraie relation: y = 2.5x + 3
+y = y_true + np.random.normal(0, 3, N)  # ajout de bruit gaussien
+
+# Construction de la matrice de conception (avec colonne de 1 pour le biais)
+X = np.column_stack([np.ones(N), x])
+
+# Solution OLS: w = (X^T X)^{-1} X^T y
+XtX = X.T @ X
+Xty = X.T @ y
+w_ols = np.linalg.solve(XtX, Xty)
+b_ols, slope_ols = w_ols[0], w_ols[1]
+
+# Prédictions
+x_grid = np.linspace(0, 10, 100)
+y_pred = b_ols + slope_ols * x_grid
+
+# Visualisation
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+# Gauche: données et droite ajustée
+ax = axes[0]
+ax.scatter(x, y, alpha=0.7, label='Observations')
+ax.plot(x_grid, y_pred, 'k-', linewidth=2, label=f'MCO: $y = {slope_ols:.2f}x + {b_ols:.2f}$')
+ax.plot(x_grid, 2.5 * x_grid + 3, 'g--', alpha=0.5, label='Vraie relation')
+ax.set_xlabel('$x$')
+ax.set_ylabel('$y$')
+ax.legend()
+ax.set_title('Régression linéaire par moindres carrés')
+
+# Droite: résidus
+ax = axes[1]
+y_fitted = b_ols + slope_ols * x
+residuals = y - y_fitted
+ax.stem(x, residuals, basefmt=' ', linefmt='C0-', markerfmt='C0o')
+ax.axhline(0, color='gray', linestyle='-', alpha=0.3)
+ax.set_xlabel('$x$')
+ax.set_ylabel(r'Résidu $r_i = y_i - \hat{y}_i$')
+ax.set_title(f'Résidus (RSS = {np.sum(residuals**2):.1f})')
+
+plt.tight_layout()
+```
+
+La figure de gauche montre les données et la droite ajustée par moindres carrés. La figure de droite montre les résidus: les écarts entre les observations et les prédictions. L'EMV minimise la somme des carrés de ces résidus.
+
+#### Exemple: pharmacocinétique
+
+L'EMV s'applique à des modèles non linéaires. Considérons la concentration d'un médicament dans le sang après administration orale. Les données suivantes proviennent d'une étude sur la théophylline, un bronchodilatateur:
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+
+# Données pharmacocinétiques: théophylline, sujet 1 (Boeckmann et al., 1994)
+time = np.array([0, 0.25, 0.57, 1.12, 2.02, 3.82, 5.10, 7.03, 9.05, 12.12, 24.37])
+conc = np.array([0.74, 2.84, 6.57, 10.50, 9.66, 8.58, 8.36, 7.47, 6.89, 5.94, 3.28])
+
+# Model: C(t) = C0 * exp(-k * t) for t > t_peak
+# We'll fit on the decay phase (after peak)
+peak_idx = np.argmax(conc)
+t_decay = time[peak_idx:]
+c_decay = conc[peak_idx:]
+
+# MLE: minimize NLL under Gaussian noise
+def neg_log_likelihood(params, t, c):
+    C0, k, sigma = params
+    if sigma <= 0 or k <= 0 or C0 <= 0:
+        return np.inf
+    pred = C0 * np.exp(-k * (t - t[0]))
+    nll = 0.5 * len(t) * np.log(2 * np.pi * sigma**2)
+    nll += 0.5 * np.sum((c - pred)**2) / sigma**2
+    return nll
+
+# Initial guess and optimization
+x0 = [c_decay[0], 0.1, 1.0]
+result = minimize(neg_log_likelihood, x0, args=(t_decay, c_decay), method='Nelder-Mead')
+C0_mle, k_mle, sigma_mle = result.x
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+# Left: data and fit
+ax = axes[0]
+ax.scatter(time, conc, s=50, zorder=5, label='Observations')
+t_grid = np.linspace(time[peak_idx], 25, 100)
+ax.plot(t_grid, C0_mle * np.exp(-k_mle * (t_grid - time[peak_idx])), 'k--', 
+        label=f'EMV: $C_0$={C0_mle:.1f}, $k$={k_mle:.2f}')
+ax.axvline(time[peak_idx], color='gray', linestyle=':', alpha=0.5)
+ax.set_xlabel('Temps (h)')
+ax.set_ylabel('Concentration (mg/L)')
+ax.legend()
+ax.set_title('Concentration plasmatique de théophylline')
+
+# Right: residuals
+ax = axes[1]
+pred_decay = C0_mle * np.exp(-k_mle * (t_decay - t_decay[0]))
+residuals = c_decay - pred_decay
+ax.stem(t_decay, residuals, basefmt=' ')
+ax.axhline(0, color='gray', linestyle='-', alpha=0.3)
+ax.set_xlabel('Temps (h)')
+ax.set_ylabel('Résidu (mg/L)')
+ax.set_title(rf'$\sigma$ estimé: {sigma_mle:.2f} mg/L')
+
+plt.tight_layout()
+```
+
+Le modèle $C(t) = C_0 e^{-kt}$ décrit la décroissance exponentielle après le pic de concentration. Les paramètres $C_0$ (concentration initiale) et $k$ (constante d'élimination) sont estimés par maximum de vraisemblance sous l'hypothèse d'un bruit gaussien. Cette approche est identique à celle des moindres carrés, mais elle fournit également une estimation de l'écart-type du bruit $\sigma$.
+
+#### Classification binaire
+
+La perte 0-1 pour la classification est discontinue, ce qui empêche l'utilisation de méthodes de gradient. La fonction **sigmoïde** $\sigma(z) = 1/(1 + e^{-z})$ contourne ce problème: c'est une **approximation lisse de la fonction échelon** (*step function*). Elle transforme n'importe quel score réel en une valeur dans l'intervalle $(0, 1)$, que nous pouvons interpréter comme une probabilité.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# Create figure
+fig, ax = plt.subplots(figsize=(8, 5))
+
+# Define x range
+z = np.linspace(-4, 4, 200)
+
+# Step function (Heaviside)
+step = (z >= 0).astype(float)
+
+# Sigmoid function with temperature parameter
+def sigmoid(z, alpha=1):
+    return 1 / (1 + np.exp(-alpha * z))
+
+# Initialize plot
+line_step, = ax.plot(z, step, 'k--', linewidth=2, label='Fonction échelon', alpha=0.7)
+line_sigmoid, = ax.plot([], [], 'b-', linewidth=2, label='Sigmoïde $\\sigma(\\alpha z)$')
+ax.axhline(0.5, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+ax.axvline(0, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+ax.set_xlim(-4, 4)
+ax.set_ylim(-0.1, 1.1)
+ax.set_xlabel('$z$')
+ax.set_ylabel('$\\sigma(\\alpha z)$')
+ax.set_title('Approximation de la fonction échelon par la sigmoïde')
+ax.legend(loc='best')
+ax.grid(True, alpha=0.3)
+
+# Animation function
+def animate(frame):
+    # Alpha increases from 0.5 to 10
+    alpha = 0.5 + (frame / 100) * 9.5
+    y = sigmoid(z, alpha)
+    line_sigmoid.set_data(z, y)
+    ax.set_title(f'Approximation de la fonction échelon par la sigmoïde ($\\alpha = {alpha:.2f}$)')
+    return line_sigmoid,
+
+# Create animation
+anim = FuncAnimation(fig, animate, frames=100, interval=50, blit=True, repeat=True)
+anim.save('_static/sigmoid_approximation.gif', writer='pillow', fps=20, dpi=100)
+plt.close()
+
+# Afficher le GIF
+from IPython.display import Image
+Image(filename='_static/sigmoid_approximation.gif')
+```
+
+L'animation montre comment la sigmoïde $\sigma(\alpha z)$ se rapproche de la fonction échelon lorsque le paramètre $\alpha$ augmente. Pour $\alpha = 1$, la sigmoïde est douce; pour $\alpha$ grand, elle devient presque aussi abrupte que la fonction échelon, tout en restant différentiable.
+
+Cette interprétation probabiliste n'est pas qu'une astuce numérique. Elle correspond exactement à modéliser $Y | \mathbf{X}$ par une distribution de **Bernoulli** dont le paramètre dépend de l'entrée.
+
+Pour la classification binaire avec $y \in \{0, 1\}$, nous modélisons la probabilité de la classe positive par:
+
+$$
+p(y = 1 | \mathbf{x}; \boldsymbol{\theta}) = \sigma(f(\mathbf{x}; \boldsymbol{\theta})) = \frac{1}{1 + e^{-f(\mathbf{x}; \boldsymbol{\theta})}}
+$$
+
+où $\sigma$ est la fonction sigmoïde et $f(\mathbf{x}; \boldsymbol{\theta})$ est le **logit** (ou log-odds), le score brut du modèle avant transformation. Le logit est le logarithme du rapport des probabilités: $\log \frac{p(y=1|\mathbf{x})}{p(y=0|\mathbf{x})} = \log \frac{p}{1-p}$. La distribution conditionnelle suit une loi de Bernoulli:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \sigma(f(\mathbf{x}; \boldsymbol{\theta}))^y (1 - \sigma(f(\mathbf{x}; \boldsymbol{\theta})))^{1-y}
+$$
+
+La log-vraisemblance négative est:
+
+$$
+\text{NLV}(\boldsymbol{\theta}) = -\sum_{i=1}^N \left[ y_i \log \sigma(f(\mathbf{x}_i; \boldsymbol{\theta})) + (1-y_i) \log(1 - \sigma(f(\mathbf{x}_i; \boldsymbol{\theta}))) \right]
+$$
+
+Cette quantité est l'**entropie croisée binaire**. Elle correspond à la perte logistique, à une reparamétrisation près.
+
+#### Classification multiclasse
+
+Pour la classification avec $C$ classes ($C > 2$), nous généralisons le modèle binaire en utilisant la **distribution catégorielle** (ou multinomiale). Au lieu de modéliser une seule probabilité $p(y=1|\mathbf{x})$, nous modélisons un vecteur de probabilités $\boldsymbol{\pi}(\mathbf{x}) = [\pi_1(\mathbf{x}), \ldots, \pi_C(\mathbf{x})]$ où $\pi_c(\mathbf{x}) = p(y=c|\mathbf{x})$ et $\sum_{c=1}^C \pi_c(\mathbf{x}) = 1$.
+
+Pour transformer les scores bruts du modèle en probabilités, nous utilisons la fonction **softmax**:
+
+$$
+\pi_c(\mathbf{x}; \boldsymbol{\theta}) = \frac{\exp(f_c(\mathbf{x}; \boldsymbol{\theta}))}{\sum_{j=1}^C \exp(f_j(\mathbf{x}; \boldsymbol{\theta}))}
+$$
+
+où $f_c(\mathbf{x}; \boldsymbol{\theta})$ est le score pour la classe $c$. La fonction softmax généralise la sigmoïde au cas multiclasse: elle transforme $C$ scores réels en un vecteur de probabilités qui somme à 1.
+
+La distribution conditionnelle suit une loi catégorielle:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \prod_{c=1}^C \pi_c(\mathbf{x}; \boldsymbol{\theta})^{\mathbf{1}[y = c]}
+$$
+
+où $\mathbf{1}[y = c]$ vaut 1 si $y = c$ et 0 sinon. En utilisant l'encodage one-hot $\mathbf{y} = [\mathbf{1}[y=1], \ldots, \mathbf{1}[y=C]]^\top$, cette expression devient:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \prod_{c=1}^C \pi_c(\mathbf{x}; \boldsymbol{\theta})^{y_c}
+$$
+
+La log-vraisemblance négative est:
+
+$$
+\text{NLV}(\boldsymbol{\theta}) = -\sum_{i=1}^N \sum_{c=1}^C y_{ic} \log \pi_c(\mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+où $y_{ic} = \mathbf{1}[y_i = c]$. Cette quantité est l'**entropie croisée multiclasse**. Elle généralise l'entropie croisée binaire au cas où il y a plus de deux classes.
+
+Pour la classification binaire avec $C=2$, le softmax se réduit à la sigmoïde. En effet, si nous définissons $s = f_1(\mathbf{x}) - f_2(\mathbf{x})$, alors:
+
+$$
+\pi_1 = \frac{e^{f_1}}{e^{f_1} + e^{f_2}} = \frac{1}{1 + e^{-(f_1 - f_2)}} = \sigma(s)
+$$
+
+Le modèle binaire et le modèle multiclasse partagent donc la même structure probabiliste, avec la distribution catégorielle comme généralisation naturelle de la distribution de Bernoulli.
+
+### Maximum a posteriori
+
+Plutôt que de travailler avec la distribution a posteriori complète (ce qui peut être coûteux), nous pouvons chercher son mode: la valeur des paramètres la plus probable a posteriori. C'est l'**estimateur du maximum a posteriori** (MAP):
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} p(\boldsymbol{\theta} | \mathcal{D}) = \arg\max_{\boldsymbol{\theta}} p(\boldsymbol{\theta}) \, p(\mathcal{D} | \boldsymbol{\theta})
+$$
+
+Le dénominateur $p(\mathcal{D})$ ne dépend pas de $\boldsymbol{\theta}$ et peut être ignoré pour l'optimisation. En passant au logarithme:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathcal{D} | \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) \right]
+$$
+
+Cette expression révèle une structure familière. Si nous posons $C(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$, nous obtenons:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{NLV}(\boldsymbol{\theta}) + C(\boldsymbol{\theta}) \right]
+$$
+
+C'est exactement la forme du risque empirique régularisé. La **régularisation correspond à l'ajout d'un a priori** sur les paramètres. Le terme de régularisation $C(\boldsymbol{\theta})$ est le logarithme négatif de la distribution a priori.
+
+#### Le maximum de vraisemblance comme cas particulier
+
+Que se passe-t-il si nous n'avons aucune préférence a priori sur les paramètres? Cela correspond à un a priori **uniforme** (ou constant): $p(\boldsymbol{\theta}) = \text{constante}$.
+
+Dans ce cas, $\log p(\boldsymbol{\theta})$ est une constante qui n'affecte pas l'optimisation, et le MAP se réduit à l'EMV:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \hat{\boldsymbol{\theta}}_{\text{EMV}} \quad \text{quand } p(\boldsymbol{\theta}) = \text{constante}
+$$
+
+L'EMV est donc un cas particulier du MAP: celui où nous supposons implicitement que toutes les valeurs de paramètres sont également plausibles avant d'observer les données. Cette perspective unifie les deux approches dans un même cadre.
+
+#### Limites de l'a priori uniforme
+
+L'a priori uniforme (et donc l'EMV) peut être problématique quand les données sont peu nombreuses. Considérons l'estimation de la probabilité $\theta$ qu'une pièce tombe sur face.
+
+Supposons que nous lancions la pièce 3 fois et obtenions 3 faces. L'estimateur du maximum de vraisemblance pour une distribution de Bernoulli est:
+
+$$
+\hat{\theta}_{\text{EMV}} = \frac{N_1}{N_0 + N_1} = \frac{3}{0 + 3} = 1
+$$
+
+où $N_1$ est le nombre de faces et $N_0$ le nombre de piles. Cette estimation dit que la probabilité d'obtenir face est de 100%. Si nous utilisions ce modèle pour prédire de futurs lancers, nous prédirons toujours face, ce qui est peu plausible pour une vraie pièce.
+
+Le problème est que l'EMV (avec son a priori uniforme implicite) dispose de suffisamment de flexibilité pour reproduire parfaitement les données d'entraînement, même quand celles-ci sont peu nombreuses ou non représentatives. Un a priori informatif peut atténuer ce problème.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+# MLE vs MAP for Bernoulli with few observations
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+
+# Different sample sizes
+samples_list = [
+    [1, 1, 1],           # 3 heads
+    [1, 1, 1, 0],        # 3 heads, 1 tail
+    [1, 1, 1, 0, 0, 1, 1, 0, 1, 1]  # 7 heads, 3 tails
+]
+
+theta_grid = np.linspace(0.001, 0.999, 200)
+
+for ax, samples in zip(axes, samples_list):
+    n1 = sum(samples)  # heads
+    n0 = len(samples) - n1  # tails
+    
+    # MLE
+    theta_mle = n1 / (n0 + n1)
+    
+    # Likelihood (unnormalized)
+    likelihood = theta_grid**n1 * (1 - theta_grid)**n0
+    likelihood = likelihood / likelihood.max()
+    
+    ax.plot(theta_grid, likelihood, 'b-', linewidth=2, label='Vraisemblance')
+    ax.axvline(theta_mle, color='b', linestyle='--', alpha=0.7,
+               label=f'EMV: {theta_mle:.2f}')
+    ax.axvline(0.5, color='gray', linestyle=':', alpha=0.5, label=r'$\theta = 0.5$')
+    
+    ax.set_xlabel(r'$\theta$')
+    ax.set_ylabel('Vraisemblance (normalisée)')
+    ax.set_title(f'{n1} faces, {n0} piles (N={len(samples)})')
+    ax.legend(fontsize=8)
+    ax.set_xlim(0, 1)
+
+plt.tight_layout()
+```
+
+La figure montre la vraisemblance pour différents échantillons. Avec seulement 3 observations (toutes faces), la vraisemblance est maximale à $\theta = 1$. En augmentant la taille de l'échantillon, l'estimation devient plus raisonnable. Voyons comment un a priori non uniforme peut aider.
+
+#### Exemple: lissage de Laplace
+
+Revenons à notre exemple de la pièce de monnaie. Utilisons un a priori **Beta** sur $\theta$:
+
+$$
+p(\theta) = \text{Beta}(\theta | a, b) \propto \theta^{a-1} (1-\theta)^{b-1}
+$$
+
+Les paramètres $a$ et $b$ contrôlent la forme de l'a priori. Pour $a = b = 2$, l'a priori favorise des valeurs de $\theta$ proches de 0.5.
+
+Le logarithme de l'a posteriori (vraisemblance plus a priori) est:
+
+$$
+\log p(\theta | \mathcal{D}) \propto N_1 \log \theta + N_0 \log(1-\theta) + (a-1) \log \theta + (b-1) \log(1-\theta)
+$$
+
+En dérivant et en résolvant, l'estimateur MAP est:
+
+$$
+\hat{\theta}_{\text{MAP}} = \frac{N_1 + a - 1}{N_1 + N_0 + a + b - 2}
+$$
+
+Avec $a = b = 2$ et nos 3 observations de faces:
+
+$$
+\hat{\theta}_{\text{MAP}} = \frac{3 + 2 - 1}{3 + 0 + 2 + 2 - 2} = \frac{4}{5} = 0.8
+$$
+
+Cette estimation est plus raisonnable que l'EMV $\hat{\theta}_{\text{EMV}} = 1$. L'a priori "tire" l'estimation vers des valeurs moins extrêmes.
+
+Le choix $a = b = 2$ correspond au **lissage de Laplace** (ou *add-one smoothing*): c'est comme si nous avions observé une face et une pile supplémentaires avant de commencer. Cette technique est particulièrement utile quand certains événements n'ont jamais été observés dans les données.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+theta_grid = np.linspace(0.001, 0.999, 200)
+
+# Left: Prior, likelihood, posterior
+ax = axes[0]
+n1, n0 = 3, 0  # 3 heads, 0 tails
+a, b = 2, 2    # Beta prior parameters
+
+# Prior
+prior = stats.beta.pdf(theta_grid, a, b)
+prior = prior / prior.max()
+
+# Likelihood
+likelihood = theta_grid**n1 * (1 - theta_grid)**n0
+likelihood = likelihood / likelihood.max()
+
+# Posterior (Beta(a + n1, b + n0))
+posterior = stats.beta.pdf(theta_grid, a + n1, b + n0)
+posterior = posterior / posterior.max()
+
+ax.plot(theta_grid, prior, 'g-', linewidth=2, label='A priori Beta(2,2)')
+ax.plot(theta_grid, likelihood, 'b--', linewidth=2, label='Vraisemblance')
+ax.plot(theta_grid, posterior, 'r-', linewidth=2, label='A posteriori')
+
+theta_mle = n1 / (n1 + n0)
+theta_map = (n1 + a - 1) / (n1 + n0 + a + b - 2)
+ax.axvline(theta_mle, color='b', linestyle=':', alpha=0.7, label=f'EMV: {theta_mle:.2f}')
+ax.axvline(theta_map, color='r', linestyle=':', alpha=0.7, label=f'MAP: {theta_map:.2f}')
+
+ax.set_xlabel(r'$\theta$')
+ax.set_ylabel('Densité (normalisée)')
+ax.set_title('3 faces, 0 pile')
+ax.legend(fontsize=8)
+ax.set_xlim(0, 1)
+
+# Right: Effect of different priors
+ax = axes[1]
+priors = [(1, 1, 'Uniforme'), (2, 2, 'Beta(2,2)'), (5, 5, 'Beta(5,5)')]
+
+for a, b, label in priors:
+    theta_map = (n1 + a - 1) / (n1 + n0 + a + b - 2)
+    posterior = stats.beta.pdf(theta_grid, a + n1, b + n0)
+    posterior = posterior / posterior.max()
+    ax.plot(theta_grid, posterior, linewidth=2, label=f'{label}: MAP={theta_map:.2f}')
+
+ax.axvline(1.0, color='gray', linestyle='--', alpha=0.5, label='EMV: 1.00')
+ax.set_xlabel(r'$\theta$')
+ax.set_ylabel('A posteriori (normalisé)')
+ax.set_title('Effet de différents a priori')
+ax.legend(fontsize=8)
+ax.set_xlim(0, 1)
+
+plt.tight_layout()
+```
+
+La figure de gauche montre comment l'a posteriori combine l'a priori et la vraisemblance. L'a priori Beta(2,2) "tire" l'estimation vers 0.5, résultant en un MAP de 0.8 au lieu de l'EMV de 1.0. La figure de droite montre l'effet de différents a priori: plus l'a priori est fort (variance faible), plus l'estimation est proche de 0.5.
+
+#### Régression ridge = MAP avec prior gaussien
+
+Appliquons maintenant ce cadre bayésien à la régression linéaire. Si nous plaçons un a priori gaussien isotrope sur les paramètres:
+
+$$
+p(\boldsymbol{\theta}) = \mathcal{N}(\boldsymbol{\theta} | \mathbf{0}, \sigma_\theta^2 \mathbf{I})
+$$
+
+cet a priori exprime la croyance que les paramètres sont probablement proches de zéro, avec une incertitude contrôlée par $\sigma_\theta^2$.
+
+Le logarithme négatif de cet a priori est:
+
+$$
+-\log p(\boldsymbol{\theta}) = \frac{1}{2\sigma_\theta^2} \|\boldsymbol{\theta}\|_2^2 + \text{constante}
+$$
+
+L'estimateur MAP devient:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{NLV}(\boldsymbol{\theta}) + \frac{1}{2\sigma_\theta^2}\|\boldsymbol{\theta}\|_2^2 \right]
+$$
+
+C'est exactement la régression ridge, avec $\lambda = 1/(2\sigma_\theta^2)$. Cette correspondance nous donne une interprétation de l'hyperparamètre:
+
+- **Grande valeur de $\lambda$** (petite variance $\sigma_\theta^2$): forte croyance que les paramètres sont proches de zéro
+- **Petite valeur de $\lambda$** (grande variance $\sigma_\theta^2$): a priori peu informatif, on fait confiance aux données
+
+L'a priori gaussien sur les paramètres est parfois appelé **dégradation des poids** (*weight decay*) dans le contexte des réseaux de neurones, car il "tire" les paramètres vers zéro pendant l'entraînement.
+
+## Unification: deux langages pour un même problème
+
+Les sections précédentes ont présenté deux approches pour l'apprentissage supervisé. La première, fondée sur la théorie de la décision, définit une fonction de perte et minimise le risque empirique. La seconde, probabiliste, modélise la distribution des données et estime les paramètres par maximum de vraisemblance ou maximum a posteriori.
+
+Ces deux approches semblent différentes, mais elles aboutissent aux mêmes algorithmes. En choisissant la **perte logarithmique** $\ell(y, \hat{y}) = -\log p(y | \hat{y})$, le risque empirique devient exactement la log-vraisemblance négative (à un facteur $1/N$ près). Minimiser l'un revient à minimiser l'autre. Sous bruit gaussien, cette perte se réduit à la perte quadratique; sous modèle de Bernoulli, à l'entropie croisée.
+
+De même, ajouter une régularisation $\ell_2$ au risque empirique revient à supposer un a priori gaussien sur les paramètres. La régression ridge n'est rien d'autre que l'estimation MAP avec cet a priori. Le coefficient $\lambda$ encode la force de notre croyance a priori: plus $\lambda$ est grand, plus nous "tirons" les paramètres vers zéro.
+
+Pourquoi alors utiliser deux langages? Parce qu'ils éclairent des aspects différents du problème. Le langage décisionnel (risque, perte, minimisation) est opérationnel: il dit comment construire un algorithme. Le langage probabiliste (vraisemblance, a priori, a posteriori) est interprétatif: il dit ce que nous supposons sur les données et pourquoi nos choix sont raisonnables. Ensemble, ils permettent de *concevoir* des algorithmes et de *comprendre* leur comportement.
+
+### Interprétation informationnelle
+
+La théorie de l'information offre une troisième perspective. L'EMV peut se comprendre comme la recherche du modèle paramétrique le plus proche de la distribution empirique des données.
+
+La **distribution empirique** place une masse $1/N$ sur chaque observation:
+
+$$
+p_{\mathcal{D}}(y) = \frac{1}{N} \sum_{i=1}^N \delta(y - y_i)
+$$
+
+La **divergence de Kullback-Leibler** mesure la dissimilarité entre deux distributions:
+
+$$
+D_{\text{KL}}(p \| q) = \sum_y p(y) \log \frac{p(y)}{q(y)}
+$$
+
+Cette quantité est toujours positive ou nulle, et vaut zéro si et seulement si les deux distributions sont identiques. En posant $p = p_{\mathcal{D}}$ (ce que nous avons observé) et $q = p(\cdot | \boldsymbol{\theta})$ (notre modèle), on peut montrer que:
+
+$$
+\arg\min_{\boldsymbol{\theta}} D_{\text{KL}}(p_{\mathcal{D}} \| p(\cdot|\boldsymbol{\theta})) = \arg\min_{\boldsymbol{\theta}} \text{NLV}(\boldsymbol{\theta})
+$$
+
+L'EMV trouve les paramètres qui rendent notre modèle aussi proche que possible de ce que nous avons observé, au sens de la divergence KL. Cette interprétation géométrique complète les perspectives décisionnelle et probabiliste.
+
+## Classes de modèles
+
+Tout au long de ce chapitre, nous avons parlé de "modèles" et de "fonctions $f$" sans préciser leur forme. Quelle classe de fonctions considérons-nous? La réponse à cette question détermine ce que le modèle peut représenter.
+
+Le modèle le plus simple est la **régression linéaire**:
+
+$$
+f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} = \sum_{j=0}^d \theta_j x_j
+$$
+
+où nous avons absorbé le biais en posant $x_0 = 1$. Le vecteur $\boldsymbol{\theta} \in \mathbb{R}^{d+1}$ contient le biais et les poids. Ce modèle suppose que la sortie est une combinaison linéaire des entrées.
+
+### Trois familles de modèles
+
+Avant de détailler les modèles linéaires, situons-les dans une hiérarchie plus large. Nous distinguons trois familles de modèles, de complexité croissante:
+
+1. **Modèles linéaires**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} + b$. La sortie est une combinaison linéaire des entrées. Simple, interprétable, mais limité aux relations linéaires.
+
+2. **Modèles à expansion de caractéristiques**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \boldsymbol{\phi}(\mathbf{x}) + b$, où $\boldsymbol{\phi}: \mathbb{R}^d \to \mathbb{R}^D$ est une transformation non linéaire fixée à l'avance (par exemple, polynomiale). Le modèle reste linéaire dans les paramètres $\boldsymbol{\theta}$, ce qui facilite l'optimisation, mais peut capturer des relations non linéaires en $\mathbf{x}$. L'espace de redescription a souvent une dimension $D \gg d$.
+
+3. **Réseaux de neurones**: $f(\mathbf{x}; \boldsymbol{\theta}) = f_K(f_{K-1}(\cdots f_1(\mathbf{x}; \boldsymbol{\theta}_1); \boldsymbol{\theta}_{K-1}); \boldsymbol{\theta}_K)$. Une composition de $K$ fonctions non linéaires, chacune avec ses propres paramètres. Contrairement aux modèles à expansion fixe, les réseaux de neurones **apprennent la représentation** $\boldsymbol{\phi}$ en même temps que les paramètres $\boldsymbol{\theta}$.
+
+Cette progression capture l'évolution historique du domaine: des modèles linéaires classiques aux méthodes à noyaux (expansion implicite), puis aux réseaux profonds qui apprennent leurs propres représentations. Nous verrons les réseaux de neurones en détail dans les chapitres suivants; concentrons-nous ici sur les deux premières familles.
+
+### Expansion de caractéristiques
+
+Pour capturer des relations non linéaires tout en gardant un modèle linéaire dans les paramètres, nous pouvons transformer les entrées. En **régression polynomiale**, nous appliquons une fonction $\phi: \mathbb{R} \to \mathbb{R}^{k+1}$:
+
+$$
+\phi(x) = [1, x, x^2, \ldots, x^k]
+$$
+
+La prédiction devient $f(x; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \phi(x)$. Le modèle est polynomial en $x$ mais linéaire en $\boldsymbol{\theta}$, ce qui permet d'utiliser les mêmes algorithmes d'optimisation.
+
+Le degré $k$ contrôle la **capacité** du modèle: sa capacité à représenter des fonctions complexes. Avec $k = 1$, nous avons une droite. Avec $k$ élevé, le polynôme peut osciller pour passer par tous les points d'entraînement. Avec $k = N - 1$, nous pouvons interpoler exactement les $N$ points: le risque empirique atteint zéro. Mais un polynôme qui passe exactement par les points d'entraînement n'a aucune raison de bien prédire les nouveaux points.
+
+Illustrons ce phénomène avec les données de freinage. Nous ajustons des polynômes de degrés 1, 2, 5 et 15, et comparons leurs erreurs sur les ensembles d'entraînement et de test.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+
+# Suppress polyfit warnings for high-degree polynomials (expected for this demo)
+warnings.filterwarnings('ignore', message='Polyfit may be poorly conditioned')
+
+# Données de freinage
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+# Train/test split
+np.random.seed(42)
+indices = np.random.permutation(len(speed))
+train_idx, test_idx = indices[:35], indices[35:]
+speed_train, dist_train = speed[train_idx], dist[train_idx]
+speed_test, dist_test = speed[test_idx], dist[test_idx]
+
+degrees_to_plot = [1, 2, 5, 15]
+degrees_eval = range(1, 16)
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+# Pre-compute all errors for the summary plot later
+all_train_errors = []
+all_test_errors = []
+for deg in degrees_eval:
+    coeffs = np.polyfit(speed_train, dist_train, deg)
+    all_train_errors.append(np.mean((dist_train - np.polyval(coeffs, speed_train))**2))
+    all_test_errors.append(np.mean((dist_test - np.polyval(coeffs, speed_test))**2))
+
+for ax, deg in zip(axes.flat, degrees_to_plot):
+    # Fit polynomial
+    coeffs = np.polyfit(speed_train, dist_train, deg)
+    
+    # Predictions
+    pred_train = np.polyval(coeffs, speed_train)
+    pred_test = np.polyval(coeffs, speed_test)
+    
+    # MSE
+    mse_train = np.mean((dist_train - pred_train)**2)
+    mse_test = np.mean((dist_test - pred_test)**2)
+    
+    # Plot
+    ax.scatter(speed_train, dist_train, alpha=0.6, s=30, label='Entraînement')
+    ax.scatter(speed_test, dist_test, alpha=0.6, s=30, marker='s', label='Test')
+    
+    speed_grid = np.linspace(3, 26, 200)
+    pred_grid = np.polyval(coeffs, speed_grid)
+    # Clip extreme predictions for visualization
+    pred_grid = np.clip(pred_grid, -50, 200)
+    ax.plot(speed_grid, pred_grid, 'k-', alpha=0.7)
+    
+    ax.set_xlim(3, 26)
+    ax.set_ylim(-20, 150)
+    ax.set_xlabel('Vitesse (mph)')
+    ax.set_ylabel('Distance (ft)')
+    ax.set_title(f'Degré {deg}: Entr. EQM={mse_train:.1f}, Test EQM={mse_test:.1f}')
+    if deg == 1:
+        ax.legend()
+
+plt.tight_layout()
+```
+
+Le polynôme de degré 1 (droite) ne capture pas la courbure des données: c'est du sous-apprentissage. Le polynôme de degré 2 capture bien la relation quadratique. Le polynôme de degré 5 commence à osciller. Le polynôme de degré 15 passe près de tous les points d'entraînement, mais ses oscillations produisent des prédictions absurdes entre les points: c'est du surapprentissage.
+
+```{code-cell} python
+:tags: [hide-input]
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(degrees_eval, all_train_errors, 'o-', linewidth=2, label='Erreur entraînement')
+ax.plot(degrees_eval, all_test_errors, 's-', linewidth=2, label='Erreur test')
+
+# Utiliser une échelle logarithmique car l'erreur de test explose
+ax.set_yscale('log')
+
+ax.set_xlabel('Degré du polynôme (complexité)')
+ax.set_ylabel('EQM (échelle log)')
+ax.set_xticks(range(1, 16, 2))
+ax.grid(True, which="both", ls="-", alpha=0.2)
+ax.legend()
+
+ax.set_title('Compromis biais-variance (Échelle logarithmique)')
+plt.tight_layout()
+```
+
+L'erreur d'entraînement diminue avec le degré du polynôme. L'erreur de test diminue d'abord (quand le modèle gagne en expressivité), puis augmente (quand le modèle commence à mémoriser le bruit). Le meilleur modèle se trouve à l'intersection de ces deux tendances.
+
+### Intuition géométrique: pourquoi la dimension supérieure aide
+
+L'expansion de caractéristiques semble être un simple changement de variables, mais elle cache une idée géométrique profonde. Pour comprendre pourquoi projeter les données dans un espace de dimension supérieure permet de capturer des relations non linéaires, examinons d'abord le cas de la régression, puis celui de la classification.
+
+#### Le plan caché derrière la parabole
+
+Considérons une régression quadratique: $f(x) = \theta_0 + \theta_1 x + \theta_2 x^2$. Cette fonction est **non linéaire en $x$** (c'est une parabole), mais **linéaire dans les paramètres** $\boldsymbol{\theta} = (\theta_0, \theta_1, \theta_2)$. Que signifie cette distinction géométriquement?
+
+Introduisons l'espace des caractéristiques $\phi(x) = (1, x, x^2)$. Chaque valeur de $x$ correspond à un point dans $\mathbb{R}^3$. Ces points ne sont pas dispersés arbitrairement: ils vivent sur une courbe particulière, la **courbe des moments** (*moment curve*), qui ressemble à une rampe tordue.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Créer la courbe des moments: (x, x², x³) pour visualisation
+# On utilise (1, x, x²) mais on projette sur (x, x², y) pour la visualisation
+fig = plt.figure(figsize=(12, 5))
+
+# Gauche: les fonctions de base
+ax1 = fig.add_subplot(121)
+x = np.linspace(-2, 2, 100)
+ax1.plot(x, np.ones_like(x), 'b-', linewidth=2, label=r'$\phi_0(x) = 1$')
+ax1.plot(x, x, 'orange', linewidth=2, label=r'$\phi_1(x) = x$')
+ax1.plot(x, x**2, 'g-', linewidth=2, label=r'$\phi_2(x) = x^2$')
+ax1.axhline(0, color='gray', linewidth=0.5)
+ax1.axvline(0, color='gray', linewidth=0.5)
+ax1.set_xlabel('$x$')
+ax1.set_ylabel('$\phi_j(x)$')
+ax1.set_title('Les fonctions de base')
+ax1.legend()
+ax1.set_ylim(-2.5, 4.5)
+ax1.grid(True, alpha=0.3)
+
+# Droite: combinaisons linéaires
+ax2 = fig.add_subplot(122)
+x = np.linspace(-2, 2, 100)
+
+# Différentes combinaisons de coefficients
+combinations = [
+    ((1, 0, 0), 'Constante: $1$'),
+    ((0, 1, 0), 'Linéaire: $x$'),
+    ((0, 0, 1), 'Quadratique: $x^2$'),
+    ((1, -0.5, 0.5), 'Combinaison: $1 - 0.5x + 0.5x^2$'),
+]
+
+colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+for (theta0, theta1, theta2), label in combinations:
+    y = theta0 + theta1 * x + theta2 * x**2
+    ax2.plot(x, y, linewidth=2, label=label)
+
+ax2.axhline(0, color='gray', linewidth=0.5)
+ax2.axvline(0, color='gray', linewidth=0.5)
+ax2.set_xlabel('$x$')
+ax2.set_ylabel('$f(x)$')
+ax2.set_title('Combinaisons linéaires des fonctions de base')
+ax2.legend(loc='upper center')
+ax2.set_ylim(-2.5, 4.5)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+```
+
+Les fonctions de base $\{1, x, x^2\}$ sont les "ingrédients" du modèle. La régression polynomiale cherche les coefficients $\theta_0, \theta_1, \theta_2$ qui mélangent ces ingrédients de façon optimale. Chaque combinaison produit une courbe différente, mais toutes sont des paraboles (ou des cas dégénérés: droites, constantes).
+
+Voici l'insight géométrique clé: dans l'espace $(x, x^2, y)$, le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ définit un **plan**. La parabole que nous voyons dans le graphique $(x, y)$ est simplement la **projection** de ce plan sur notre espace de visualisation.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+from IPython.display import Image
+
+# Générer des données avec relation quadratique
+np.random.seed(42)
+n_points = 40
+x_data = np.random.uniform(-1.8, 1.8, n_points)
+y_true = 0.5 + 0.3 * x_data + 0.8 * x_data**2
+y_data = y_true + np.random.normal(0, 0.3, n_points)
+
+# Ajuster le modèle quadratique
+X_design = np.column_stack([np.ones(n_points), x_data, x_data**2])
+theta = np.linalg.lstsq(X_design, y_data, rcond=None)[0]
+
+# Créer l'animation
+fig = plt.figure(figsize=(9, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+# Grille pour le plan de régression
+x_grid = np.linspace(-2, 2, 20)
+x2_grid = np.linspace(0, 4, 20)
+X_plane, X2_plane = np.meshgrid(x_grid, x2_grid)
+Y_plane = theta[0] + theta[1] * X_plane + theta[2] * X2_plane
+
+# Surface parabolique z = x²
+x_surf = np.linspace(-2, 2, 30)
+X_surf, Y_surf_temp = np.meshgrid(x_surf, np.linspace(-1, 5, 30))
+Z_surf = X_surf**2
+
+def init():
+    ax.clear()
+    return []
+
+def animate(frame):
+    ax.clear()
+    
+    # Animation en trois phases
+    if frame < 15:
+        # Phase 1: Vue 2D (de côté, cachant x²)
+        elev = 0
+        azim = 0
+        show_plane = False
+        show_surface = False
+        title = 'Vue 2D: régression quadratique'
+    elif frame < 35:
+        # Phase 2: Rotation révélant la 3ème dimension
+        progress = (frame - 15) / 20
+        elev = progress * 25
+        azim = progress * 45
+        show_plane = False
+        show_surface = True
+        title = 'Rotation: découverte de la dimension $x^2$...'
+    else:
+        # Phase 3: Vue 3D avec le plan
+        elev = 25
+        azim = 45 + (frame - 35) * 2
+        show_plane = True
+        show_surface = True
+        title = r'Le plan $y = \theta_0 + \theta_1 x + \theta_2 x^2$ dans lespace 3D'
+    
+    ax.view_init(elev=elev, azim=azim)
+    
+    # Surface parabolique (rampe z = x²)
+    if show_surface:
+        ax.plot_surface(X_surf, Z_surf, Y_surf_temp, alpha=0.1, color='gray')
+    
+    # Points de données dans l'espace 3D: (x, x², y)
+    ax.scatter(x_data, x_data**2, y_data, c='tab:blue', s=50, alpha=0.8, 
+               label='Données', depthshade=True)
+    
+    # Plan de régression
+    if show_plane:
+        ax.plot_surface(X_plane, X2_plane, Y_plane, alpha=0.4, color='tab:orange',
+                       label='Plan de régression')
+    
+    # Courbe de régression sur la surface z = x²
+    x_curve = np.linspace(-1.8, 1.8, 100)
+    y_curve = theta[0] + theta[1] * x_curve + theta[2] * x_curve**2
+    ax.plot(x_curve, x_curve**2, y_curve, 'r-', linewidth=3, 
+            label='Courbe ajustée')
+    
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$x^2$')
+    ax.set_zlabel('$y$')
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(0, 4)
+    ax.set_zlim(-1, 5)
+    ax.set_title(title, fontsize=11)
+    
+    return []
+
+anim = FuncAnimation(fig, animate, init_func=init, frames=70, interval=100, blit=True)
+anim.save('_static/regression_plane_3d.gif', writer='pillow', fps=10, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/regression_plane_3d.gif')
+```
+
+L'animation révèle la structure cachée de la régression polynomiale:
+
+1. **Vue 2D initiale**: On voit les données et la parabole ajustée, comme dans un graphique classique.
+
+2. **Rotation**: En faisant pivoter la vue, on découvre que chaque point $(x_i, y_i)$ vit en réalité dans un espace 3D aux coordonnées $(x_i, x_i^2, y_i)$. La surface grise représente la "rampe" $z = x^2$ sur laquelle tous les points sont contraints de vivre.
+
+3. **Le plan de régression**: Le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ est un plan (en orange) dans cet espace 3D. Ce plan est choisi pour minimiser les distances verticales aux points.
+
+4. **La courbe ajustée**: La parabole rouge est l'intersection du plan avec la rampe $z = x^2$. C'est ce que nous voyons quand nous projetons le tout sur le plan $(x, y)$.
+
+Cette perspective unifie le "linéaire dans les paramètres" et le "non linéaire en $x$":
+- **Linéaire dans les paramètres**: Le modèle est un plan (objet linéaire) dans l'espace des caractéristiques.
+- **Non linéaire en $x$**: La contrainte $z = x^2$ force les données à vivre sur une surface courbe, et l'intersection du plan avec cette surface produit une courbe.
+
+#### De la régression à la classification
+
+La même intuition s'applique en classification, avec une différence: au lieu de chercher un plan qui **ajuste** les données, on cherche un hyperplan qui les **sépare**. Voyons comment l'expansion de caractéristiques transforme des données non linéairement séparables en données linéairement séparables.
+
+#### De 1D à 2D: séparer l'inséparable
+
+Considérons des points sur une droite, répartis en deux classes: les points bleus au centre, les points orange aux extrémités. Aucun seuil unique ne peut séparer ces deux classes.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+
+# Classe bleue: points au centre
+x_blue = np.random.uniform(-0.5, 0.5, 15)
+# Classe orange: points aux extrémités
+x_orange = np.concatenate([np.random.uniform(-1.5, -0.8, 8), 
+                           np.random.uniform(0.8, 1.5, 8)])
+
+fig, ax = plt.subplots(figsize=(10, 2))
+ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, label='Classe A', zorder=3)
+ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, label='Classe B', zorder=3)
+ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.5, 0.5)
+ax.set_xlabel('$x$')
+ax.set_yticks([])
+ax.legend(loc='upper right')
+ax.set_title('Données 1D: aucun seuil ne sépare les deux classes')
+plt.tight_layout()
+```
+
+Appliquons maintenant l'expansion $\phi(x) = (x, x^2)$. Chaque point est projeté sur une parabole dans l'espace 2D. Les points proches de zéro (classe bleue) restent bas, tandis que les points éloignés de zéro (classe orange) montent.
+
+```{code-cell} python
+:tags: [hide-input]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+# Gauche: espace original avec tentative de séparation
+ax = axes[0]
+ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, zorder=3)
+ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, zorder=3)
+ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
+ax.axvline(0.3, color='red', linestyle='--', linewidth=2, label='Seuil?')
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.5, 0.5)
+ax.set_xlabel('$x$')
+ax.set_yticks([])
+ax.set_title('Espace original: pas de séparation linéaire')
+ax.legend()
+
+# Droite: espace transformé
+ax = axes[1]
+ax.scatter(x_blue, x_blue**2, c='tab:blue', s=80, zorder=3, label='Classe A')
+ax.scatter(x_orange, x_orange**2, c='tab:orange', s=80, zorder=3, label='Classe B')
+
+# Ligne de séparation dans l'espace transformé
+x_line = np.linspace(-2, 2, 100)
+threshold = 0.6
+ax.axhline(threshold, color='green', linestyle='-', linewidth=2, label='Frontière linéaire')
+ax.fill_between(x_line, 0, threshold, alpha=0.1, color='blue')
+ax.fill_between(x_line, threshold, 2.5, alpha=0.1, color='orange')
+
+# Parabole de référence
+x_curve = np.linspace(-1.6, 1.6, 100)
+ax.plot(x_curve, x_curve**2, 'k--', alpha=0.3, linewidth=1)
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.1, 2.5)
+ax.set_xlabel('$x$')
+ax.set_ylabel('$x^2$')
+ax.set_title(r'Espace transformé $\phi(x) = (x, x^2)$: séparation linéaire!')
+ax.legend()
+
+plt.tight_layout()
+```
+
+Dans l'espace transformé, une simple droite horizontale sépare les deux classes. Cette droite correspond, dans l'espace original, à **deux seuils**: $x^2 < 0.6$, soit $|x| < \sqrt{0.6} \approx 0.77$. L'expansion de caractéristiques a transformé une frontière de décision non linéaire (un intervalle) en une frontière linéaire (une droite).
+
+#### De 2D à 3D: soulever pour séparer
+
+Passons à un exemple plus visuel. Considérons deux classes disposées en cercles concentriques: la classe bleue forme un disque central, la classe orange forme un anneau extérieur. Aucune droite ne peut séparer ces deux régions.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Classe bleue: disque central
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+
+# Classe orange: anneau extérieur
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
+ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
+
+# Montrer qu'une droite ne peut pas séparer
+theta_line = np.pi/4
+x_line = np.linspace(-2, 2, 100)
+y_line = np.tan(theta_line) * x_line
+ax.plot(x_line, y_line, 'r--', linewidth=2, alpha=0.7, label='Droite?')
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-2, 2)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+ax.legend()
+ax.set_title('Cercles concentriques: pas de séparation linéaire en 2D')
+plt.tight_layout()
+```
+
+Appliquons l'expansion $\phi(x_1, x_2) = (x_1, x_2, x_1^2 + x_2^2)$. La troisième coordonnée est le carré de la distance à l'origine: $z = r^2$. Les points proches du centre (petit $r$) sont "soulevés" moins haut que les points éloignés (grand $r$).
+
+L'animation suivante montre cette transformation. En faisant pivoter la vue, on voit que les données, une fois projetées dans l'espace 3D, deviennent séparables par un plan horizontal.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
+from IPython.display import Image
+
+np.random.seed(123)
+
+# Classe bleue: disque central
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+z_blue = x_blue**2 + y_blue**2
+
+# Classe orange: anneau extérieur  
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+z_orange = x_orange**2 + y_orange**2
+
+# Créer la figure
+fig = plt.figure(figsize=(8, 6))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plan de séparation
+z_sep = 0.75
+xx, yy = np.meshgrid(np.linspace(-1.8, 1.8, 10), np.linspace(-1.8, 1.8, 10))
+zz = np.ones_like(xx) * z_sep
+
+def init():
+    ax.clear()
+    return []
+
+def animate(frame):
+    ax.clear()
+    
+    # Élévation: commence à 90° (vue de dessus), descend à 25°
+    if frame < 20:
+        elev = 90 - frame * 3.25  # 90 -> 25
+        azim = 45
+    else:
+        elev = 25
+        azim = 45 + (frame - 20) * 4  # rotation horizontale
+    
+    ax.view_init(elev=elev, azim=azim)
+    
+    # Points
+    ax.scatter(x_blue, y_blue, z_blue, c='tab:blue', s=30, alpha=0.8, label='Classe A')
+    ax.scatter(x_orange, y_orange, z_orange, c='tab:orange', s=30, alpha=0.8, label='Classe B')
+    
+    # Plan de séparation (apparaît après la descente)
+    if frame >= 15:
+        alpha_plane = min(0.3, (frame - 15) * 0.06)
+        ax.plot_surface(xx, yy, zz, alpha=alpha_plane, color='green')
+    
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+    ax.set_zlabel('$x_1^2 + x_2^2$')
+    ax.set_xlim(-1.8, 1.8)
+    ax.set_ylim(-1.8, 1.8)
+    ax.set_zlim(0, 2.5)
+    
+    # Titre dynamique
+    if frame < 10:
+        ax.set_title('Vue de dessus: cercles concentriques', fontsize=11)
+    elif frame < 20:
+        ax.set_title('Rotation: on découvre la structure 3D...', fontsize=11)
+    else:
+        ax.set_title(r'Espace $\phi(x_1,x_2) = (x_1, x_2, x_1^2+x_2^2)$: un plan sépare!', fontsize=11)
+    
+    return []
+
+anim = FuncAnimation(fig, animate, init_func=init, frames=60, interval=100, blit=True)
+anim.save('_static/feature_expansion_3d.gif', writer='pillow', fps=10, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/feature_expansion_3d.gif')
+```
+
+L'animation montre comment **l'expansion de caractéristiques "déplie" la géométrie des données**. Vue de dessus, la structure est celle des cercles concentriques originaux. Mais la troisième dimension $z = x_1^2 + x_2^2$ sépare verticalement les deux classes: le disque central reste bas, l'anneau extérieur monte. Un plan horizontal (en vert) suffit alors à séparer les classes.
+
+Ce plan horizontal $z = 0.75$ correspond, dans l'espace original 2D, à un **cercle** de rayon $\sqrt{0.75} \approx 0.87$. La frontière de décision linéaire en 3D devient une frontière circulaire en 2D.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Recréer les données (même seed que l'animation)
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
+ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
+
+# Cercle de décision (projection du plan z = 0.75)
+theta_circle = np.linspace(0, 2*np.pi, 100)
+r_decision = np.sqrt(0.75)
+ax.plot(r_decision * np.cos(theta_circle), r_decision * np.sin(theta_circle), 
+        'g-', linewidth=2.5, label=f'Frontière: $r = {r_decision:.2f}$')
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-2, 2)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+ax.legend()
+ax.set_title('Frontière de décision projetée en 2D')
+plt.tight_layout()
+```
+
+#### Le principe unificateur
+
+Ces exemples de régression et de classification illustrent le même principe géométrique:
+
+| | Régression | Classification |
+|---|---|---|
+| **Objectif** | Ajuster les données | Séparer les classes |
+| **Dans l'espace original** | Courbe (parabole, etc.) | Frontière courbe (cercle, etc.) |
+| **Dans l'espace des caractéristiques** | Hyperplan d'ajustement | Hyperplan séparateur |
+| **La courbe/frontière est...** | L'intersection du plan avec la surface $\phi(x)$ | La projection de l'hyperplan |
+
+L'expansion de caractéristiques transforme un problème non linéaire en un problème linéaire dans un espace de dimension supérieure. Les modèles linéaires, simples à optimiser et à analyser, deviennent alors suffisants pour capturer des structures complexes.
+
+En augmentant la dimension de l'espace de représentation, nous augmentons la **capacité** du modèle. Pour la classification, un résultat classique de géométrie affirme que $N$ points en position générale sont presque sûrement séparables par un hyperplan si la dimension de l'espace est au moins $N$. Pour la régression, un polynôme de degré $N-1$ peut interpoler exactement $N$ points.
+
+Mais cette flexibilité a un coût: plus l'espace est grand, plus le modèle risque de mémoriser les particularités des données d'entraînement plutôt que d'apprendre la structure sous-jacente. C'est le **compromis biais-variance** que nous avons observé avec les polynômes de haut degré.
+
+## Résumé
+
+Ce chapitre a développé le cadre formel de l'apprentissage supervisé à travers deux perspectives complémentaires.
+
+La **perspective décisionnelle** définit le risque comme l'erreur moyenne attendue sur de nouvelles données, puis le remplace par le risque empirique (calculable sur les données d'entraînement). La **minimisation du risque empirique** cherche le modèle qui minimise cette erreur d'entraînement, en espérant qu'il généralisera. La régularisation pénalise la complexité pour éviter le surapprentissage.
+
+La **perspective probabiliste** modélise explicitement comment les données ont été générées. Le maximum de vraisemblance (EMV) trouve les paramètres qui rendent les observations les plus probables; le maximum a posteriori (MAP) incorpore des croyances a priori sur les paramètres.
+
+Ces deux perspectives aboutissent aux mêmes algorithmes. Sous bruit gaussien, l'EMV coïncide avec les moindres carrés. La régularisation $\ell_2$ correspond au MAP avec a priori gaussien sur les paramètres. Le langage décisionnel est opérationnel (comment construire l'algorithme); le langage probabiliste est interprétatif (pourquoi ces choix sont raisonnables).
+
+Le chapitre suivant développe les outils théoriques pour quantifier quand et comment le risque empirique prédit le vrai risque.
+
+## Exercices
+
+````{admonition} Exercice 1: Usure d'outil
+:class: hint dropdown
+
+Un machiniste mesure l'usure d'un outil de coupe (en mm) à différents temps de coupe (en minutes):
+
+```python
+import numpy as np
+
+# Données d'usure d'outil (simulées selon une loi de puissance avec bruit)
+time = np.array([2.0, 5.1, 8.2, 11.3, 14.4, 17.6, 20.7, 23.8, 26.9, 30.0])
+wear = np.array([0.08, 0.14, 0.17, 0.21, 0.22, 0.25, 0.27, 0.28, 0.31, 0.32])
+```
+
+L'outil doit être remplacé lorsque l'usure atteint 0.4 mm.
+
+1. **Visualisation.** Tracez les données. Quelle forme de relation observez-vous?
+
+2. **Ajustement.** Ajustez un modèle linéaire $w(t) = at + b$ et un modèle en loi de puissance $w(t) = at^b$ aux données. Pour le second modèle, utilisez une transformation logarithmique: $\log w = \log a + b \log t$.
+
+3. **Comparaison.** Calculez le MSE de chaque modèle sur les données. Lequel ajuste mieux?
+
+4. **Prédiction.** Selon chaque modèle, à quel moment l'usure atteindra-t-elle 0.4 mm? Les deux modèles donnent-ils la même réponse?
+
+5. **Extrapolation.** Si vous n'aviez mesuré que jusqu'à $t = 15$ min, vos prédictions changeraient-elles? Discutez du risque d'extrapolation.
+````
+
+```{admonition} Solution Exercice 1
+:class: dropdown
+
+1. **Visualisation.** Les données montrent une relation non linéaire, concave: l'usure augmente rapidement au début puis ralentit. Cela suggère une loi de puissance avec exposant $b < 1$.
+
+2. **Ajustement.**
+   - Modèle linéaire: `coeffs = np.polyfit(time, wear, 1)` donne $a \approx 0.006$, $b \approx 0.05$.
+   - Loi de puissance: en posant $\log w = \log a + b \log t$, on ajuste une droite dans l'espace log-log: `coeffs = np.polyfit(np.log(time), np.log(wear), 1)`. On obtient $b \approx 0.5$ et $a = \exp(\text{intercept}) \approx 0.05$.
+
+3. **Comparaison.** Le MSE du modèle linéaire est typiquement plus élevé car il ne capture pas la courbure. Le modèle en loi de puissance ajuste mieux les données.
+
+4. **Prédiction.** Pour trouver $t$ tel que $w(t) = 0.4$:
+   - Linéaire: $t = (0.4 - b) / a$
+   - Puissance: $t = (0.4 / a)^{1/b}$
+   
+   Les réponses diffèrent significativement car les modèles extrapolent différemment.
+
+5. **Extrapolation.** Avec moins de données, les estimations des paramètres changent, et les prédictions au-delà des données observées deviennent plus incertaines. L'extrapolation est risquée car le comportement futur peut ne pas suivre le modèle ajusté sur les données passées.
+```
+
+````{admonition} Exercice 2: Risque et risque empirique
+:class: hint dropdown
+
+Soit un problème de classification binaire avec la perte 0-1. Un classificateur $f$ fait 3 erreurs sur 20 exemples d'entraînement.
+
+1. Quel est le risque empirique de $f$ sur l'ensemble d'entraînement?
+
+2. Peut-on en déduire le vrai risque $\mathcal{R}(f)$? Pourquoi ou pourquoi pas?
+
+3. Si nous avions 1000 exemples de test et que $f$ fait 45 erreurs, quelle serait notre meilleure estimation du vrai risque?
+````
+
+```{admonition} Solution Exercice 2
+:class: dropdown
+
+1. **Risque empirique:** $\hat{\mathcal{R}}(f) = \frac{3}{20} = 0.15$ (soit 15% d'erreur).
+
+2. **Non, on ne peut pas en déduire le vrai risque.** Le risque empirique sur l'entraînement est une estimation biaisée du vrai risque car:
+   - Le modèle $f$ a été choisi/optimisé pour bien performer sur ces mêmes données
+   - Il y a surapprentissage potentiel: $f$ peut avoir mémorisé des particularités de l'entraînement qui ne généralisent pas
+   - Le risque empirique sur l'entraînement sous-estime généralement le vrai risque
+
+3. **Estimation sur le test:** $\hat{\mathcal{R}}(f) = \frac{45}{1000} = 0.045$ (soit 4.5% d'erreur). Cette estimation est plus fiable car:
+   - Les données de test n'ont pas été utilisées pour construire $f$
+   - Avec 1000 exemples, l'estimation est plus précise (écart-type $\approx \sqrt{0.045 \times 0.955 / 1000} \approx 0.007$)
+```
+
+````{admonition} Exercice 3: Maximum de vraisemblance
+:class: hint dropdown
+
+Soit $\{y_1, \ldots, y_N\}$ un échantillon i.i.d. d'une distribution exponentielle de paramètre $\lambda > 0$:
+
+$$
+p(y | \lambda) = \lambda e^{-\lambda y}, \quad y \geq 0
+$$
+
+1. Écrivez la vraisemblance $\mathcal{L}(\lambda)$ et la log-vraisemblance $\log \mathcal{L}(\lambda)$.
+
+2. Dérivez l'estimateur du maximum de vraisemblance (EMV) $\hat{\lambda}_{\text{EMV}}$.
+
+3. Si les observations sont $y = \{0.5, 1.2, 0.8, 2.1, 0.3\}$, calculez $\hat{\lambda}_{\text{EMV}}$.
+````
+
+```{admonition} Solution Exercice 3
+:class: dropdown
+
+1. **Vraisemblance et log-vraisemblance:**
+
+   $$\mathcal{L}(\lambda) = \prod_{i=1}^N \lambda e^{-\lambda y_i} = \lambda^N \exp\left(-\lambda \sum_{i=1}^N y_i\right)$$
+   
+   $$\log \mathcal{L}(\lambda) = N \log \lambda - \lambda \sum_{i=1}^N y_i$$
+
+2. **Dérivation de l'EMV:**
+
+   On dérive par rapport à $\lambda$ et on égale à zéro:
+   
+   $$\frac{d}{d\lambda} \log \mathcal{L}(\lambda) = \frac{N}{\lambda} - \sum_{i=1}^N y_i = 0$$
+   
+   D'où:
+   
+   $$\hat{\lambda}_{\text{EMV}} = \frac{N}{\sum_{i=1}^N y_i} = \frac{1}{\bar{y}}$$
+   
+   L'EMV est l'inverse de la moyenne empirique.
+
+3. **Application numérique:**
+
+   $\bar{y} = \frac{0.5 + 1.2 + 0.8 + 2.1 + 0.3}{5} = \frac{4.9}{5} = 0.98$
+   
+   $\hat{\lambda}_{\text{EMV}} = \frac{1}{0.98} \approx 1.02$
+```
+
+````{admonition} Exercice 4: Fonctions de perte
+:class: hint dropdown
+
+Soit $y = 1$ (classe positive) et un score $s = f(x) = 2$.
+
+1. Calculez la perte 0-1, la perte logistique, et la perte à charnière.
+
+2. Répétez pour $s = -0.5$ (prédiction incorrecte).
+
+3. Tracez les trois fonctions de perte en fonction de $y \cdot s$ pour $y \cdot s \in [-3, 3]$. Vérifiez que les pertes de substitution majorent la perte 0-1.
+````
+
+````{admonition} Solution Exercice 4
+:class: dropdown
+
+1. **Pour $y = 1$ et $s = 2$** (prédiction correcte, marge $y \cdot s = 2$):
+
+   - Perte 0-1: $\mathbb{1}[\text{sign}(s) \neq y] = \mathbb{1}[1 \neq 1] = 0$
+   - Perte logistique: $\log(1 + e^{-y \cdot s}) = \log(1 + e^{-2}) \approx \log(1.135) \approx 0.127$
+   - Perte à charnière: $\max(0, 1 - y \cdot s) = \max(0, 1 - 2) = \max(0, -1) = 0$
+
+2. **Pour $y = 1$ et $s = -0.5$** (prédiction incorrecte, marge $y \cdot s = -0.5$):
+
+   - Perte 0-1: $\mathbb{1}[\text{sign}(-0.5) \neq 1] = \mathbb{1}[-1 \neq 1] = 1$
+   - Perte logistique: $\log(1 + e^{-(-0.5)}) = \log(1 + e^{0.5}) \approx \log(2.649) \approx 0.974$
+   - Perte à charnière: $\max(0, 1 - (-0.5)) = \max(0, 1.5) = 1.5$
+
+3. **Vérification graphique:**
+
+   ```python
+   import numpy as np
+   import matplotlib.pyplot as plt
+   
+   margin = np.linspace(-3, 3, 100)
+   loss_01 = (margin < 0).astype(float)
+   loss_log = np.log(1 + np.exp(-margin))
+   loss_hinge = np.maximum(0, 1 - margin)
+   
+   plt.plot(margin, loss_01, label='0-1')
+   plt.plot(margin, loss_log, label='Logistique')
+   plt.plot(margin, loss_hinge, label='Charnière')
+   plt.legend()
+   ```
+   
+   On vérifie que pour tout $m$: $\ell_{\text{log}}(m) \geq \ell_{0-1}(m)$ et $\ell_{\text{hinge}}(m) \geq \ell_{0-1}(m)$.
+````
