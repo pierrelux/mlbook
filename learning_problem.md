@@ -649,7 +649,21 @@ $$
 
 Ce principe est la **minimisation du risque empirique** (MRE): choisir la fonction qui fait le moins d'erreurs sur les données d'entraînement, en espérant que cette performance se transfère aux nouvelles données.
 
-La classe $\mathcal{F}$ est notre **classe d'hypothèses**. Elle représente l'ensemble des fonctions que nous sommes prêts à considérer. Par exemple, si $\mathcal{F}$ est l'ensemble des fonctions linéaires, nous cherchons la meilleure fonction linéaire. Si $\mathcal{F}$ est l'ensemble des polynômes de degré au plus $k$, nous cherchons le meilleur polynôme de ce degré. Le choix de $\mathcal{F}$ encode nos hypothèses sur la forme de la relation entre entrées et sorties.
+La classe $\mathcal{F}$ est notre **classe d'hypothèses**. Elle représente l'ensemble des fonctions que nous sommes prêts à considérer. Le choix de $\mathcal{F}$ encode nos hypothèses sur la forme de la relation entre entrées et sorties.
+
+### Un premier exemple: les modèles linéaires
+
+Pour rendre ces concepts concrets, considérons la classe la plus simple: les **modèles linéaires**. Un modèle linéaire suppose que la sortie est une combinaison linéaire des entrées:
+
+$$
+f(\mathbf{x}; \boldsymbol{\theta}) = \theta_0 + \sum_{j=1}^d \theta_j x_j = \boldsymbol{\theta}^\top \mathbf{x}
+$$
+
+où $\mathbf{x} \in \mathbb{R}^{d+1}$ est le vecteur d'entrée augmenté d'un 1 pour le biais ($x_0 = 1$), et $\boldsymbol{\theta} \in \mathbb{R}^{d+1}$ est le vecteur de paramètres contenant le biais $\theta_0$ et les poids $\theta_1, \ldots, \theta_d$.
+
+Cette forme est restrictive: elle suppose que la relation entre entrées et sorties est linéaire. Pour les données de freinage, cela signifierait que la distance est proportionnelle à la vitesse, ce qui n'est pas le cas (la relation est plutôt quadratique). Néanmoins, les modèles linéaires sont utiles comme point de départ, et nous verrons comment les étendre pour capturer des relations non linéaires.
+
+Avec cette classe $\mathcal{F}$ fixée, l'apprentissage consiste à trouver les paramètres $\boldsymbol{\theta}$ qui minimisent le risque empirique. Pour la perte quadratique, cela revient à minimiser la somme des carrés des résidus.
 
 Mais quand le minimiseur du risque empirique a-t-il un faible risque? Si $\hat{f}$ minimise $\hat{\mathcal{R}}$ et $f^\star$ minimise $\mathcal{R}$, nous voulons que $\mathcal{R}(\hat{f})$ soit proche de $\mathcal{R}(f^\star)$. La réponse dépend de la taille de l'échantillon $N$, de la complexité de la classe $\mathcal{F}$, et de propriétés de la distribution $p$.
 
@@ -661,6 +675,36 @@ La réponse dépend de la forme du problème:
 
 - Pour certains problèmes, comme la régression linéaire avec perte quadratique, nous pouvons dériver une **solution analytique** en posant le gradient égal à zéro et en résolvant le système d'équations résultant.
 - Pour d'autres, nous devons recourir à des **algorithmes itératifs** (comme la descente de gradient) ou à des **solveurs spécialisés** (comme la programmation quadratique pour les SVM).
+
+#### Exemple: solution analytique pour la régression linéaire (MCO)
+
+Pour illustrer les solutions analytiques, considérons la régression linéaire avec perte quadratique. L'objectif est de minimiser la somme des carrés des résidus:
+
+$$
+\text{RSS}(\boldsymbol{\theta}) = \sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2
+$$
+
+où $\mathbf{X}$ est la matrice $N \times (d+1)$ des entrées (avec une colonne de 1 pour le biais) et $\mathbf{y}$ est le vecteur des sorties.
+
+En développant et en calculant le gradient:
+
+$$
+\nabla_{\boldsymbol{\theta}} \text{RSS}(\boldsymbol{\theta}) = -2\mathbf{X}^\top \mathbf{y} + 2\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta}
+$$
+
+En posant le gradient égal à zéro, nous obtenons les **équations normales**:
+
+$$
+\mathbf{X}^\top \mathbf{X} \boldsymbol{\theta} = \mathbf{X}^\top \mathbf{y}
+$$
+
+Si la matrice $\mathbf{X}^\top \mathbf{X}$ est inversible, la solution unique est:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}
+$$
+
+Cette solution porte le nom d'estimateur des **moindres carrés ordinaires** (MCO, ou *ordinary least squares*, OLS). Elle peut être calculée directement sans itération, ce qui en fait un exemple classique de solution analytique.
 
 Le chapitre sur l'optimisation présentera ces méthodes en détail. Pour l'instant, nous nous concentrons sur la **formulation** des problèmes d'apprentissage comme problèmes d'optimisation, en gardant à l'esprit que des outils existent pour les résoudre.
 
@@ -840,21 +884,881 @@ $$
 
 Comparons avec la solution MCO: $\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}$. La seule différence est l'ajout du terme $\lambda \mathbf{I}$ à la matrice $\mathbf{X}^\top \mathbf{X}$.
 
+##### Solution via décomposition en valeurs singulières (SVD)
+
+Les solutions MCO et Ridge peuvent également être exprimées en utilisant la **décomposition en valeurs singulières** (SVD) de la matrice $\mathbf{X}$. Cette approche offre une interprétation géométrique et révèle pourquoi la régularisation fonctionne.
+
+La SVD décompose $\mathbf{X}$ en trois matrices:
+
+$$
+\mathbf{X} = \mathbf{U} \mathbf{D} \mathbf{V}^\top
+$$
+
+où:
+- $\mathbf{U}$ est une matrice $N \times d$ dont les colonnes $\mathbf{u}_j$ sont orthonormales (directions dans l'espace des observations)
+- $\mathbf{D}$ est une matrice diagonale $d \times d$ contenant les **valeurs singulières** $d_1 \geq d_2 \geq \cdots \geq d_d \geq 0$
+- $\mathbf{V}$ est une matrice $d \times d$ dont les colonnes $\mathbf{v}_j$ sont orthonormales (directions principales dans l'espace des coefficients)
+
+**Solution MCO via SVD**: En substituant cette décomposition dans la solution MCO:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y} = (\mathbf{V} \mathbf{D}^2 \mathbf{V}^\top)^{-1} \mathbf{V} \mathbf{D} \mathbf{U}^\top \mathbf{y} = \mathbf{V} \mathbf{D}^{-1} \mathbf{U}^\top \mathbf{y}
+$$
+
+Ce qui s'écrit sous forme de somme:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{MCO}} = \sum_{j=1}^d \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
+$$
+
+**Solution Ridge via SVD**: Pour Ridge, on peut montrer que:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{ridge}} = \sum_{j=1}^d \frac{d_j^2}{d_j^2 + \lambda} \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
+$$
+
+La différence avec MCO est le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ qui multiplie chaque terme. Ce facteur est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro.
+
+**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Les longueurs des demi-axes sont proportionnelles à $1/d_j$ pour MCO. Avec Ridge, elles deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda} = \frac{1}{d_j} \cdot \frac{d_j^2}{d_j^2 + \lambda}$: l'ellipse se rétrécit, et plus rapidement le long des directions associées aux petites valeurs singulières.
+
+**Avantages numériques**: La SVD est plus stable numériquement que l'inversion directe de $\mathbf{X}^\top \mathbf{X}$, surtout quand cette matrice est mal conditionnée. Les algorithmes SVD gèrent mieux les cas où certaines valeurs singulières sont très petites.
+
 #### Pourquoi $\lambda \mathbf{I}$ aide
 
 Ce terme diagonal a plusieurs effets bénéfiques:
 
 1. **Amélioration du conditionnement**: La matrice $\mathbf{X}^\top \mathbf{X}$ peut être mal conditionnée (ses valeurs propres varient sur plusieurs ordres de grandeur) ou même singulière. L'ajout de $\lambda \mathbf{I}$ augmente toutes les valeurs propres de $\lambda$, rendant la matrice inversible et mieux conditionnée.
 
-2. **Rétrécissement des coefficients** (*shrinkage*): Pour comprendre cet effet, considérons la décomposition en valeurs singulières $\mathbf{X} = \mathbf{U} \mathbf{D} \mathbf{V}^\top$. On peut montrer que:
+2. **Rétrécissement des coefficients** (*shrinkage*): Comme nous l'avons vu dans la section SVD ci-dessus, la solution Ridge s'écrit:
 
 $$
 \hat{\boldsymbol{\theta}}_{\text{ridge}} = \sum_{j=1}^d \frac{d_j^2}{d_j^2 + \lambda} \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
 $$
 
-où $d_j$ sont les valeurs singulières. Le facteur $\frac{d_j^2}{d_j^2 + \lambda}$ est toujours inférieur à 1, ce qui "rétrécit" les coefficients vers zéro. Les directions associées aux petites valeurs singulières (où le signal est faible) sont plus fortement pénalisées.
+Le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro. L'effet est différencié selon les directions:
+
+- Pour une grande valeur singulière $d_j$ (fort signal), le facteur $\frac{d_j^2}{d_j^2 + \lambda}$ reste proche de 1 même pour des valeurs modérées de $\lambda$. La direction est peu affectée.
+- Pour une petite valeur singulière $d_j$ (faible signal), le facteur $\frac{d_j^2}{d_j^2 + \lambda}$ décroît rapidement avec $\lambda$. La direction est fortement pénalisée.
+
+Pour visualiser ce rétrécissement et comprendre son effet, examinons un exemple concret. L'animation suivante montre simultanément trois perspectives sur la régularisation Ridge: les données et la droite ajustée, le paysage de perte avec la contrainte, et les facteurs de rétrécissement.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Circle
+from IPython.display import Image
+
+# Générer des données de régression simple
+np.random.seed(42)
+n = 30
+
+# Une seule caractéristique pour visualisation claire
+x = np.random.uniform(-2, 2, n)
+# Relation linéaire avec bruit
+theta_true = 1.5
+y = theta_true * x + np.random.normal(0, 0.8, n)
+
+# Ajouter une caractéristique corrélée (pour créer de la colinéarité)
+x2 = 0.9 * x + 0.3 * np.random.randn(n)
+
+# Matrice de design avec les deux caractéristiques
+X = np.column_stack([x, x2])
+
+# Solution MCO
+theta_ols = np.linalg.lstsq(X, y, rcond=None)[0]
+
+# SVD pour analyse
+U, d_svd, Vt = np.linalg.svd(X, full_matrices=False)
+V = Vt.T
+
+# Fonction pour calculer la solution Ridge
+def ridge_solution(X, y, lam):
+    n_features = X.shape[1]
+    return np.linalg.solve(X.T @ X + lam * np.eye(n_features), X.T @ y)
+
+# Préparer la grille pour les contours RSS
+theta1_range = np.linspace(-0.5, 3, 100)
+theta2_range = np.linspace(-1.5, 2, 100)
+T1, T2 = np.meshgrid(theta1_range, theta2_range)
+
+# Calculer RSS pour chaque point de la grille
+RSS = np.zeros_like(T1)
+for i in range(T1.shape[0]):
+    for j in range(T1.shape[1]):
+        theta = np.array([T1[i, j], T2[i, j]])
+        residuals = y - X @ theta
+        RSS[i, j] = np.sum(residuals**2)
+
+# Créer la figure avec trois panneaux
+fig = plt.figure(figsize=(15, 5))
+
+# === Panneau 1: Données et droite ajustée ===
+ax1 = fig.add_subplot(1, 3, 1)
+
+# Données
+ax1.scatter(x, y, c='tab:blue', s=50, alpha=0.7, label='Données', zorder=3)
+
+# Grille pour tracer les droites
+x_grid = np.linspace(-2.5, 2.5, 100)
+
+# Droite MCO (fixe) - on utilise seulement theta1 car x et x2 sont très corrélés
+# La prédiction effective est environ (theta1 + 0.9*theta2) * x
+slope_ols = theta_ols[0] + 0.9 * theta_ols[1]  # Pente effective
+y_ols = slope_ols * x_grid
+ax1.plot(x_grid, y_ols, 'k-', linewidth=2, alpha=0.7, label='MCO')
+
+# Droite Ridge (animée)
+line_ridge, = ax1.plot([], [], '-', color='tab:orange', linewidth=2.5, label='Ridge')
+
+# Ligne horizontale (prédiction = moyenne, lambda infini)
+y_mean = np.mean(y)
+ax1.axhline(y_mean, color='gray', linestyle=':', alpha=0.5, label=f'Moyenne ($\\lambda \\to \\infty$)')
+
+ax1.set_xlabel('$x$')
+ax1.set_ylabel('$y$')
+ax1.set_title('Données et droite de régression')
+ax1.legend(loc='upper left', fontsize=9)
+ax1.grid(True, alpha=0.3)
+ax1.set_xlim(-2.5, 2.5)
+ax1.set_ylim(-4, 5)
+
+# Texte pour les coefficients
+coef_text = ax1.text(0.98, 0.02, '', transform=ax1.transAxes, fontsize=10, 
+                     ha='right', va='bottom',
+                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+# === Panneau 2: Paysage de perte ===
+ax2 = fig.add_subplot(1, 3, 2)
+
+# Contours RSS (ellipses centrées sur OLS)
+levels = np.percentile(RSS.flatten(), [5, 15, 30, 50, 70, 85, 95])
+contours = ax2.contour(T1, T2, RSS, levels=levels, colors='gray', alpha=0.6)
+ax2.clabel(contours, inline=True, fontsize=8, fmt='%.0f')
+
+# Solution MCO (fixe)
+ax2.plot(theta_ols[0], theta_ols[1], 'ko', markersize=12, label='MCO', zorder=5)
+ax2.annotate('MCO', xy=(theta_ols[0], theta_ols[1]), 
+             xytext=(theta_ols[0] + 0.2, theta_ols[1] + 0.2),
+             fontsize=11, ha='left')
+
+# Origine = coefficients nuls (prédiction constante)
+ax2.plot(0, 0, 'k+', markersize=15, markeredgewidth=2, zorder=4)
+ax2.annotate('$\\boldsymbol{\\theta} = 0$\n(pente nulle)', xy=(0, 0), 
+             xytext=(-0.4, -1.2), fontsize=9, ha='center', color='gray')
+
+# Cercle de contrainte Ridge (animé)
+circle_ridge = Circle((0, 0), radius=np.linalg.norm(theta_ols), 
+                       fill=False, edgecolor='tab:orange', linewidth=2.5, 
+                       linestyle='-', alpha=0.8, zorder=3)
+ax2.add_patch(circle_ridge)
+
+# Solution Ridge (animée)
+point_ridge, = ax2.plot([], [], 'o', color='tab:orange', markersize=10, 
+                        label='Ridge', zorder=6)
+
+# Chemin de régularisation
+lambda_path = np.logspace(-3, 1.5, 50)
+theta_path = np.array([ridge_solution(X, y, l) for l in lambda_path])
+ax2.plot(theta_path[:, 0], theta_path[:, 1], 'tab:orange', linewidth=1.5, 
+         alpha=0.4, linestyle='--', label='Chemin')
+
+ax2.set_xlabel('$\\theta_1$')
+ax2.set_ylabel('$\\theta_2$')
+ax2.set_title('Paysage RSS et contrainte $\\|\\boldsymbol{\\theta}\\|^2$')
+ax2.legend(loc='upper right', fontsize=9)
+ax2.grid(True, alpha=0.3)
+ax2.set_xlim(-0.5, 3)
+ax2.set_ylim(-1.5, 2)
+ax2.set_aspect('equal')
+
+# Texte pour lambda
+lambda_text = ax2.text(0.02, 0.98, '', transform=ax2.transAxes, fontsize=11, 
+                       va='top', ha='left',
+                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
+
+# === Panneau 3: Facteurs de rétrécissement ===
+ax3 = fig.add_subplot(1, 3, 3)
+
+lambda_range = np.linspace(0, 10, 200)
+shrink1_curve = d_svd[0]**2 / (d_svd[0]**2 + lambda_range)
+shrink2_curve = d_svd[1]**2 / (d_svd[1]**2 + lambda_range)
+
+ax3.plot(lambda_range, shrink1_curve, 'b-', linewidth=2, 
+         label=f'Direction forte ($d_1={d_svd[0]:.1f}$)')
+ax3.plot(lambda_range, shrink2_curve, 'r-', linewidth=2, 
+         label=f'Direction faible ($d_2={d_svd[1]:.2f}$)')
+
+# Zone de surapprentissage et sous-apprentissage
+ax3.axvspan(0, 0.5, alpha=0.1, color='red', label='Surapprentissage')
+ax3.axvspan(5, 10, alpha=0.1, color='blue', label='Sous-apprentissage')
+
+point_shrink1, = ax3.plot([], [], 'bo', markersize=10, zorder=3)
+point_shrink2, = ax3.plot([], [], 'ro', markersize=10, zorder=3)
+
+ax3.axhline(1.0, color='gray', linestyle='--', alpha=0.5)
+ax3.set_xlabel('$\\lambda$')
+ax3.set_ylabel('Facteur de rétrécissement')
+ax3.set_title('Rétrécissement par direction SVD')
+ax3.legend(loc='center right', fontsize=8)
+ax3.grid(True, alpha=0.3)
+ax3.set_xlim(0, 10)
+ax3.set_ylim(0, 1.1)
+
+shrink_text = ax3.text(0.02, 0.5, '', transform=ax3.transAxes, fontsize=10, 
+                       va='center', ha='left',
+                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+plt.tight_layout()
+
+# Fonction d'animation
+def animate(frame):
+    if frame < 80:
+        lam = (frame / 80) * 10
+    else:
+        lam = 10
+    
+    # Solution Ridge
+    theta_ridge = ridge_solution(X, y, lam)
+    
+    # Panneau 1: Mettre à jour la droite
+    slope_ridge = theta_ridge[0] + 0.9 * theta_ridge[1]
+    y_ridge = slope_ridge * x_grid
+    line_ridge.set_data(x_grid, y_ridge)
+    coef_text.set_text(f'Pente MCO: {slope_ols:.2f}\nPente Ridge: {slope_ridge:.2f}')
+    
+    # Panneau 2: Mettre à jour le cercle et le point
+    norm_ridge = np.linalg.norm(theta_ridge)
+    circle_ridge.set_radius(norm_ridge)
+    point_ridge.set_data([theta_ridge[0]], [theta_ridge[1]])
+    lambda_text.set_text(f'$\\lambda = {lam:.1f}$')
+    
+    # Panneau 3: Mettre à jour les points de rétrécissement
+    shrink1 = d_svd[0]**2 / (d_svd[0]**2 + lam)
+    shrink2 = d_svd[1]**2 / (d_svd[1]**2 + lam)
+    point_shrink1.set_data([lam], [shrink1])
+    point_shrink2.set_data([lam], [shrink2])
+    shrink_text.set_text(f'Facteur dir. 1: {shrink1:.2f}\nFacteur dir. 2: {shrink2:.2f}')
+    
+    return (line_ridge, point_ridge, circle_ridge, lambda_text, 
+            point_shrink1, point_shrink2, coef_text, shrink_text)
+
+# Créer l'animation
+anim = FuncAnimation(fig, animate, frames=90, interval=80, blit=False, repeat=True)
+anim.save('_static/ridge_geometry.gif', writer='pillow', fps=12, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/ridge_geometry.gif')
+```
+
+L'animation relie trois perspectives sur la régularisation Ridge lorsque $\lambda$ augmente de 0 à 10:
+
+**Panneau de gauche — Données et ajustement**: Les points bleus sont les données d'entraînement. La droite noire est l'ajustement MCO ($\lambda = 0$), la droite orange est l'ajustement Ridge. À mesure que $\lambda$ augmente, la pente de la droite Ridge **diminue**, se rapprochant de la ligne horizontale (prédiction constante égale à la moyenne). C'est le **rétrécissement vers zéro**: Ridge "tire" les coefficients vers l'origine, ce qui réduit la pente.
+
+**Panneau central — Paysage de perte**: Chaque point de ce plan représente un choix de coefficients $(\theta_1, \theta_2)$. Les contours gris montrent la fonction de coût RSS: plus on est proche du point noir (MCO), plus l'erreur sur les données d'entraînement est faible. L'ellipse est allongée car $x_1$ et $x_2$ sont corrélées (colinéarité). L'origine $\boldsymbol{\theta} = (0, 0)$ correspond à une **pente nulle** (prédiction constante). Le cercle orange représente la contrainte Ridge $\|\boldsymbol{\theta}\|_2 \leq c$: plus $\lambda$ est grand, plus le cercle est petit, forçant la solution à se rapprocher de l'origine. La solution Ridge (point orange) se déplace le long du **chemin de régularisation**, compromis entre minimiser la RSS et rester proche de zéro.
+
+**Panneau de droite — Rétrécissement différencié**: La direction "forte" (grande valeur singulière $d_1$, où les données sont dispersées) est peu affectée par la régularisation. La direction "faible" (petite valeur singulière $d_2$, direction de colinéarité) est **rétrécit beaucoup plus rapidement**. C'est le cœur de l'effet Ridge: pénaliser davantage les directions où le signal est faible et l'estimation instable.
+
+L'intuition géométrique est la suivante: quand les données sont colinéaires, l'ellipse RSS est très allongée. De petites perturbations dans les données causent de grands déplacements de la solution MCO le long de l'axe allongé. La contrainte Ridge "coupe" cette ellipse avec un cercle, forçant une solution plus proche de l'origine et donc plus stable.
 
 3. **Stabilité numérique**: Quand $\mathbf{X}^\top \mathbf{X}$ est presque singulière, de petites perturbations dans les données causent de grandes variations dans $\hat{\boldsymbol{\theta}}_{\text{MCO}}$. La régularisation réduit cette sensibilité.
+
+## Classes de modèles et expansion de caractéristiques
+
+Les exemples de régularisation ci-dessus utilisaient des **caractéristiques polynomiales**: au lieu de prédire $y$ directement à partir de $x$, nous avons construit des caractéristiques $[1, x, x^2, \ldots, x^{15}]$ et appliqué un modèle linéaire dans cet espace étendu. Cette technique s'appelle l'**expansion de caractéristiques** et mérite d'être formalisée.
+
+### Trois familles de modèles
+
+Situons les modèles linéaires dans une hiérarchie plus large. Nous distinguons trois familles de complexité croissante:
+
+1. **Modèles linéaires**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} + b$. La sortie est une combinaison linéaire des entrées. Simple, interprétable, mais limité aux relations linéaires.
+
+2. **Modèles à expansion de caractéristiques**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \boldsymbol{\phi}(\mathbf{x}) + b$, où $\boldsymbol{\phi}: \mathbb{R}^d \to \mathbb{R}^D$ est une transformation non linéaire fixée à l'avance (par exemple, polynomiale). Le modèle reste linéaire dans les paramètres $\boldsymbol{\theta}$, ce qui facilite l'optimisation, mais peut capturer des relations non linéaires en $\mathbf{x}$. L'espace de redescription a souvent une dimension $D \gg d$.
+
+3. **Réseaux de neurones**: $f(\mathbf{x}; \boldsymbol{\theta}) = f_K(f_{K-1}(\cdots f_1(\mathbf{x}; \boldsymbol{\theta}_1); \boldsymbol{\theta}_{K-1}); \boldsymbol{\theta}_K)$. Une composition de $K$ fonctions non linéaires, chacune avec ses propres paramètres. Contrairement aux modèles à expansion fixe, les réseaux de neurones **apprennent la représentation** $\boldsymbol{\phi}$ en même temps que les paramètres $\boldsymbol{\theta}$.
+
+Cette progression capture l'évolution historique du domaine: des modèles linéaires classiques aux méthodes à noyaux (expansion implicite), puis aux réseaux profonds qui apprennent leurs propres représentations. Nous verrons les réseaux de neurones en détail dans les chapitres suivants; concentrons-nous ici sur les deux premières familles.
+
+### Expansion de caractéristiques
+
+Pour capturer des relations non linéaires tout en gardant un modèle linéaire dans les paramètres, nous transformons les entrées. En **régression polynomiale**, nous appliquons une fonction $\phi: \mathbb{R} \to \mathbb{R}^{k+1}$:
+
+$$
+\phi(x) = [1, x, x^2, \ldots, x^k]
+$$
+
+La prédiction devient $f(x; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \phi(x)$. Le modèle est polynomial en $x$ mais linéaire en $\boldsymbol{\theta}$, ce qui permet d'utiliser les mêmes algorithmes d'optimisation (MCO, Ridge).
+
+Le degré $k$ contrôle la **capacité** du modèle. Avec $k = 1$, nous avons une droite. Avec $k$ élevé, le polynôme peut osciller pour passer par tous les points d'entraînement. Avec $k = N - 1$, nous pouvons interpoler exactement les $N$ points: le risque empirique atteint zéro. Mais un polynôme qui passe exactement par les points d'entraînement n'a aucune raison de bien prédire les nouveaux points.
+
+Illustrons ce phénomène avec les données de freinage. Nous ajustons des polynômes de degrés 1, 2, 5 et 15, et comparons leurs erreurs sur les ensembles d'entraînement et de test.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+
+# Suppress polyfit warnings for high-degree polynomials (expected for this demo)
+warnings.filterwarnings('ignore', message='Polyfit may be poorly conditioned')
+
+# Données de freinage
+speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
+                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
+                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
+dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
+                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
+                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
+
+# Train/test split
+np.random.seed(42)
+indices = np.random.permutation(len(speed))
+train_idx, test_idx = indices[:35], indices[35:]
+speed_train, dist_train = speed[train_idx], dist[train_idx]
+speed_test, dist_test = speed[test_idx], dist[test_idx]
+
+degrees_to_plot = [1, 2, 5, 15]
+degrees_eval = range(1, 16)
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+# Pre-compute all errors for the summary plot later
+all_train_errors = []
+all_test_errors = []
+for deg in degrees_eval:
+    coeffs = np.polyfit(speed_train, dist_train, deg)
+    all_train_errors.append(np.mean((dist_train - np.polyval(coeffs, speed_train))**2))
+    all_test_errors.append(np.mean((dist_test - np.polyval(coeffs, speed_test))**2))
+
+for ax, deg in zip(axes.flat, degrees_to_plot):
+    # Fit polynomial
+    coeffs = np.polyfit(speed_train, dist_train, deg)
+    
+    # Predictions
+    pred_train = np.polyval(coeffs, speed_train)
+    pred_test = np.polyval(coeffs, speed_test)
+    
+    # MSE
+    mse_train = np.mean((dist_train - pred_train)**2)
+    mse_test = np.mean((dist_test - pred_test)**2)
+    
+    # Plot
+    ax.scatter(speed_train, dist_train, alpha=0.6, s=30, label='Entraînement')
+    ax.scatter(speed_test, dist_test, alpha=0.6, s=30, marker='s', label='Test')
+    
+    speed_grid = np.linspace(3, 26, 200)
+    pred_grid = np.polyval(coeffs, speed_grid)
+    # Clip extreme predictions for visualization
+    pred_grid = np.clip(pred_grid, -50, 200)
+    ax.plot(speed_grid, pred_grid, 'k-', alpha=0.7)
+    
+    ax.set_xlim(3, 26)
+    ax.set_ylim(-20, 150)
+    ax.set_xlabel('Vitesse (mph)')
+    ax.set_ylabel('Distance (ft)')
+    ax.set_title(f'Degré {deg}: Entr. EQM={mse_train:.1f}, Test EQM={mse_test:.1f}')
+    if deg == 1:
+        ax.legend()
+
+plt.tight_layout()
+```
+
+Le polynôme de degré 1 (droite) ne capture pas la courbure des données: c'est du sous-apprentissage. Le polynôme de degré 2 capture bien la relation quadratique. Le polynôme de degré 5 commence à osciller. Le polynôme de degré 15 passe près de tous les points d'entraînement, mais ses oscillations produisent des prédictions absurdes entre les points: c'est du surapprentissage.
+
+```{code-cell} python
+:tags: [hide-input]
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(degrees_eval, all_train_errors, 'o-', linewidth=2, label='Erreur entraînement')
+ax.plot(degrees_eval, all_test_errors, 's-', linewidth=2, label='Erreur test')
+
+# Utiliser une échelle logarithmique car l'erreur de test explose
+ax.set_yscale('log')
+
+ax.set_xlabel('Degré du polynôme (complexité)')
+ax.set_ylabel('EQM (échelle log)')
+ax.set_xticks(range(1, 16, 2))
+ax.grid(True, which="both", ls="-", alpha=0.2)
+ax.legend()
+
+ax.set_title('Compromis biais-variance')
+plt.tight_layout()
+```
+
+L'erreur d'entraînement diminue avec le degré du polynôme. L'erreur de test diminue d'abord (quand le modèle gagne en expressivité), puis augmente (quand le modèle commence à mémoriser le bruit). Le meilleur modèle se trouve à l'intersection de ces deux tendances. La régularisation Ridge, vue précédemment, est une alternative au choix du degré: elle permet d'utiliser un modèle de haute capacité tout en contrôlant le surapprentissage.
+
+### Intuition géométrique: pourquoi la dimension supérieure aide
+
+L'expansion de caractéristiques semble être un simple changement de variables, mais elle cache une idée géométrique profonde. Pour comprendre pourquoi projeter les données dans un espace de dimension supérieure permet de capturer des relations non linéaires, examinons d'abord le cas de la régression, puis celui de la classification.
+
+#### Le plan caché derrière la parabole
+
+Considérons une régression quadratique: $f(x) = \theta_0 + \theta_1 x + \theta_2 x^2$. Cette fonction est **non linéaire en $x$** (c'est une parabole), mais **linéaire dans les paramètres** $\boldsymbol{\theta} = (\theta_0, \theta_1, \theta_2)$. Que signifie cette distinction géométriquement?
+
+Introduisons l'espace des caractéristiques $\phi(x) = (1, x, x^2)$. Chaque valeur de $x$ correspond à un point dans $\mathbb{R}^3$. Ces points ne sont pas dispersés arbitrairement: ils vivent sur une courbe particulière, la **courbe des moments** (*moment curve*), qui ressemble à une rampe tordue.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Créer la courbe des moments: (x, x², x³) pour visualisation
+# On utilise (1, x, x²) mais on projette sur (x, x², y) pour la visualisation
+fig = plt.figure(figsize=(12, 5))
+
+# Gauche: les fonctions de base
+ax1 = fig.add_subplot(121)
+x = np.linspace(-2, 2, 100)
+ax1.plot(x, np.ones_like(x), 'b-', linewidth=2, label=r'$\phi_0(x) = 1$')
+ax1.plot(x, x, 'orange', linewidth=2, label=r'$\phi_1(x) = x$')
+ax1.plot(x, x**2, 'g-', linewidth=2, label=r'$\phi_2(x) = x^2$')
+ax1.axhline(0, color='gray', linewidth=0.5)
+ax1.axvline(0, color='gray', linewidth=0.5)
+ax1.set_xlabel('$x$')
+ax1.set_ylabel('$\phi_j(x)$')
+ax1.set_title('Les fonctions de base')
+ax1.legend()
+ax1.set_ylim(-2.5, 4.5)
+ax1.grid(True, alpha=0.3)
+
+# Droite: combinaisons linéaires
+ax2 = fig.add_subplot(122)
+x = np.linspace(-2, 2, 100)
+
+# Différentes combinaisons de coefficients
+combinations = [
+    ((1, 0, 0), 'Constante: $1$'),
+    ((0, 1, 0), 'Linéaire: $x$'),
+    ((0, 0, 1), 'Quadratique: $x^2$'),
+    ((1, -0.5, 0.5), 'Combinaison: $1 - 0.5x + 0.5x^2$'),
+]
+
+colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+for (theta0, theta1, theta2), label in combinations:
+    y = theta0 + theta1 * x + theta2 * x**2
+    ax2.plot(x, y, linewidth=2, label=label)
+
+ax2.axhline(0, color='gray', linewidth=0.5)
+ax2.axvline(0, color='gray', linewidth=0.5)
+ax2.set_xlabel('$x$')
+ax2.set_ylabel('$f(x)$')
+ax2.set_title('Combinaisons linéaires des fonctions de base')
+ax2.legend(loc='upper center')
+ax2.set_ylim(-2.5, 4.5)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+```
+
+Les fonctions de base $\{1, x, x^2\}$ sont les "ingrédients" du modèle. La régression polynomiale cherche les coefficients $\theta_0, \theta_1, \theta_2$ qui mélangent ces ingrédients de façon optimale. Chaque combinaison produit une courbe différente, mais toutes sont des paraboles (ou des cas dégénérés: droites, constantes).
+
+Voici l'insight géométrique clé: dans l'espace $(x, x^2, y)$, le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ définit un **plan**. La parabole que nous voyons dans le graphique $(x, y)$ est simplement la **projection** de ce plan sur notre espace de visualisation.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+from IPython.display import Image
+
+# Générer des données avec relation quadratique
+np.random.seed(42)
+n_points = 40
+x_data = np.random.uniform(-1.8, 1.8, n_points)
+y_true = 0.5 + 0.3 * x_data + 0.8 * x_data**2
+y_data = y_true + np.random.normal(0, 0.3, n_points)
+
+# Ajuster le modèle quadratique
+X_design = np.column_stack([np.ones(n_points), x_data, x_data**2])
+theta = np.linalg.lstsq(X_design, y_data, rcond=None)[0]
+
+# Créer l'animation
+fig = plt.figure(figsize=(9, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+# Grille pour le plan de régression
+x_grid = np.linspace(-2, 2, 20)
+x2_grid = np.linspace(0, 4, 20)
+X_plane, X2_plane = np.meshgrid(x_grid, x2_grid)
+Y_plane = theta[0] + theta[1] * X_plane + theta[2] * X2_plane
+
+# Surface parabolique z = x²
+x_surf = np.linspace(-2, 2, 30)
+X_surf, Y_surf_temp = np.meshgrid(x_surf, np.linspace(-1, 5, 30))
+Z_surf = X_surf**2
+
+def init():
+    ax.clear()
+    return []
+
+def animate(frame):
+    ax.clear()
+    
+    # Animation en trois phases
+    if frame < 15:
+        # Phase 1: Vue 2D (de côté, cachant x²)
+        elev = 0
+        azim = 0
+        show_plane = False
+        show_surface = False
+        title = 'Vue 2D: régression quadratique'
+    elif frame < 35:
+        # Phase 2: Rotation révélant la 3ème dimension
+        progress = (frame - 15) / 20
+        elev = progress * 25
+        azim = progress * 45
+        show_plane = False
+        show_surface = True
+        title = 'Rotation: découverte de la dimension $x^2$...'
+    else:
+        # Phase 3: Vue 3D avec le plan
+        elev = 25
+        azim = 45 + (frame - 35) * 2
+        show_plane = True
+        show_surface = True
+        title = r'Le plan $y = \theta_0 + \theta_1 x + \theta_2 x^2$ dans lespace 3D'
+    
+    ax.view_init(elev=elev, azim=azim)
+    
+    # Surface parabolique (rampe z = x²)
+    if show_surface:
+        ax.plot_surface(X_surf, Z_surf, Y_surf_temp, alpha=0.1, color='gray')
+    
+    # Points de données dans l'espace 3D: (x, x², y)
+    ax.scatter(x_data, x_data**2, y_data, c='tab:blue', s=50, alpha=0.8, 
+               label='Données', depthshade=True)
+    
+    # Plan de régression
+    if show_plane:
+        ax.plot_surface(X_plane, X2_plane, Y_plane, alpha=0.4, color='tab:orange',
+                       label='Plan de régression')
+    
+    # Courbe de régression sur la surface z = x²
+    x_curve = np.linspace(-1.8, 1.8, 100)
+    y_curve = theta[0] + theta[1] * x_curve + theta[2] * x_curve**2
+    ax.plot(x_curve, x_curve**2, y_curve, 'r-', linewidth=3, 
+            label='Courbe ajustée')
+    
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$x^2$')
+    ax.set_zlabel('$y$')
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(0, 4)
+    ax.set_zlim(-1, 5)
+    ax.set_title(title, fontsize=11)
+    
+    return []
+
+anim = FuncAnimation(fig, animate, init_func=init, frames=70, interval=100, blit=True)
+anim.save('_static/regression_plane_3d.gif', writer='pillow', fps=10, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/regression_plane_3d.gif')
+```
+
+L'animation révèle la structure cachée de la régression polynomiale:
+
+1. **Vue 2D initiale**: On voit les données et la parabole ajustée, comme dans un graphique classique.
+
+2. **Rotation**: En faisant pivoter la vue, on découvre que chaque point $(x_i, y_i)$ vit en réalité dans un espace 3D aux coordonnées $(x_i, x_i^2, y_i)$. La surface grise représente la "rampe" $z = x^2$ sur laquelle tous les points sont contraints de vivre.
+
+3. **Le plan de régression**: Le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ est un plan (en orange) dans cet espace 3D. Ce plan est choisi pour minimiser les distances verticales aux points.
+
+4. **La courbe ajustée**: La parabole rouge est l'intersection du plan avec la rampe $z = x^2$. C'est ce que nous voyons quand nous projetons le tout sur le plan $(x, y)$.
+
+Cette perspective unifie le "linéaire dans les paramètres" et le "non linéaire en $x$":
+- **Linéaire dans les paramètres**: Le modèle est un plan (objet linéaire) dans l'espace des caractéristiques.
+- **Non linéaire en $x$**: La contrainte $z = x^2$ force les données à vivre sur une surface courbe, et l'intersection du plan avec cette surface produit une courbe.
+
+#### De la régression à la classification
+
+La même intuition s'applique en classification, avec une différence: au lieu de chercher un plan qui **ajuste** les données, on cherche un hyperplan qui les **sépare**. Voyons comment l'expansion de caractéristiques transforme des données non linéairement séparables en données linéairement séparables.
+
+#### De 1D à 2D: séparer l'inséparable
+
+Considérons des points sur une droite, répartis en deux classes: les points bleus au centre, les points orange aux extrémités. Aucun seuil unique ne peut séparer ces deux classes.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+
+# Classe bleue: points au centre
+x_blue = np.random.uniform(-0.5, 0.5, 15)
+# Classe orange: points aux extrémités
+x_orange = np.concatenate([np.random.uniform(-1.5, -0.8, 8), 
+                           np.random.uniform(0.8, 1.5, 8)])
+
+fig, ax = plt.subplots(figsize=(10, 2))
+ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, label='Classe A', zorder=3)
+ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, label='Classe B', zorder=3)
+ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.5, 0.5)
+ax.set_xlabel('$x$')
+ax.set_yticks([])
+ax.legend(loc='upper right')
+ax.set_title('Données 1D: aucun seuil ne sépare les deux classes')
+plt.tight_layout()
+```
+
+Appliquons maintenant l'expansion $\phi(x) = (x, x^2)$. Chaque point est projeté sur une parabole dans l'espace 2D. Les points proches de zéro (classe bleue) restent bas, tandis que les points éloignés de zéro (classe orange) montent.
+
+```{code-cell} python
+:tags: [hide-input]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+# Gauche: espace original avec tentative de séparation
+ax = axes[0]
+ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, zorder=3)
+ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, zorder=3)
+ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
+ax.axvline(0.3, color='red', linestyle='--', linewidth=2, label='Seuil?')
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.5, 0.5)
+ax.set_xlabel('$x$')
+ax.set_yticks([])
+ax.set_title('Espace original: pas de séparation linéaire')
+ax.legend()
+
+# Droite: espace transformé
+ax = axes[1]
+ax.scatter(x_blue, x_blue**2, c='tab:blue', s=80, zorder=3, label='Classe A')
+ax.scatter(x_orange, x_orange**2, c='tab:orange', s=80, zorder=3, label='Classe B')
+
+# Ligne de séparation dans l'espace transformé
+x_line = np.linspace(-2, 2, 100)
+threshold = 0.6
+ax.axhline(threshold, color='green', linestyle='-', linewidth=2, label='Frontière linéaire')
+ax.fill_between(x_line, 0, threshold, alpha=0.1, color='blue')
+ax.fill_between(x_line, threshold, 2.5, alpha=0.1, color='orange')
+
+# Parabole de référence
+x_curve = np.linspace(-1.6, 1.6, 100)
+ax.plot(x_curve, x_curve**2, 'k--', alpha=0.3, linewidth=1)
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-0.1, 2.5)
+ax.set_xlabel('$x$')
+ax.set_ylabel('$x^2$')
+ax.set_title(r'Espace transformé $\phi(x) = (x, x^2)$: séparation linéaire!')
+ax.legend()
+
+plt.tight_layout()
+```
+
+Dans l'espace transformé, une simple droite horizontale sépare les deux classes. Cette droite correspond, dans l'espace original, à **deux seuils**: $x^2 < 0.6$, soit $|x| < \sqrt{0.6} \approx 0.77$. L'expansion de caractéristiques a transformé une frontière de décision non linéaire (un intervalle) en une frontière linéaire (une droite).
+
+#### De 2D à 3D: soulever pour séparer
+
+Passons à un exemple plus visuel. Considérons deux classes disposées en cercles concentriques: la classe bleue forme un disque central, la classe orange forme un anneau extérieur. Aucune droite ne peut séparer ces deux régions.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Classe bleue: disque central
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+
+# Classe orange: anneau extérieur
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
+ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
+
+# Montrer qu'une droite ne peut pas séparer
+theta_line = np.pi/4
+x_line = np.linspace(-2, 2, 100)
+y_line = np.tan(theta_line) * x_line
+ax.plot(x_line, y_line, 'r--', linewidth=2, alpha=0.7, label='Droite?')
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-2, 2)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+ax.legend()
+ax.set_title('Cercles concentriques: pas de séparation linéaire en 2D')
+plt.tight_layout()
+```
+
+Appliquons l'expansion $\phi(x_1, x_2) = (x_1, x_2, x_1^2 + x_2^2)$. La troisième coordonnée est le carré de la distance à l'origine: $z = r^2$. Les points proches du centre (petit $r$) sont "soulevés" moins haut que les points éloignés (grand $r$).
+
+L'animation suivante montre cette transformation. En faisant pivoter la vue, on voit que les données, une fois projetées dans l'espace 3D, deviennent séparables par un plan horizontal.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
+from IPython.display import Image
+
+np.random.seed(123)
+
+# Classe bleue: disque central
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+z_blue = x_blue**2 + y_blue**2
+
+# Classe orange: anneau extérieur  
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+z_orange = x_orange**2 + y_orange**2
+
+# Créer la figure
+fig = plt.figure(figsize=(8, 6))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plan de séparation
+z_sep = 0.75
+xx, yy = np.meshgrid(np.linspace(-1.8, 1.8, 10), np.linspace(-1.8, 1.8, 10))
+zz = np.ones_like(xx) * z_sep
+
+def init():
+    ax.clear()
+    return []
+
+def animate(frame):
+    ax.clear()
+    
+    # Élévation: commence à 90° (vue de dessus), descend à 25°
+    if frame < 20:
+        elev = 90 - frame * 3.25  # 90 -> 25
+        azim = 45
+    else:
+        elev = 25
+        azim = 45 + (frame - 20) * 4  # rotation horizontale
+    
+    ax.view_init(elev=elev, azim=azim)
+    
+    # Points
+    ax.scatter(x_blue, y_blue, z_blue, c='tab:blue', s=30, alpha=0.8, label='Classe A')
+    ax.scatter(x_orange, y_orange, z_orange, c='tab:orange', s=30, alpha=0.8, label='Classe B')
+    
+    # Plan de séparation (apparaît après la descente)
+    if frame >= 15:
+        alpha_plane = min(0.3, (frame - 15) * 0.06)
+        ax.plot_surface(xx, yy, zz, alpha=alpha_plane, color='green')
+    
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+    ax.set_zlabel('$x_1^2 + x_2^2$')
+    ax.set_xlim(-1.8, 1.8)
+    ax.set_ylim(-1.8, 1.8)
+    ax.set_zlim(0, 2.5)
+    
+    # Titre dynamique
+    if frame < 10:
+        ax.set_title('Vue de dessus: cercles concentriques', fontsize=11)
+    elif frame < 20:
+        ax.set_title('Rotation: on découvre la structure 3D...', fontsize=11)
+    else:
+        ax.set_title(r'Espace $\phi(x_1,x_2) = (x_1, x_2, x_1^2+x_2^2)$: un plan sépare!', fontsize=11)
+    
+    return []
+
+anim = FuncAnimation(fig, animate, init_func=init, frames=60, interval=100, blit=True)
+anim.save('_static/feature_expansion_3d.gif', writer='pillow', fps=10, dpi=100)
+plt.close()
+
+# Afficher le GIF
+Image(filename='_static/feature_expansion_3d.gif')
+```
+
+L'animation montre comment **l'expansion de caractéristiques "déplie" la géométrie des données**. Vue de dessus, la structure est celle des cercles concentriques originaux. Mais la troisième dimension $z = x_1^2 + x_2^2$ sépare verticalement les deux classes: le disque central reste bas, l'anneau extérieur monte. Un plan horizontal (en vert) suffit alors à séparer les classes.
+
+Ce plan horizontal $z = 0.75$ correspond, dans l'espace original 2D, à un **cercle** de rayon $\sqrt{0.75} \approx 0.87$. La frontière de décision linéaire en 3D devient une frontière circulaire en 2D.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Recréer les données (même seed que l'animation)
+n_blue = 50
+r_blue = np.random.uniform(0, 0.7, n_blue)
+theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
+x_blue = r_blue * np.cos(theta_blue)
+y_blue = r_blue * np.sin(theta_blue)
+
+n_orange = 70
+r_orange = np.random.uniform(1.0, 1.5, n_orange)
+theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
+x_orange = r_orange * np.cos(theta_orange)
+y_orange = r_orange * np.sin(theta_orange)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
+ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
+
+# Cercle de décision (projection du plan z = 0.75)
+theta_circle = np.linspace(0, 2*np.pi, 100)
+r_decision = np.sqrt(0.75)
+ax.plot(r_decision * np.cos(theta_circle), r_decision * np.sin(theta_circle), 
+        'g-', linewidth=2.5, label=f'Frontière: $r = {r_decision:.2f}$')
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(-2, 2)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_aspect('equal')
+ax.legend()
+ax.set_title('Frontière de décision projetée en 2D')
+plt.tight_layout()
+```
+
+#### Le principe unificateur
+
+Ces exemples de régression et de classification illustrent le même principe géométrique:
+
+| | Régression | Classification |
+|---|---|---|
+| **Objectif** | Ajuster les données | Séparer les classes |
+| **Dans l'espace original** | Courbe (parabole, etc.) | Frontière courbe (cercle, etc.) |
+| **Dans l'espace des caractéristiques** | Hyperplan d'ajustement | Hyperplan séparateur |
+| **La courbe/frontière est...** | L'intersection du plan avec la surface $\phi(x)$ | La projection de l'hyperplan |
+
+L'expansion de caractéristiques transforme un problème non linéaire en un problème linéaire dans un espace de dimension supérieure. Les modèles linéaires, simples à optimiser et à analyser, deviennent alors suffisants pour capturer des structures complexes.
+
+En augmentant la dimension de l'espace de représentation, nous augmentons la **capacité** du modèle. Pour la classification, un résultat classique de géométrie affirme que $N$ points en position générale sont presque sûrement séparables par un hyperplan si la dimension de l'espace est au moins $N$. Pour la régression, un polynôme de degré $N-1$ peut interpoler exactement $N$ points.
+
+Mais cette flexibilité a un coût: plus l'espace est grand, plus le modèle risque de mémoriser les particularités des données d'entraînement plutôt que d'apprendre la structure sous-jacente. C'est le **compromis biais-variance**, et c'est pourquoi la régularisation (vue précédemment) est si importante pour les modèles à haute capacité.
 
 ### Évaluation et choix de modèle
 
@@ -940,7 +1844,7 @@ Ce phénomène s'appelle la **fuite d'information**. Le modèle ne généralise 
 
 Il n'existe pas de modèle universel qui fonctionne optimalement pour tous les problèmes. Ce résultat, connu sous le nom de **théorème du no free lunch**, affirme qu'un algorithme d'apprentissage qui performe bien sur une classe de problèmes performe nécessairement moins bien sur d'autres.
 
-Tout modèle encode des **biais inductifs**: des hypothèses implicites ou explicites sur la structure du problème. La régression linéaire suppose que la relation entre entrées et sorties est linéaire. Les k plus proches voisins supposent que les points proches dans l'espace des entrées ont des sorties similaires. Les réseaux convolutifs supposent que les motifs locaux dans une image sont informatifs indépendamment de leur position.
+Tout modèle encode des **biais inductifs**: des hypothèses implicites ou explicites sur la structure du problème. La régression linéaire suppose que la relation entre entrées et sorties est linéaire. Les k plus proches voisins supposent que les points proches dans l'espace des entrées ont des sorties similaires. Les modèles plus complexes, comme les réseaux de neurones, encodent d'autres hypothèses sur la structure des données.
 
 Ces hypothèses sont nécessaires pour que l'apprentissage soit possible. Sans elles, nous n'aurions aucune raison de croire que la performance sur l'échantillon d'entraînement prédit la performance sur de nouvelles données. Le choix du modèle et de ses hypothèses est une décision que l'algorithme ne peut pas prendre seul; elle requiert une connaissance du domaine.
 
@@ -950,13 +1854,15 @@ La perte 0-1 pose un problème pratique. Les méthodes d'optimisation itérative
 
 Nous contournons ce problème en utilisant des **fonctions de perte de substitution**: des approximations convexes et différentiables de la perte originale.
 
+Pour la classification binaire, plutôt que de prédire directement une classe, les modèles produisent souvent un **score** $s = f(\mathbf{x})$ (un nombre réel). La prédiction de classe se fait ensuite en prenant le signe de ce score: si $s > 0$, on prédit la classe $+1$; si $s < 0$, on prédit la classe $-1$. La valeur absolue de $s$ mesure la confiance: plus $|s|$ est grand, plus le modèle est confiant dans sa prédiction.
+
 Pour la classification binaire avec $y \in \{-1, +1\}$, la **perte logistique** est:
 
 $$
 \ell_{\text{log}}(y, s) = \log(1 + e^{-y \cdot s})
 $$
 
-où $s = f(x)$ est le score produit par le modèle. Cette fonction est convexe et différentiable partout. Lorsque $y$ et $s$ ont le même signe (prédiction correcte avec confiance), la perte est faible. Lorsqu'ils ont des signes opposés (erreur), la perte croît linéairement avec l'amplitude de l'erreur.
+où $s = f(\mathbf{x})$ est le score produit par le modèle. Cette fonction est convexe et différentiable partout. Lorsque $y$ et $s$ ont le même signe (prédiction correcte avec confiance), la perte est faible. Lorsqu'ils ont des signes opposés (erreur), la perte croît linéairement avec l'amplitude de l'erreur.
 
 La **perte à charnière** (hinge loss) est utilisée dans les machines à vecteurs de support:
 
@@ -1484,6 +2390,60 @@ Le modèle $C(t) = C_0 e^{-kt}$ décrit la décroissance exponentielle après le
 
 La perte 0-1 pour la classification est discontinue, ce qui empêche l'utilisation de méthodes de gradient. La fonction **sigmoïde** $\sigma(z) = 1/(1 + e^{-z})$ contourne ce problème: c'est une **approximation lisse de la fonction échelon** (*step function*). Elle transforme n'importe quel score réel en une valeur dans l'intervalle $(0, 1)$, que nous pouvons interpréter comme une probabilité.
 
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# Create figure
+fig, ax = plt.subplots(figsize=(8, 5))
+
+# Define x range
+z = np.linspace(-4, 4, 200)
+
+# Step function (Heaviside)
+step = (z >= 0).astype(float)
+
+# Sigmoid function with temperature parameter
+def sigmoid(z, alpha=1):
+    return 1 / (1 + np.exp(-alpha * z))
+
+# Initialize plot
+line_step, = ax.plot(z, step, 'k--', linewidth=2, label='Fonction échelon', alpha=0.7)
+line_sigmoid, = ax.plot([], [], 'b-', linewidth=2, label='Sigmoïde $\\sigma(\\alpha z)$')
+ax.axhline(0.5, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+ax.axvline(0, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+ax.set_xlim(-4, 4)
+ax.set_ylim(-0.1, 1.1)
+ax.set_xlabel('$z$')
+ax.set_ylabel('$\\sigma(\\alpha z)$')
+ax.set_title('Approximation de la fonction échelon par la sigmoïde')
+ax.legend(loc='best')
+ax.grid(True, alpha=0.3)
+
+# Animation function
+def animate(frame):
+    # Alpha increases from 0.5 to 10
+    alpha = 0.5 + (frame / 100) * 9.5
+    y = sigmoid(z, alpha)
+    line_sigmoid.set_data(z, y)
+    ax.set_title(f'Approximation de la fonction échelon par la sigmoïde ($\\alpha = {alpha:.2f}$)')
+    return line_sigmoid,
+
+# Create animation
+anim = FuncAnimation(fig, animate, frames=100, interval=50, blit=True, repeat=True)
+anim.save('_static/sigmoid_approximation.gif', writer='pillow', fps=20, dpi=100)
+plt.close()
+
+# Afficher le GIF
+from IPython.display import Image
+Image(filename='_static/sigmoid_approximation.gif')
+```
+
+L'animation montre comment la sigmoïde $\sigma(\alpha z)$ se rapproche de la fonction échelon lorsque le paramètre $\alpha$ augmente. Pour $\alpha = 1$, la sigmoïde est douce; pour $\alpha$ grand, elle devient presque aussi abrupte que la fonction échelon, tout en restant différentiable.
+
 Cette interprétation probabiliste n'est pas qu'une astuce numérique. Elle correspond exactement à modéliser $Y | \mathbf{X}$ par une distribution de **Bernoulli** dont le paramètre dépend de l'entrée.
 
 Pour la classification binaire avec $y \in \{0, 1\}$, nous modélisons la probabilité de la classe positive par:
@@ -1492,7 +2452,7 @@ $$
 p(y = 1 | \mathbf{x}; \boldsymbol{\theta}) = \sigma(f(\mathbf{x}; \boldsymbol{\theta})) = \frac{1}{1 + e^{-f(\mathbf{x}; \boldsymbol{\theta})}}
 $$
 
-où $\sigma$ est la fonction sigmoïde et $f(\mathbf{x}; \boldsymbol{\theta})$ est le **logit** (ou log-odds), le score brut du modèle avant transformation. La distribution conditionnelle suit une loi de Bernoulli:
+où $\sigma$ est la fonction sigmoïde et $f(\mathbf{x}; \boldsymbol{\theta})$ est le **logit** (ou log-odds), le score brut du modèle avant transformation. Le logit est le logarithme du rapport des probabilités: $\log \frac{p(y=1|\mathbf{x})}{p(y=0|\mathbf{x})} = \log \frac{p}{1-p}$. La distribution conditionnelle suit une loi de Bernoulli:
 
 $$
 p(y|\mathbf{x}; \boldsymbol{\theta}) = \sigma(f(\mathbf{x}; \boldsymbol{\theta}))^y (1 - \sigma(f(\mathbf{x}; \boldsymbol{\theta})))^{1-y}
@@ -1505,6 +2465,46 @@ $$
 $$
 
 Cette quantité est l'**entropie croisée binaire**. Elle correspond à la perte logistique, à une reparamétrisation près.
+
+#### Classification multiclasse
+
+Pour la classification avec $C$ classes ($C > 2$), nous généralisons le modèle binaire en utilisant la **distribution catégorielle** (ou multinomiale). Au lieu de modéliser une seule probabilité $p(y=1|\mathbf{x})$, nous modélisons un vecteur de probabilités $\boldsymbol{\pi}(\mathbf{x}) = [\pi_1(\mathbf{x}), \ldots, \pi_C(\mathbf{x})]$ où $\pi_c(\mathbf{x}) = p(y=c|\mathbf{x})$ et $\sum_{c=1}^C \pi_c(\mathbf{x}) = 1$.
+
+Pour transformer les scores bruts du modèle en probabilités, nous utilisons la fonction **softmax**:
+
+$$
+\pi_c(\mathbf{x}; \boldsymbol{\theta}) = \frac{\exp(f_c(\mathbf{x}; \boldsymbol{\theta}))}{\sum_{j=1}^C \exp(f_j(\mathbf{x}; \boldsymbol{\theta}))}
+$$
+
+où $f_c(\mathbf{x}; \boldsymbol{\theta})$ est le score pour la classe $c$. La fonction softmax généralise la sigmoïde au cas multiclasse: elle transforme $C$ scores réels en un vecteur de probabilités qui somme à 1.
+
+La distribution conditionnelle suit une loi catégorielle:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \prod_{c=1}^C \pi_c(\mathbf{x}; \boldsymbol{\theta})^{\mathbf{1}[y = c]}
+$$
+
+où $\mathbf{1}[y = c]$ vaut 1 si $y = c$ et 0 sinon. En utilisant l'encodage one-hot $\mathbf{y} = [\mathbf{1}[y=1], \ldots, \mathbf{1}[y=C]]^\top$, cette expression devient:
+
+$$
+p(y|\mathbf{x}; \boldsymbol{\theta}) = \prod_{c=1}^C \pi_c(\mathbf{x}; \boldsymbol{\theta})^{y_c}
+$$
+
+La log-vraisemblance négative est:
+
+$$
+\text{NLV}(\boldsymbol{\theta}) = -\sum_{i=1}^N \sum_{c=1}^C y_{ic} \log \pi_c(\mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+où $y_{ic} = \mathbf{1}[y_i = c]$. Cette quantité est l'**entropie croisée multiclasse**. Elle généralise l'entropie croisée binaire au cas où il y a plus de deux classes.
+
+Pour la classification binaire avec $C=2$, le softmax se réduit à la sigmoïde. En effet, si nous définissons $s = f_1(\mathbf{x}) - f_2(\mathbf{x})$, alors:
+
+$$
+\pi_1 = \frac{e^{f_1}}{e^{f_1} + e^{f_2}} = \frac{1}{1 + e^{-(f_1 - f_2)}} = \sigma(s)
+$$
+
+Le modèle binaire et le modèle multiclasse partagent donc la même structure probabiliste, avec la distribution catégorielle comme généralisation naturelle de la distribution de Bernoulli.
 
 ### Maximum a posteriori
 
@@ -1759,608 +2759,6 @@ $$
 $$
 
 L'EMV trouve les paramètres qui rendent notre modèle aussi proche que possible de ce que nous avons observé, au sens de la divergence KL. Cette interprétation géométrique complète les perspectives décisionnelle et probabiliste.
-
-## Classes de modèles
-
-Tout au long de ce chapitre, nous avons parlé de "modèles" et de "fonctions $f$" sans préciser leur forme. Quelle classe de fonctions considérons-nous? La réponse à cette question détermine ce que le modèle peut représenter.
-
-Le modèle le plus simple est la **régression linéaire**:
-
-$$
-f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} = \sum_{j=0}^d \theta_j x_j
-$$
-
-où nous avons absorbé le biais en posant $x_0 = 1$. Le vecteur $\boldsymbol{\theta} \in \mathbb{R}^{d+1}$ contient le biais et les poids. Ce modèle suppose que la sortie est une combinaison linéaire des entrées.
-
-### Trois familles de modèles
-
-Avant de détailler les modèles linéaires, situons-les dans une hiérarchie plus large. Nous distinguons trois familles de modèles, de complexité croissante:
-
-1. **Modèles linéaires**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \mathbf{x} + b$. La sortie est une combinaison linéaire des entrées. Simple, interprétable, mais limité aux relations linéaires.
-
-2. **Modèles à expansion de caractéristiques**: $f(\mathbf{x}; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \boldsymbol{\phi}(\mathbf{x}) + b$, où $\boldsymbol{\phi}: \mathbb{R}^d \to \mathbb{R}^D$ est une transformation non linéaire fixée à l'avance (par exemple, polynomiale). Le modèle reste linéaire dans les paramètres $\boldsymbol{\theta}$, ce qui facilite l'optimisation, mais peut capturer des relations non linéaires en $\mathbf{x}$. L'espace de redescription a souvent une dimension $D \gg d$.
-
-3. **Réseaux de neurones**: $f(\mathbf{x}; \boldsymbol{\theta}) = f_K(f_{K-1}(\cdots f_1(\mathbf{x}; \boldsymbol{\theta}_1); \boldsymbol{\theta}_{K-1}); \boldsymbol{\theta}_K)$. Une composition de $K$ fonctions non linéaires, chacune avec ses propres paramètres. Contrairement aux modèles à expansion fixe, les réseaux de neurones **apprennent la représentation** $\boldsymbol{\phi}$ en même temps que les paramètres $\boldsymbol{\theta}$.
-
-Cette progression capture l'évolution historique du domaine: des modèles linéaires classiques aux méthodes à noyaux (expansion implicite), puis aux réseaux profonds qui apprennent leurs propres représentations. Nous verrons les réseaux de neurones en détail dans les chapitres suivants; concentrons-nous ici sur les deux premières familles.
-
-### Expansion de caractéristiques
-
-Pour capturer des relations non linéaires tout en gardant un modèle linéaire dans les paramètres, nous pouvons transformer les entrées. En **régression polynomiale**, nous appliquons une fonction $\phi: \mathbb{R} \to \mathbb{R}^{k+1}$:
-
-$$
-\phi(x) = [1, x, x^2, \ldots, x^k]
-$$
-
-La prédiction devient $f(x; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \phi(x)$. Le modèle est polynomial en $x$ mais linéaire en $\boldsymbol{\theta}$, ce qui permet d'utiliser les mêmes algorithmes d'optimisation.
-
-Le degré $k$ contrôle la **capacité** du modèle: sa capacité à représenter des fonctions complexes. Avec $k = 1$, nous avons une droite. Avec $k$ élevé, le polynôme peut osciller pour passer par tous les points d'entraînement. Avec $k = N - 1$, nous pouvons interpoler exactement les $N$ points: le risque empirique atteint zéro. Mais un polynôme qui passe exactement par les points d'entraînement n'a aucune raison de bien prédire les nouveaux points.
-
-Illustrons ce phénomène avec les données de freinage. Nous ajustons des polynômes de degrés 1, 2, 5 et 15, et comparons leurs erreurs sur les ensembles d'entraînement et de test.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-import warnings
-
-# Suppress polyfit warnings for high-degree polynomials (expected for this demo)
-warnings.filterwarnings('ignore', message='Polyfit may be poorly conditioned')
-
-# Données de freinage
-speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
-                  14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
-                  20, 20, 20, 20, 20, 22, 23, 24, 24, 24, 24, 25], dtype=float)
-dist = np.array([2, 10, 4, 22, 16, 10, 18, 26, 34, 17, 28, 14, 20, 24, 28, 26, 34, 34, 46,
-                 26, 36, 60, 80, 20, 26, 54, 32, 40, 32, 40, 50, 42, 56, 76, 84, 36, 46,
-                 68, 32, 48, 52, 56, 64, 66, 54, 70, 92, 93, 120, 85], dtype=float)
-
-# Train/test split
-np.random.seed(42)
-indices = np.random.permutation(len(speed))
-train_idx, test_idx = indices[:35], indices[35:]
-speed_train, dist_train = speed[train_idx], dist[train_idx]
-speed_test, dist_test = speed[test_idx], dist[test_idx]
-
-degrees_to_plot = [1, 2, 5, 15]
-degrees_eval = range(1, 16)
-fig, axes = plt.subplots(2, 2, figsize=(10, 8))
-
-# Pre-compute all errors for the summary plot later
-all_train_errors = []
-all_test_errors = []
-for deg in degrees_eval:
-    coeffs = np.polyfit(speed_train, dist_train, deg)
-    all_train_errors.append(np.mean((dist_train - np.polyval(coeffs, speed_train))**2))
-    all_test_errors.append(np.mean((dist_test - np.polyval(coeffs, speed_test))**2))
-
-for ax, deg in zip(axes.flat, degrees_to_plot):
-    # Fit polynomial
-    coeffs = np.polyfit(speed_train, dist_train, deg)
-    
-    # Predictions
-    pred_train = np.polyval(coeffs, speed_train)
-    pred_test = np.polyval(coeffs, speed_test)
-    
-    # MSE
-    mse_train = np.mean((dist_train - pred_train)**2)
-    mse_test = np.mean((dist_test - pred_test)**2)
-    
-    # Plot
-    ax.scatter(speed_train, dist_train, alpha=0.6, s=30, label='Entraînement')
-    ax.scatter(speed_test, dist_test, alpha=0.6, s=30, marker='s', label='Test')
-    
-    speed_grid = np.linspace(3, 26, 200)
-    pred_grid = np.polyval(coeffs, speed_grid)
-    # Clip extreme predictions for visualization
-    pred_grid = np.clip(pred_grid, -50, 200)
-    ax.plot(speed_grid, pred_grid, 'k-', alpha=0.7)
-    
-    ax.set_xlim(3, 26)
-    ax.set_ylim(-20, 150)
-    ax.set_xlabel('Vitesse (mph)')
-    ax.set_ylabel('Distance (ft)')
-    ax.set_title(f'Degré {deg}: Entr. EQM={mse_train:.1f}, Test EQM={mse_test:.1f}')
-    if deg == 1:
-        ax.legend()
-
-plt.tight_layout()
-```
-
-Le polynôme de degré 1 (droite) ne capture pas la courbure des données: c'est du sous-apprentissage. Le polynôme de degré 2 capture bien la relation quadratique. Le polynôme de degré 5 commence à osciller. Le polynôme de degré 15 passe près de tous les points d'entraînement, mais ses oscillations produisent des prédictions absurdes entre les points: c'est du surapprentissage.
-
-```{code-cell} python
-:tags: [hide-input]
-
-fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(degrees_eval, all_train_errors, 'o-', linewidth=2, label='Erreur entraînement')
-ax.plot(degrees_eval, all_test_errors, 's-', linewidth=2, label='Erreur test')
-
-# Utiliser une échelle logarithmique car l'erreur de test explose
-ax.set_yscale('log')
-
-ax.set_xlabel('Degré du polynôme (complexité)')
-ax.set_ylabel('EQM (échelle log)')
-ax.set_xticks(range(1, 16, 2))
-ax.grid(True, which="both", ls="-", alpha=0.2)
-ax.legend()
-
-ax.set_title('Compromis biais-variance (Échelle logarithmique)')
-plt.tight_layout()
-```
-
-L'erreur d'entraînement diminue avec le degré du polynôme. L'erreur de test diminue d'abord (quand le modèle gagne en expressivité), puis augmente (quand le modèle commence à mémoriser le bruit). Le meilleur modèle se trouve à l'intersection de ces deux tendances.
-
-### Intuition géométrique: pourquoi la dimension supérieure aide
-
-L'expansion de caractéristiques semble être un simple changement de variables, mais elle cache une idée géométrique profonde. Pour comprendre pourquoi projeter les données dans un espace de dimension supérieure permet de capturer des relations non linéaires, examinons d'abord le cas de la régression, puis celui de la classification.
-
-#### Le plan caché derrière la parabole
-
-Considérons une régression quadratique: $f(x) = \theta_0 + \theta_1 x + \theta_2 x^2$. Cette fonction est **non linéaire en $x$** (c'est une parabole), mais **linéaire dans les paramètres** $\boldsymbol{\theta} = (\theta_0, \theta_1, \theta_2)$. Que signifie cette distinction géométriquement?
-
-Introduisons l'espace des caractéristiques $\phi(x) = (1, x, x^2)$. Chaque valeur de $x$ correspond à un point dans $\mathbb{R}^3$. Ces points ne sont pas dispersés arbitrairement: ils vivent sur une courbe particulière, la **courbe des moments** (*moment curve*), qui ressemble à une rampe tordue.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
-# Créer la courbe des moments: (x, x², x³) pour visualisation
-# On utilise (1, x, x²) mais on projette sur (x, x², y) pour la visualisation
-fig = plt.figure(figsize=(12, 5))
-
-# Gauche: les fonctions de base
-ax1 = fig.add_subplot(121)
-x = np.linspace(-2, 2, 100)
-ax1.plot(x, np.ones_like(x), 'b-', linewidth=2, label=r'$\phi_0(x) = 1$')
-ax1.plot(x, x, 'orange', linewidth=2, label=r'$\phi_1(x) = x$')
-ax1.plot(x, x**2, 'g-', linewidth=2, label=r'$\phi_2(x) = x^2$')
-ax1.axhline(0, color='gray', linewidth=0.5)
-ax1.axvline(0, color='gray', linewidth=0.5)
-ax1.set_xlabel('$x$')
-ax1.set_ylabel('$\phi_j(x)$')
-ax1.set_title('Les fonctions de base')
-ax1.legend()
-ax1.set_ylim(-2.5, 4.5)
-ax1.grid(True, alpha=0.3)
-
-# Droite: combinaisons linéaires
-ax2 = fig.add_subplot(122)
-x = np.linspace(-2, 2, 100)
-
-# Différentes combinaisons de coefficients
-combinations = [
-    ((1, 0, 0), 'Constante: $1$'),
-    ((0, 1, 0), 'Linéaire: $x$'),
-    ((0, 0, 1), 'Quadratique: $x^2$'),
-    ((1, -0.5, 0.5), 'Combinaison: $1 - 0.5x + 0.5x^2$'),
-]
-
-colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
-for (theta0, theta1, theta2), label in combinations:
-    y = theta0 + theta1 * x + theta2 * x**2
-    ax2.plot(x, y, linewidth=2, label=label)
-
-ax2.axhline(0, color='gray', linewidth=0.5)
-ax2.axvline(0, color='gray', linewidth=0.5)
-ax2.set_xlabel('$x$')
-ax2.set_ylabel('$f(x)$')
-ax2.set_title('Combinaisons linéaires des fonctions de base')
-ax2.legend(loc='upper center')
-ax2.set_ylim(-2.5, 4.5)
-ax2.grid(True, alpha=0.3)
-
-plt.tight_layout()
-```
-
-Les fonctions de base $\{1, x, x^2\}$ sont les "ingrédients" du modèle. La régression polynomiale cherche les coefficients $\theta_0, \theta_1, \theta_2$ qui mélangent ces ingrédients de façon optimale. Chaque combinaison produit une courbe différente, mais toutes sont des paraboles (ou des cas dégénérés: droites, constantes).
-
-Voici l'insight géométrique clé: dans l'espace $(x, x^2, y)$, le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ définit un **plan**. La parabole que nous voyons dans le graphique $(x, y)$ est simplement la **projection** de ce plan sur notre espace de visualisation.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.animation import FuncAnimation
-from IPython.display import Image
-
-# Générer des données avec relation quadratique
-np.random.seed(42)
-n_points = 40
-x_data = np.random.uniform(-1.8, 1.8, n_points)
-y_true = 0.5 + 0.3 * x_data + 0.8 * x_data**2
-y_data = y_true + np.random.normal(0, 0.3, n_points)
-
-# Ajuster le modèle quadratique
-X_design = np.column_stack([np.ones(n_points), x_data, x_data**2])
-theta = np.linalg.lstsq(X_design, y_data, rcond=None)[0]
-
-# Créer l'animation
-fig = plt.figure(figsize=(9, 7))
-ax = fig.add_subplot(111, projection='3d')
-
-# Grille pour le plan de régression
-x_grid = np.linspace(-2, 2, 20)
-x2_grid = np.linspace(0, 4, 20)
-X_plane, X2_plane = np.meshgrid(x_grid, x2_grid)
-Y_plane = theta[0] + theta[1] * X_plane + theta[2] * X2_plane
-
-# Surface parabolique z = x²
-x_surf = np.linspace(-2, 2, 30)
-X_surf, Y_surf_temp = np.meshgrid(x_surf, np.linspace(-1, 5, 30))
-Z_surf = X_surf**2
-
-def init():
-    ax.clear()
-    return []
-
-def animate(frame):
-    ax.clear()
-    
-    # Animation en trois phases
-    if frame < 15:
-        # Phase 1: Vue 2D (de côté, cachant x²)
-        elev = 0
-        azim = 0
-        show_plane = False
-        show_surface = False
-        title = 'Vue 2D: régression quadratique'
-    elif frame < 35:
-        # Phase 2: Rotation révélant la 3ème dimension
-        progress = (frame - 15) / 20
-        elev = progress * 25
-        azim = progress * 45
-        show_plane = False
-        show_surface = True
-        title = 'Rotation: découverte de la dimension $x^2$...'
-    else:
-        # Phase 3: Vue 3D avec le plan
-        elev = 25
-        azim = 45 + (frame - 35) * 2
-        show_plane = True
-        show_surface = True
-        title = r'Le plan $y = \theta_0 + \theta_1 x + \theta_2 x^2$ dans lespace 3D'
-    
-    ax.view_init(elev=elev, azim=azim)
-    
-    # Surface parabolique (rampe z = x²)
-    if show_surface:
-        ax.plot_surface(X_surf, Z_surf, Y_surf_temp, alpha=0.1, color='gray')
-    
-    # Points de données dans l'espace 3D: (x, x², y)
-    ax.scatter(x_data, x_data**2, y_data, c='tab:blue', s=50, alpha=0.8, 
-               label='Données', depthshade=True)
-    
-    # Plan de régression
-    if show_plane:
-        ax.plot_surface(X_plane, X2_plane, Y_plane, alpha=0.4, color='tab:orange',
-                       label='Plan de régression')
-    
-    # Courbe de régression sur la surface z = x²
-    x_curve = np.linspace(-1.8, 1.8, 100)
-    y_curve = theta[0] + theta[1] * x_curve + theta[2] * x_curve**2
-    ax.plot(x_curve, x_curve**2, y_curve, 'r-', linewidth=3, 
-            label='Courbe ajustée')
-    
-    ax.set_xlabel('$x$')
-    ax.set_ylabel('$x^2$')
-    ax.set_zlabel('$y$')
-    ax.set_xlim(-2, 2)
-    ax.set_ylim(0, 4)
-    ax.set_zlim(-1, 5)
-    ax.set_title(title, fontsize=11)
-    
-    return []
-
-anim = FuncAnimation(fig, animate, init_func=init, frames=70, interval=100, blit=True)
-anim.save('_static/regression_plane_3d.gif', writer='pillow', fps=10, dpi=100)
-plt.close()
-
-# Afficher le GIF
-Image(filename='_static/regression_plane_3d.gif')
-```
-
-L'animation révèle la structure cachée de la régression polynomiale:
-
-1. **Vue 2D initiale**: On voit les données et la parabole ajustée, comme dans un graphique classique.
-
-2. **Rotation**: En faisant pivoter la vue, on découvre que chaque point $(x_i, y_i)$ vit en réalité dans un espace 3D aux coordonnées $(x_i, x_i^2, y_i)$. La surface grise représente la "rampe" $z = x^2$ sur laquelle tous les points sont contraints de vivre.
-
-3. **Le plan de régression**: Le modèle $y = \theta_0 + \theta_1 x + \theta_2 x^2$ est un plan (en orange) dans cet espace 3D. Ce plan est choisi pour minimiser les distances verticales aux points.
-
-4. **La courbe ajustée**: La parabole rouge est l'intersection du plan avec la rampe $z = x^2$. C'est ce que nous voyons quand nous projetons le tout sur le plan $(x, y)$.
-
-Cette perspective unifie le "linéaire dans les paramètres" et le "non linéaire en $x$":
-- **Linéaire dans les paramètres**: Le modèle est un plan (objet linéaire) dans l'espace des caractéristiques.
-- **Non linéaire en $x$**: La contrainte $z = x^2$ force les données à vivre sur une surface courbe, et l'intersection du plan avec cette surface produit une courbe.
-
-#### De la régression à la classification
-
-La même intuition s'applique en classification, avec une différence: au lieu de chercher un plan qui **ajuste** les données, on cherche un hyperplan qui les **sépare**. Voyons comment l'expansion de caractéristiques transforme des données non linéairement séparables en données linéairement séparables.
-
-#### De 1D à 2D: séparer l'inséparable
-
-Considérons des points sur une droite, répartis en deux classes: les points bleus au centre, les points orange aux extrémités. Aucun seuil unique ne peut séparer ces deux classes.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-np.random.seed(42)
-
-# Classe bleue: points au centre
-x_blue = np.random.uniform(-0.5, 0.5, 15)
-# Classe orange: points aux extrémités
-x_orange = np.concatenate([np.random.uniform(-1.5, -0.8, 8), 
-                           np.random.uniform(0.8, 1.5, 8)])
-
-fig, ax = plt.subplots(figsize=(10, 2))
-ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, label='Classe A', zorder=3)
-ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, label='Classe B', zorder=3)
-ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
-ax.set_xlim(-2, 2)
-ax.set_ylim(-0.5, 0.5)
-ax.set_xlabel('$x$')
-ax.set_yticks([])
-ax.legend(loc='upper right')
-ax.set_title('Données 1D: aucun seuil ne sépare les deux classes')
-plt.tight_layout()
-```
-
-Appliquons maintenant l'expansion $\phi(x) = (x, x^2)$. Chaque point est projeté sur une parabole dans l'espace 2D. Les points proches de zéro (classe bleue) restent bas, tandis que les points éloignés de zéro (classe orange) montent.
-
-```{code-cell} python
-:tags: [hide-input]
-
-fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-# Gauche: espace original avec tentative de séparation
-ax = axes[0]
-ax.scatter(x_blue, np.zeros_like(x_blue), c='tab:blue', s=80, zorder=3)
-ax.scatter(x_orange, np.zeros_like(x_orange), c='tab:orange', s=80, zorder=3)
-ax.axhline(0, color='gray', linewidth=0.5, zorder=1)
-ax.axvline(0.3, color='red', linestyle='--', linewidth=2, label='Seuil?')
-ax.set_xlim(-2, 2)
-ax.set_ylim(-0.5, 0.5)
-ax.set_xlabel('$x$')
-ax.set_yticks([])
-ax.set_title('Espace original: pas de séparation linéaire')
-ax.legend()
-
-# Droite: espace transformé
-ax = axes[1]
-ax.scatter(x_blue, x_blue**2, c='tab:blue', s=80, zorder=3, label='Classe A')
-ax.scatter(x_orange, x_orange**2, c='tab:orange', s=80, zorder=3, label='Classe B')
-
-# Ligne de séparation dans l'espace transformé
-x_line = np.linspace(-2, 2, 100)
-threshold = 0.6
-ax.axhline(threshold, color='green', linestyle='-', linewidth=2, label='Frontière linéaire')
-ax.fill_between(x_line, 0, threshold, alpha=0.1, color='blue')
-ax.fill_between(x_line, threshold, 2.5, alpha=0.1, color='orange')
-
-# Parabole de référence
-x_curve = np.linspace(-1.6, 1.6, 100)
-ax.plot(x_curve, x_curve**2, 'k--', alpha=0.3, linewidth=1)
-
-ax.set_xlim(-2, 2)
-ax.set_ylim(-0.1, 2.5)
-ax.set_xlabel('$x$')
-ax.set_ylabel('$x^2$')
-ax.set_title(r'Espace transformé $\phi(x) = (x, x^2)$: séparation linéaire!')
-ax.legend()
-
-plt.tight_layout()
-```
-
-Dans l'espace transformé, une simple droite horizontale sépare les deux classes. Cette droite correspond, dans l'espace original, à **deux seuils**: $x^2 < 0.6$, soit $|x| < \sqrt{0.6} \approx 0.77$. L'expansion de caractéristiques a transformé une frontière de décision non linéaire (un intervalle) en une frontière linéaire (une droite).
-
-#### De 2D à 3D: soulever pour séparer
-
-Passons à un exemple plus visuel. Considérons deux classes disposées en cercles concentriques: la classe bleue forme un disque central, la classe orange forme un anneau extérieur. Aucune droite ne peut séparer ces deux régions.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-np.random.seed(123)
-
-# Classe bleue: disque central
-n_blue = 50
-r_blue = np.random.uniform(0, 0.7, n_blue)
-theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
-x_blue = r_blue * np.cos(theta_blue)
-y_blue = r_blue * np.sin(theta_blue)
-
-# Classe orange: anneau extérieur
-n_orange = 70
-r_orange = np.random.uniform(1.0, 1.5, n_orange)
-theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
-x_orange = r_orange * np.cos(theta_orange)
-y_orange = r_orange * np.sin(theta_orange)
-
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
-ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
-
-# Montrer qu'une droite ne peut pas séparer
-theta_line = np.pi/4
-x_line = np.linspace(-2, 2, 100)
-y_line = np.tan(theta_line) * x_line
-ax.plot(x_line, y_line, 'r--', linewidth=2, alpha=0.7, label='Droite?')
-
-ax.set_xlim(-2, 2)
-ax.set_ylim(-2, 2)
-ax.set_xlabel('$x_1$')
-ax.set_ylabel('$x_2$')
-ax.set_aspect('equal')
-ax.legend()
-ax.set_title('Cercles concentriques: pas de séparation linéaire en 2D')
-plt.tight_layout()
-```
-
-Appliquons l'expansion $\phi(x_1, x_2) = (x_1, x_2, x_1^2 + x_2^2)$. La troisième coordonnée est le carré de la distance à l'origine: $z = r^2$. Les points proches du centre (petit $r$) sont "soulevés" moins haut que les points éloignés (grand $r$).
-
-L'animation suivante montre cette transformation. En faisant pivoter la vue, on voit que les données, une fois projetées dans l'espace 3D, deviennent séparables par un plan horizontal.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d import Axes3D
-from IPython.display import Image
-
-np.random.seed(123)
-
-# Classe bleue: disque central
-n_blue = 50
-r_blue = np.random.uniform(0, 0.7, n_blue)
-theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
-x_blue = r_blue * np.cos(theta_blue)
-y_blue = r_blue * np.sin(theta_blue)
-z_blue = x_blue**2 + y_blue**2
-
-# Classe orange: anneau extérieur  
-n_orange = 70
-r_orange = np.random.uniform(1.0, 1.5, n_orange)
-theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
-x_orange = r_orange * np.cos(theta_orange)
-y_orange = r_orange * np.sin(theta_orange)
-z_orange = x_orange**2 + y_orange**2
-
-# Créer la figure
-fig = plt.figure(figsize=(8, 6))
-ax = fig.add_subplot(111, projection='3d')
-
-# Plan de séparation
-z_sep = 0.75
-xx, yy = np.meshgrid(np.linspace(-1.8, 1.8, 10), np.linspace(-1.8, 1.8, 10))
-zz = np.ones_like(xx) * z_sep
-
-def init():
-    ax.clear()
-    return []
-
-def animate(frame):
-    ax.clear()
-    
-    # Élévation: commence à 90° (vue de dessus), descend à 25°
-    if frame < 20:
-        elev = 90 - frame * 3.25  # 90 -> 25
-        azim = 45
-    else:
-        elev = 25
-        azim = 45 + (frame - 20) * 4  # rotation horizontale
-    
-    ax.view_init(elev=elev, azim=azim)
-    
-    # Points
-    ax.scatter(x_blue, y_blue, z_blue, c='tab:blue', s=30, alpha=0.8, label='Classe A')
-    ax.scatter(x_orange, y_orange, z_orange, c='tab:orange', s=30, alpha=0.8, label='Classe B')
-    
-    # Plan de séparation (apparaît après la descente)
-    if frame >= 15:
-        alpha_plane = min(0.3, (frame - 15) * 0.06)
-        ax.plot_surface(xx, yy, zz, alpha=alpha_plane, color='green')
-    
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$x_1^2 + x_2^2$')
-    ax.set_xlim(-1.8, 1.8)
-    ax.set_ylim(-1.8, 1.8)
-    ax.set_zlim(0, 2.5)
-    
-    # Titre dynamique
-    if frame < 10:
-        ax.set_title('Vue de dessus: cercles concentriques', fontsize=11)
-    elif frame < 20:
-        ax.set_title('Rotation: on découvre la structure 3D...', fontsize=11)
-    else:
-        ax.set_title(r'Espace $\phi(x_1,x_2) = (x_1, x_2, x_1^2+x_2^2)$: un plan sépare!', fontsize=11)
-    
-    return []
-
-anim = FuncAnimation(fig, animate, init_func=init, frames=60, interval=100, blit=True)
-anim.save('_static/feature_expansion_3d.gif', writer='pillow', fps=10, dpi=100)
-plt.close()
-
-# Afficher le GIF
-Image(filename='_static/feature_expansion_3d.gif')
-```
-
-L'animation montre comment **l'expansion de caractéristiques "déplie" la géométrie des données**. Vue de dessus, la structure est celle des cercles concentriques originaux. Mais la troisième dimension $z = x_1^2 + x_2^2$ sépare verticalement les deux classes: le disque central reste bas, l'anneau extérieur monte. Un plan horizontal (en vert) suffit alors à séparer les classes.
-
-Ce plan horizontal $z = 0.75$ correspond, dans l'espace original 2D, à un **cercle** de rayon $\sqrt{0.75} \approx 0.87$. La frontière de décision linéaire en 3D devient une frontière circulaire en 2D.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-np.random.seed(123)
-
-# Recréer les données (même seed que l'animation)
-n_blue = 50
-r_blue = np.random.uniform(0, 0.7, n_blue)
-theta_blue = np.random.uniform(0, 2*np.pi, n_blue)
-x_blue = r_blue * np.cos(theta_blue)
-y_blue = r_blue * np.sin(theta_blue)
-
-n_orange = 70
-r_orange = np.random.uniform(1.0, 1.5, n_orange)
-theta_orange = np.random.uniform(0, 2*np.pi, n_orange)
-x_orange = r_orange * np.cos(theta_orange)
-y_orange = r_orange * np.sin(theta_orange)
-
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.scatter(x_blue, y_blue, c='tab:blue', s=40, alpha=0.7, label='Classe A')
-ax.scatter(x_orange, y_orange, c='tab:orange', s=40, alpha=0.7, label='Classe B')
-
-# Cercle de décision (projection du plan z = 0.75)
-theta_circle = np.linspace(0, 2*np.pi, 100)
-r_decision = np.sqrt(0.75)
-ax.plot(r_decision * np.cos(theta_circle), r_decision * np.sin(theta_circle), 
-        'g-', linewidth=2.5, label=f'Frontière: $r = {r_decision:.2f}$')
-
-ax.set_xlim(-2, 2)
-ax.set_ylim(-2, 2)
-ax.set_xlabel('$x_1$')
-ax.set_ylabel('$x_2$')
-ax.set_aspect('equal')
-ax.legend()
-ax.set_title('Frontière de décision projetée en 2D')
-plt.tight_layout()
-```
-
-#### Le principe unificateur
-
-Ces exemples de régression et de classification illustrent le même principe géométrique:
-
-| | Régression | Classification |
-|---|---|---|
-| **Objectif** | Ajuster les données | Séparer les classes |
-| **Dans l'espace original** | Courbe (parabole, etc.) | Frontière courbe (cercle, etc.) |
-| **Dans l'espace des caractéristiques** | Hyperplan d'ajustement | Hyperplan séparateur |
-| **La courbe/frontière est...** | L'intersection du plan avec la surface $\phi(x)$ | La projection de l'hyperplan |
-
-L'expansion de caractéristiques transforme un problème non linéaire en un problème linéaire dans un espace de dimension supérieure. Les modèles linéaires, simples à optimiser et à analyser, deviennent alors suffisants pour capturer des structures complexes.
-
-En augmentant la dimension de l'espace de représentation, nous augmentons la **capacité** du modèle. Pour la classification, un résultat classique de géométrie affirme que $N$ points en position générale sont presque sûrement séparables par un hyperplan si la dimension de l'espace est au moins $N$. Pour la régression, un polynôme de degré $N-1$ peut interpoler exactement $N$ points.
-
-Mais cette flexibilité a un coût: plus l'espace est grand, plus le modèle risque de mémoriser les particularités des données d'entraînement plutôt que d'apprendre la structure sous-jacente. C'est le **compromis biais-variance** que nous avons observé avec les polynômes de haut degré.
 
 ## Résumé
 
