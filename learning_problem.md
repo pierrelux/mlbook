@@ -886,42 +886,45 @@ Comparons avec la solution MCO: $\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\math
 
 ##### Solution via décomposition en valeurs singulières (SVD)
 
-Les solutions MCO et Ridge peuvent également être exprimées en utilisant la **décomposition en valeurs singulières** (SVD) de la matrice $\mathbf{X}$. Cette approche offre une interprétation géométrique et révèle pourquoi la régularisation fonctionne.
+Cette section présente une autre façon d'exprimer les solutions MCO et Ridge, en utilisant la **décomposition en valeurs singulières** (SVD). Si vous n'avez jamais rencontré la SVD, ne vous inquiétez pas: nous allons l'introduire progressivement. Cette approche n'est pas strictement nécessaire pour comprendre la régression ridge, mais elle offre une interprétation géométrique très éclairante qui révèle *pourquoi* la régularisation fonctionne.
 
-La SVD décompose $\mathbf{X}$ en trois matrices:
+**Qu'est-ce que la SVD?** Si vous avez déjà rencontré la **décomposition en valeurs propres**, la SVD en est une généralisation. Pour une matrice carrée symétrique $\mathbf{A}$, la décomposition en valeurs propres s'écrit $\mathbf{A} = \mathbf{Q} \boldsymbol{\Lambda} \mathbf{Q}^\top$, où $\mathbf{Q}$ contient les vecteurs propres et $\boldsymbol{\Lambda}$ les valeurs propres. La SVD généralise cette idée à **n'importe quelle matrice**, même rectangulaire.
+
+Pour une matrice $\mathbf{X}$ de données, la SVD la réécrit comme le produit de trois matrices:
 
 $$
 \mathbf{X} = \mathbf{U} \mathbf{D} \mathbf{V}^\top
 $$
 
-où:
-- $\mathbf{U}$ est une matrice $N \times d$ dont les colonnes $\mathbf{u}_j$ sont orthonormales (directions dans l'espace des observations)
-- $\mathbf{D}$ est une matrice diagonale $d \times d$ contenant les **valeurs singulières** $d_1 \geq d_2 \geq \cdots \geq d_d \geq 0$
-- $\mathbf{V}$ est une matrice $d \times d$ dont les colonnes $\mathbf{v}_j$ sont orthonormales (directions principales dans l'espace des coefficients)
+**Lien avec la décomposition en valeurs propres**: Les colonnes de $\mathbf{V}$ sont les **vecteurs propres** de $\mathbf{X}^\top \mathbf{X}$, et les valeurs singulières $d_j$ sont les **racines carrées des valeurs propres** de $\mathbf{X}^\top \mathbf{X}$. Autrement dit, si $\mathbf{X}^\top \mathbf{X} = \mathbf{V} \boldsymbol{\Lambda} \mathbf{V}^\top$ est la décomposition en valeurs propres de $\mathbf{X}^\top \mathbf{X}$, alors $d_j = \sqrt{\lambda_j}$ où $\lambda_j$ sont les valeurs propres. De même, les colonnes de $\mathbf{U}$ sont les vecteurs propres de $\mathbf{X} \mathbf{X}^\top$.
 
-**Solution MCO via SVD**: En substituant cette décomposition dans la solution MCO:
+Cette connexion est utile car $\mathbf{X}^\top \mathbf{X}$ apparaît naturellement dans la régression (c'est la matrice que nous inversons pour MCO). Les valeurs singulières $d_j$ nous renseignent donc directement sur le "conditionnement" de cette matrice: si certaines valeurs singulières sont très petites, alors $\mathbf{X}^\top \mathbf{X}$ est proche d'être singulière (non inversible).
 
-$$
-\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y} = (\mathbf{V} \mathbf{D}^2 \mathbf{V}^\top)^{-1} \mathbf{V} \mathbf{D} \mathbf{U}^\top \mathbf{y} = \mathbf{V} \mathbf{D}^{-1} \mathbf{U}^\top \mathbf{y}
-$$
+**Interprétation géométrique**:
 
-Ce qui s'écrit sous forme de somme:
+- **$\mathbf{V}$** contient les **directions principales** dans l'espace des caractéristiques (les colonnes $\mathbf{v}_j$ sont orthonormales). Ces directions correspondent aux axes le long desquels la matrice $\mathbf{X}$ transforme les vecteurs de manière la plus efficace.
+- **$\mathbf{D}$** est une matrice diagonale contenant les **valeurs singulières** $d_1 \geq d_2 \geq \cdots \geq d_d \geq 0$, ordonnées du plus grand au plus petit. Chaque valeur singulière $d_j$ mesure l'**amplitude** de la transformation le long de la direction $\mathbf{v}_j$. Une grande valeur singulière signifie que la transformation est forte dans cette direction; une petite valeur singulière signifie que la transformation est faible.
+- **$\mathbf{U}$** contient les directions correspondantes dans l'espace des observations (les colonnes $\mathbf{u}_j$ sont orthonormales). Chaque $\mathbf{u}_j$ indique comment les observations se projettent sur la direction principale $\mathbf{v}_j$.
+
+**Solution MCO via SVD**: En utilisant cette décomposition, la solution MCO peut s'écrire:
 
 $$
 \hat{\boldsymbol{\theta}}_{\text{MCO}} = \sum_{j=1}^d \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
 $$
 
-**Solution Ridge via SVD**: Pour Ridge, on peut montrer que:
+Cette formule décompose la solution en une somme de contributions le long de chaque direction principale $\mathbf{v}_j$. Le terme $\frac{\mathbf{u}_j^\top \mathbf{y}}{d_j}$ mesure combien la sortie $\mathbf{y}$ s'aligne avec la direction $\mathbf{u}_j$, divisé par l'amplitude $d_j$ de cette direction. Notez que diviser par une petite valeur singulière $d_j$ peut amplifier le bruit, ce qui explique pourquoi MCO peut être instable quand certaines directions ont de petites valeurs singulières.
+
+**Solution Ridge via SVD**: Pour Ridge, la solution devient:
 
 $$
 \hat{\boldsymbol{\theta}}_{\text{ridge}} = \sum_{j=1}^d \frac{d_j^2}{d_j^2 + \lambda} \frac{\mathbf{u}_j^\top \mathbf{y}}{d_j} \mathbf{v}_j
 $$
 
-La différence avec MCO est le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ qui multiplie chaque terme. Ce facteur est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro.
+La différence avec MCO est le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ qui multiplie chaque terme. Ce facteur est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro. L'effet clé est que ce rétrécissement est **différencié**: les directions avec de petites valeurs singulières sont rétrécies plus fortement que celles avec de grandes valeurs singulières.
 
-**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Les longueurs des demi-axes sont proportionnelles à $1/d_j$ pour MCO. Avec Ridge, elles deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda} = \frac{1}{d_j} \cdot \frac{d_j^2}{d_j^2 + \lambda}$: l'ellipse se rétrécit, et plus rapidement le long des directions associées aux petites valeurs singulières.
+**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Pour MCO, les longueurs des demi-axes sont proportionnelles à $1/d_j$: plus une direction a une petite valeur singulière $d_j$, plus l'incertitude est grande. Avec Ridge, ces longueurs deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda}$: l'ellipse se rétrécit globalement, et plus rapidement le long des directions associées aux petites valeurs singulières. C'est exactement ce que nous voulons: réduire l'incertitude là où elle est la plus grande.
 
-**Avantages numériques**: La SVD est plus stable numériquement que l'inversion directe de $\mathbf{X}^\top \mathbf{X}$, surtout quand cette matrice est mal conditionnée. Les algorithmes SVD gèrent mieux les cas où certaines valeurs singulières sont très petites.
+**Avantages numériques**: Au-delà de l'interprétation, la SVD offre aussi des avantages pratiques. Elle est plus stable numériquement que l'inversion directe de $\mathbf{X}^\top \mathbf{X}$, surtout quand cette matrice est mal conditionnée (c'est-à-dire quand certaines valeurs singulières sont très petites). Les algorithmes SVD gèrent mieux ces cas délicats.
 
 #### Pourquoi $\lambda \mathbf{I}$ aide
 
@@ -2697,7 +2700,7 @@ plt.tight_layout()
 
 La figure de gauche montre comment l'a posteriori combine l'a priori et la vraisemblance. L'a priori Beta(2,2) "tire" l'estimation vers 0.5, résultant en un MAP de 0.8 au lieu de l'EMV de 1.0. La figure de droite montre l'effet de différents a priori: plus l'a priori est fort (variance faible), plus l'estimation est proche de 0.5.
 
-#### Régression ridge = MAP avec prior gaussien
+#### Régression ridge = MAP avec a priori gaussien
 
 Appliquons maintenant ce cadre bayésien à la régression linéaire. Si nous plaçons un a priori gaussien isotrope sur les paramètres:
 
@@ -2793,7 +2796,7 @@ L'outil doit être remplacé lorsque l'usure atteint 0.4 mm.
 
 2. **Ajustement.** Ajustez un modèle linéaire $w(t) = at + b$ et un modèle en loi de puissance $w(t) = at^b$ aux données. Pour le second modèle, utilisez une transformation logarithmique: $\log w = \log a + b \log t$.
 
-3. **Comparaison.** Calculez le MSE de chaque modèle sur les données. Lequel ajuste mieux?
+3. **Comparaison.** Calculez l'EQM de chaque modèle sur les données. Lequel ajuste mieux?
 
 4. **Prédiction.** Selon chaque modèle, à quel moment l'usure atteindra-t-elle 0.4 mm? Les deux modèles donnent-ils la même réponse?
 
@@ -2809,7 +2812,7 @@ L'outil doit être remplacé lorsque l'usure atteint 0.4 mm.
    - Modèle linéaire: `coeffs = np.polyfit(time, wear, 1)` donne $a \approx 0.006$, $b \approx 0.05$.
    - Loi de puissance: en posant $\log w = \log a + b \log t$, on ajuste une droite dans l'espace log-log: `coeffs = np.polyfit(np.log(time), np.log(wear), 1)`. On obtient $b \approx 0.5$ et $a = \exp(\text{intercept}) \approx 0.05$.
 
-3. **Comparaison.** Le MSE du modèle linéaire est typiquement plus élevé car il ne capture pas la courbure. Le modèle en loi de puissance ajuste mieux les données.
+3. **Comparaison.** L'EQM du modèle linéaire est typiquement plus élevé car il ne capture pas la courbure. Le modèle en loi de puissance ajuste mieux les données.
 
 4. **Prédiction.** Pour trouver $t$ tel que $w(t) = 0.4$:
    - Linéaire: $t = (0.4 - b) / a$
@@ -2937,3 +2940,1134 @@ Soit $y = 1$ (classe positive) et un score $s = f(x) = 2$.
    
    On vérifie que pour tout $m$: $\ell_{\text{log}}(m) \geq \ell_{0-1}(m)$ et $\ell_{\text{hinge}}(m) \geq \ell_{0-1}(m)$.
 ````
+
+````{admonition} Exercice 5: Dérivation des moindres carrés ordinaires ★
+:class: hint dropdown
+
+Soit un problème de régression linéaire simple avec $N$ observations:
+
+$$
+y_i = \theta_0 + \theta_1 x_i + \epsilon_i, \quad i = 1, \ldots, N
+$$
+
+1. Écrivez la somme des carrés des résidus $\text{RSS}(\theta_0, \theta_1) = \sum_{i=1}^N (y_i - \theta_0 - \theta_1 x_i)^2$.
+
+2. Calculez les dérivées partielles $\frac{\partial \text{RSS}}{\partial \theta_0}$ et $\frac{\partial \text{RSS}}{\partial \theta_1}$.
+
+3. En posant ces dérivées égales à zéro, résolvez le système d'équations pour obtenir les estimateurs $\hat{\theta}_0$ et $\hat{\theta}_1$.
+
+4. **Application numérique**: Pour les données $(x, y) = \{(1, 2), (2, 4), (3, 5), (4, 4), (5, 5)\}$, calculez les coefficients MCO $\hat{\theta}_0$ et $\hat{\theta}_1$, puis la prédiction pour $x = 6$.
+````
+
+```{admonition} Solution Exercice 5
+:class: dropdown
+
+1. **Somme des carrés des résidus:**
+
+$$
+\text{RSS}(\theta_0, \theta_1) = \sum_{i=1}^N (y_i - \theta_0 - \theta_1 x_i)^2
+$$
+
+2. **Dérivées partielles:**
+
+$$
+\frac{\partial \text{RSS}}{\partial \theta_0} = -2 \sum_{i=1}^N (y_i - \theta_0 - \theta_1 x_i) = -2 \sum_{i=1}^N y_i + 2N\theta_0 + 2\theta_1 \sum_{i=1}^N x_i
+$$
+
+$$
+\frac{\partial \text{RSS}}{\partial \theta_1} = -2 \sum_{i=1}^N x_i(y_i - \theta_0 - \theta_1 x_i) = -2 \sum_{i=1}^N x_i y_i + 2\theta_0 \sum_{i=1}^N x_i + 2\theta_1 \sum_{i=1}^N x_i^2
+$$
+
+3. **Résolution du système:**
+
+En posant les dérivées égales à zéro et en simplifiant:
+
+$$
+N\theta_0 + \theta_1 \sum x_i = \sum y_i \quad \text{(équation 1)}
+$$
+
+$$
+\theta_0 \sum x_i + \theta_1 \sum x_i^2 = \sum x_i y_i \quad \text{(équation 2)}
+$$
+
+De l'équation 1: $\theta_0 = \bar{y} - \theta_1 \bar{x}$ où $\bar{x} = \frac{1}{N}\sum x_i$ et $\bar{y} = \frac{1}{N}\sum y_i$.
+
+En substituant dans l'équation 2 et en simplifiant:
+
+$$
+\hat{\theta}_1 = \frac{\sum_{i=1}^N (x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^N (x_i - \bar{x})^2} = \frac{\text{Cov}(x, y)}{\text{Var}(x)}
+$$
+
+$$
+\hat{\theta}_0 = \bar{y} - \hat{\theta}_1 \bar{x}
+$$
+
+4. **Application numérique:**
+
+   - $\bar{x} = (1+2+3+4+5)/5 = 3$, $\bar{y} = (2+4+5+4+5)/5 = 4$
+   - $\sum (x_i - \bar{x})(y_i - \bar{y}) = (-2)(-2) + (-1)(0) + (0)(1) + (1)(0) + (2)(1) = 4 + 0 + 0 + 0 + 2 = 6$
+   - $\sum (x_i - \bar{x})^2 = 4 + 1 + 0 + 1 + 4 = 10$
+   - $\hat{\theta}_1 = 6/10 = 0.6$
+   - $\hat{\theta}_0 = 4 - 0.6 \times 3 = 2.2$
+   - Prédiction pour $x=6$: $\hat{y} = 2.2 + 0.6 \times 6 = 5.8$
+```
+
+````{admonition} Exercice 6: Maximum de vraisemblance pour classification binaire ★
+:class: hint dropdown
+
+Soit un problème de classification binaire avec $N$ observations $\{(\mathbf{x}_i, y_i)\}_{i=1}^N$ où $y_i \in \{0, 1\}$. On modélise la probabilité de la classe positive par:
+
+$$
+p(y = 1 | \mathbf{x}; \boldsymbol{\theta}) = \sigma(\boldsymbol{\theta}^\top \mathbf{x}) = \frac{1}{1 + e^{-\boldsymbol{\theta}^\top \mathbf{x}}}
+$$
+
+1. Écrivez la vraisemblance $\mathcal{L}(\boldsymbol{\theta})$ pour $N$ observations i.i.d. suivant une distribution de Bernoulli.
+
+2. Écrivez la log-vraisemblance $\log \mathcal{L}(\boldsymbol{\theta})$.
+
+3. Montrez que maximiser la log-vraisemblance revient à minimiser l'entropie croisée binaire.
+
+4. **Application**: Pour les observations $(y_1, y_2, y_3) = (1, 0, 1)$ avec les scores $\boldsymbol{\theta}^\top \mathbf{x}_i$ égaux à $(2, -1, 0.5)$, calculez la log-vraisemblance.
+````
+
+```{admonition} Solution Exercice 6
+:class: dropdown
+
+1. **Vraisemblance:**
+
+   Chaque observation suit une loi de Bernoulli: $p(y_i | \mathbf{x}_i; \boldsymbol{\theta}) = \sigma_i^{y_i} (1 - \sigma_i)^{1-y_i}$ où $\sigma_i = \sigma(\boldsymbol{\theta}^\top \mathbf{x}_i)$.
+   
+   Pour $N$ observations i.i.d.:
+   
+   $$
+   \mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^N \sigma_i^{y_i} (1 - \sigma_i)^{1-y_i}
+   $$
+
+2. **Log-vraisemblance:**
+
+   $$
+   \log \mathcal{L}(\boldsymbol{\theta}) = \sum_{i=1}^N \left[ y_i \log \sigma_i + (1-y_i) \log(1 - \sigma_i) \right]
+   $$
+
+3. **Lien avec l'entropie croisée:**
+
+   L'entropie croisée binaire (ECB) est définie comme:
+   
+   $$
+   \text{ECB}(\boldsymbol{\theta}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log \sigma_i + (1-y_i) \log(1 - \sigma_i) \right]
+   $$
+   
+   On voit que $\text{ECB}(\boldsymbol{\theta}) = -\frac{1}{N} \log \mathcal{L}(\boldsymbol{\theta})$.
+   
+   Donc: $\max_{\boldsymbol{\theta}} \log \mathcal{L}(\boldsymbol{\theta}) \Leftrightarrow \min_{\boldsymbol{\theta}} \text{ECB}(\boldsymbol{\theta})$
+
+4. **Application numérique:**
+
+   - $\sigma_1 = \sigma(2) = 1/(1 + e^{-2}) \approx 0.881$
+   - $\sigma_2 = \sigma(-1) = 1/(1 + e^{1}) \approx 0.269$
+   - $\sigma_3 = \sigma(0.5) = 1/(1 + e^{-0.5}) \approx 0.622$
+   
+   Log-vraisemblance:
+   $$
+   \log \mathcal{L} = 1 \cdot \log(0.881) + 1 \cdot \log(1 - 0.269) + 1 \cdot \log(0.622)
+   $$
+   $$
+   = \log(0.881) + \log(0.731) + \log(0.622) \approx -0.127 - 0.313 - 0.475 = -0.915
+   $$
+```
+
+````{admonition} Exercice 7: Expansion de caractéristiques ★
+:class: hint dropdown
+
+Considérez un problème de régression où la relation entre $x$ et $y$ est quadratique:
+
+$$
+y = 3 - 2x + 0.5x^2 + \epsilon, \quad \epsilon \sim \mathcal{N}(0, 0.5^2)
+$$
+
+1. Générez $N = 50$ points selon ce modèle pour $x \in [-2, 4]$.
+
+2. Ajustez un modèle linéaire $y = \theta_0 + \theta_1 x$ aux données. Visualisez le résultat et calculez l'EQM.
+
+3. Définissez la transformation $\phi(x) = [1, x, x^2]^\top$. Montrez que le problème devient linéaire en $\boldsymbol{\theta}$ dans cet espace étendu.
+
+4. Ajustez un modèle linéaire dans l'espace étendu: $y = \theta_0 + \theta_1 x + \theta_2 x^2$. Comparez l'EQM avec le modèle précédent.
+
+5. Que se passe-t-il si vous utilisez $\phi(x) = [1, x, x^2, x^3, x^4, x^5]$? Discutez du risque de surapprentissage.
+````
+
+```{admonition} Solution Exercice 7
+:class: dropdown
+
+1. **Génération des données:**
+
+   ```python
+   import numpy as np
+   np.random.seed(42)
+   x = np.random.uniform(-2, 4, 50)
+   y = 3 - 2*x + 0.5*x**2 + np.random.normal(0, 0.5, 50)
+   ```
+
+2. **Modèle linéaire simple:**
+
+   ```python
+   coeffs_lin = np.polyfit(x, y, 1)
+   y_pred_lin = np.polyval(coeffs_lin, x)
+   mse_lin = np.mean((y - y_pred_lin)**2)
+   ```
+   
+   L'EQM est élevé car le modèle linéaire ne peut pas capturer la courbure. Visuellement, la droite ne suit pas la tendance parabolique des données.
+
+3. **Transformation en problème linéaire:**
+
+   En définissant $\phi(x) = [1, x, x^2]^\top$, le modèle s'écrit:
+   
+   $$
+   y = \boldsymbol{\theta}^\top \phi(x) = \theta_0 \cdot 1 + \theta_1 \cdot x + \theta_2 \cdot x^2
+   $$
+   
+   C'est linéaire en $\boldsymbol{\theta} = [\theta_0, \theta_1, \theta_2]^\top$, même si c'est non-linéaire en $x$. On peut appliquer les équations normales dans cet espace.
+
+4. **Modèle quadratique:**
+
+   ```python
+   coeffs_quad = np.polyfit(x, y, 2)
+   y_pred_quad = np.polyval(coeffs_quad, x)
+   mse_quad = np.mean((y - y_pred_quad)**2)
+   ```
+   
+   L'EQM est beaucoup plus faible (proche de $\sigma^2 = 0.25$). Les coefficients récupérés sont proches des vrais: $\theta_2 \approx 0.5$, $\theta_1 \approx -2$, $\theta_0 \approx 3$.
+
+5. **Expansion de degré 5:**
+
+   Avec plus de termes, le modèle peut s'ajuster encore mieux aux données d'entraînement (EQM très faible), mais il risque de capturer le bruit plutôt que le signal. Sur de nouvelles données, les performances se dégradent. C'est le **surapprentissage**: le modèle a trop de capacité par rapport à la complexité réelle de la relation.
+```
+
+````{admonition} Exercice 8: EMV comme cas particulier de MAP ★
+:class: hint dropdown
+
+Le théorème de Bayes nous donne la distribution a posteriori des paramètres:
+
+$$
+p(\boldsymbol{\theta} | \mathcal{D}) = \frac{p(\mathcal{D} | \boldsymbol{\theta}) \, p(\boldsymbol{\theta})}{p(\mathcal{D})}
+$$
+
+L'estimateur MAP maximise cette distribution a posteriori.
+
+1. Écrivez la log-posterior $\log p(\boldsymbol{\theta} | \mathcal{D})$ en fonction de la log-vraisemblance et du log a priori.
+
+2. Supposons un a priori uniforme (constant): $p(\boldsymbol{\theta}) = c$ pour tout $\boldsymbol{\theta}$. Montrez que l'estimateur MAP se réduit à l'estimateur du maximum de vraisemblance (EMV).
+
+3. Pour quels autres types d'a priori l'EMV et le MAP coïncident-ils?
+
+4. Expliquez pourquoi utiliser un a priori uniforme peut être problématique dans certains cas.
+````
+
+```{admonition} Solution Exercice 8
+:class: dropdown
+
+1. **Log-posterior:**
+
+   $$
+   \log p(\boldsymbol{\theta} | \mathcal{D}) = \log p(\mathcal{D} | \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) - \log p(\mathcal{D})
+   $$
+   
+   Le terme $\log p(\mathcal{D})$ ne dépend pas de $\boldsymbol{\theta}$, donc pour l'optimisation:
+   
+   $$
+   \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathcal{D} | \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) \right]
+   $$
+
+2. **A priori uniforme:**
+
+   Si $p(\boldsymbol{\theta}) = c$ (constante), alors $\log p(\boldsymbol{\theta}) = \log c$ est aussi une constante.
+   
+   $$
+   \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathcal{D} | \boldsymbol{\theta}) + \log c \right] = \arg\max_{\boldsymbol{\theta}} \log p(\mathcal{D} | \boldsymbol{\theta}) = \hat{\boldsymbol{\theta}}_{\text{EMV}}
+   $$
+   
+   L'EMV est donc un cas particulier du MAP avec a priori uniforme.
+
+3. **Autres a priori:**
+
+   L'EMV et le MAP coïncident pour tout a priori qui est constant sur le domaine des paramètres, ou plus généralement, pour tout a priori dont le log est constant (à une constante additive près). Cela inclut les a priori impropres (non normalisables) qui sont uniformes sur $\mathbb{R}^d$.
+
+4. **Problèmes de l'a priori uniforme:**
+
+   - **Avec peu de données**: l'EMV peut être extrême. Exemple: 3 lancers de pièce donnant 3 faces → EMV = 100% de probabilité de face.
+   - **Paramètres non bornés**: un a priori uniforme sur $\mathbb{R}$ n'est pas une vraie distribution de probabilité (a priori impropre).
+   - **Invariance**: un a priori uniforme sur $\theta$ n'est pas uniforme sur $g(\theta)$ pour une transformation non-linéaire $g$.
+   - **Pas d'information**: on ignore toute connaissance préalable sur les valeurs plausibles des paramètres.
+```
+
+````{admonition} Exercice 9: Régression ridge et colinéarité ★★
+:class: hint dropdown
+
+La colinéarité entre les caractéristiques rend la matrice $\mathbf{X}^\top \mathbf{X}$ mal conditionnée, ce qui peut déstabiliser la solution MCO.
+
+1. Générez des données avec deux caractéristiques presque colinéaires:
+
+   ```python
+   np.random.seed(42)
+   n = 30
+   x1 = np.random.randn(n)
+   x2 = x1 + 0.01 * np.random.randn(n)  # x2 ≈ x1
+   y = 2*x1 + 3*x2 + 0.5*np.random.randn(n)
+   ```
+
+2. Calculez le nombre de conditionnement de $\mathbf{X}^\top \mathbf{X}$ (avec `np.linalg.cond`). Que signifie un grand nombre de conditionnement?
+
+3. Ajustez un modèle MCO. Les coefficients $\hat{\theta}_1$ et $\hat{\theta}_2$ sont-ils proches des vraies valeurs (2 et 3)?
+
+4. Ajustez des modèles Ridge pour $\lambda \in \{0.01, 0.1, 1, 10\}$. Comment les coefficients évoluent-ils?
+
+5. Tracez le "chemin de régularisation": les coefficients en fonction de $\log(\lambda)$.
+````
+
+```{admonition} Solution Exercice 9
+:class: dropdown
+
+1. **Génération des données:** (code fourni dans l'énoncé)
+
+2. **Nombre de conditionnement:**
+
+   ```python
+   X = np.column_stack([np.ones(n), x1, x2])
+   cond = np.linalg.cond(X.T @ X)
+   print(f"Conditionnement: {cond:.0f}")
+   ```
+   
+   Le nombre de conditionnement est très élevé (de l'ordre de $10^6$ ou plus). Cela signifie que de petites perturbations dans les données peuvent causer de grandes variations dans la solution. La matrice est proche d'être singulière.
+
+3. **Modèle MCO:**
+
+   ```python
+   theta_ols = np.linalg.solve(X.T @ X, X.T @ y)
+   ```
+   
+   Les coefficients MCO sont très instables: $\hat{\theta}_1$ et $\hat{\theta}_2$ peuvent être très différents de 2 et 3, et parfois de signes opposés avec de grandes magnitudes. Le modèle "distribue" l'effet entre les deux variables de manière arbitraire.
+
+4. **Modèles Ridge:**
+
+   ```python
+   from sklearn.linear_model import Ridge
+   for lam in [0.01, 0.1, 1, 10]:
+       model = Ridge(alpha=lam, fit_intercept=True)
+       model.fit(np.column_stack([x1, x2]), y)
+       print(f"λ={lam}: θ1={model.coef_[0]:.2f}, θ2={model.coef_[1]:.2f}")
+   ```
+   
+   Avec $\lambda$ croissant, les coefficients se rapprochent de zéro et deviennent plus stables. Les deux coefficients convergent vers des valeurs similaires (autour de 2.5 chacun), ce qui reflète mieux la symétrie du problème.
+
+5. **Chemin de régularisation:**
+
+   ```python
+   lambdas = np.logspace(-3, 2, 50)
+   coefs = []
+   for lam in lambdas:
+       model = Ridge(alpha=lam, fit_intercept=True)
+       model.fit(np.column_stack([x1, x2]), y)
+       coefs.append(model.coef_)
+   coefs = np.array(coefs)
+   
+   plt.plot(np.log10(lambdas), coefs[:, 0], label='θ1')
+   plt.plot(np.log10(lambdas), coefs[:, 1], label='θ2')
+   plt.xlabel('log10(λ)')
+   plt.ylabel('Coefficients')
+   plt.legend()
+   ```
+   
+   On observe que pour $\lambda$ petit, les coefficients sont instables et peuvent être extrêmes. Pour $\lambda$ grand, ils convergent vers zéro. Il existe une zone intermédiaire où les coefficients sont raisonnables.
+```
+
+````{admonition} Exercice 10: Softmax et classification multiclasse ★★
+:class: hint dropdown
+
+La fonction softmax transforme un vecteur de scores en un vecteur de probabilités:
+
+$$
+\text{softmax}(\mathbf{s})_c = \frac{e^{s_c}}{\sum_{j=1}^C e^{s_j}}
+$$
+
+1. Pour $C = 3$ classes et les scores $\mathbf{s} = [2, 1, 0]$, calculez manuellement $\text{softmax}(\mathbf{s})$. Vérifiez que les probabilités somment à 1.
+
+2. Montrez que le softmax est invariant par translation: $\text{softmax}(\mathbf{s} + c\mathbf{1}) = \text{softmax}(\mathbf{s})$ pour tout scalaire $c$.
+
+3. Pour $C = 2$ classes, montrez que le softmax se réduit à la sigmoïde. Posez $s = s_1 - s_2$ et montrez que $\text{softmax}(\mathbf{s})_1 = \sigma(s)$.
+
+4. Pour un problème à 3 classes avec les vraies étiquettes one-hot $\mathbf{y} = [0, 1, 0]$ (classe 2) et les probabilités prédites $\hat{\mathbf{p}} = [0.1, 0.7, 0.2]$, calculez l'entropie croisée.
+````
+
+```{admonition} Solution Exercice 10
+:class: dropdown
+
+1. **Calcul du softmax:**
+
+   $$
+   \text{dénominateur} = e^2 + e^1 + e^0 = 7.389 + 2.718 + 1 = 11.107
+   $$
+   
+   $$
+   \text{softmax}([2, 1, 0]) = \left[ \frac{7.389}{11.107}, \frac{2.718}{11.107}, \frac{1}{11.107} \right] = [0.665, 0.245, 0.090]
+   $$
+   
+   Vérification: $0.665 + 0.245 + 0.090 = 1.000$ ✓
+
+2. **Invariance par translation:**
+
+   $$
+   \text{softmax}(\mathbf{s} + c\mathbf{1})_c = \frac{e^{s_c + c}}{\sum_j e^{s_j + c}} = \frac{e^{s_c} \cdot e^c}{\sum_j e^{s_j} \cdot e^c} = \frac{e^c \cdot e^{s_c}}{e^c \cdot \sum_j e^{s_j}} = \frac{e^{s_c}}{\sum_j e^{s_j}} = \text{softmax}(\mathbf{s})_c
+   $$
+   
+   Cette propriété est utile numériquement: on peut soustraire $\max_j s_j$ pour éviter les débordements.
+
+3. **Cas $C = 2$:**
+
+   $$
+   \text{softmax}([s_1, s_2])_1 = \frac{e^{s_1}}{e^{s_1} + e^{s_2}} = \frac{1}{1 + e^{s_2 - s_1}} = \frac{1}{1 + e^{-(s_1 - s_2)}} = \sigma(s_1 - s_2)
+   $$
+   
+   En posant $s = s_1 - s_2$, on retrouve bien $\sigma(s) = 1/(1 + e^{-s})$.
+
+4. **Entropie croisée:**
+
+   $$
+   \text{EC} = -\sum_{c=1}^C y_c \log \hat{p}_c = -(0 \cdot \log 0.1 + 1 \cdot \log 0.7 + 0 \cdot \log 0.2)
+   $$
+   
+   $$
+   = -\log 0.7 \approx -(-0.357) = 0.357
+   $$
+   
+   Seule la composante correspondant à la vraie classe contribue à la perte.
+```
+
+````{admonition} Exercice 11: MAP avec a priori gaussien et régression ridge ★★
+:class: hint dropdown
+
+Considérons un modèle de régression linéaire gaussien:
+
+$$
+p(y | \mathbf{x}, \boldsymbol{\theta}) = \mathcal{N}(y | \boldsymbol{\theta}^\top \mathbf{x}, \sigma^2)
+$$
+
+avec un a priori gaussien isotrope sur les paramètres:
+
+$$
+p(\boldsymbol{\theta}) = \mathcal{N}(\boldsymbol{\theta} | \mathbf{0}, \tau^2 \mathbf{I})
+$$
+
+1. Écrivez la log-vraisemblance pour $N$ observations i.i.d.
+
+2. Écrivez le log a priori $\log p(\boldsymbol{\theta})$.
+
+3. Montrez que l'estimateur MAP s'écrit:
+
+   $$
+   \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|^2 + \lambda \|\boldsymbol{\theta}\|^2 \right]
+   $$
+   
+   et identifiez $\lambda$ en fonction de $\sigma^2$ et $\tau^2$.
+
+4. Interprétez: que signifie un grand $\tau^2$? Un petit $\tau^2$?
+````
+
+```{admonition} Solution Exercice 11
+:class: dropdown
+
+1. **Log-vraisemblance:**
+
+   $$
+   \log p(\mathbf{y} | \mathbf{X}, \boldsymbol{\theta}) = \sum_{i=1}^N \log \mathcal{N}(y_i | \boldsymbol{\theta}^\top \mathbf{x}_i, \sigma^2)
+   $$
+   
+   $$
+   = -\frac{N}{2} \log(2\pi\sigma^2) - \frac{1}{2\sigma^2} \sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2
+   $$
+   
+   $$
+   = -\frac{N}{2} \log(2\pi\sigma^2) - \frac{1}{2\sigma^2} \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|^2
+   $$
+
+2. **Log a priori:**
+
+   $$
+   \log p(\boldsymbol{\theta}) = -\frac{d}{2} \log(2\pi\tau^2) - \frac{1}{2\tau^2} \|\boldsymbol{\theta}\|^2
+   $$
+
+3. **Estimateur MAP:**
+
+   $$
+   \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathbf{y} | \mathbf{X}, \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) \right]
+   $$
+   
+   En ignorant les constantes:
+   
+   $$
+   = \arg\max_{\boldsymbol{\theta}} \left[ -\frac{1}{2\sigma^2} \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|^2 - \frac{1}{2\tau^2} \|\boldsymbol{\theta}\|^2 \right]
+   $$
+   
+   En multipliant par $-2\sigma^2$ (qui ne change pas l'argmax):
+   
+   $$
+   = \arg\min_{\boldsymbol{\theta}} \left[ \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|^2 + \frac{\sigma^2}{\tau^2} \|\boldsymbol{\theta}\|^2 \right]
+   $$
+   
+   Donc $\boxed{\lambda = \sigma^2 / \tau^2}$.
+
+4. **Interprétation:**
+
+   - **Grand $\tau^2$** (a priori large): on est peu sûr que les paramètres sont proches de zéro, donc $\lambda$ petit, peu de régularisation, MAP proche de EMV.
+   - **Petit $\tau^2$** (a priori concentré): on croit fortement que les paramètres sont proches de zéro, donc $\lambda$ grand, forte régularisation, coefficients tirés vers zéro.
+   
+   Le rapport $\sigma^2/\tau^2$ compare l'incertitude dans les données ($\sigma^2$) à l'incertitude dans l'a priori ($\tau^2$). Plus les données sont bruitées, plus on fait confiance à l'a priori.
+```
+
+````{admonition} Exercice 12: Homoscédasticité et hétéroscédasticité ★★
+:class: hint dropdown
+
+En régression, l'**homoscédasticité** suppose que la variance du bruit est constante: $\text{Var}(\epsilon | x) = \sigma^2$. L'**hétéroscédasticité** suppose que la variance dépend de $x$.
+
+1. Générez deux jeux de données ($N = 100$, $x \in [0, 10]$):
+   - **Homoscédastique**: $y = 2x + \epsilon$ avec $\epsilon \sim \mathcal{N}(0, 1)$
+   - **Hétéroscédastique**: $y = 2x + \epsilon$ avec $\epsilon \sim \mathcal{N}(0, (0.3x)^2)$
+
+2. Visualisez les deux jeux de données. Quelle différence observez-vous?
+
+3. Ajustez un modèle linéaire sur chaque jeu. Les coefficients sont-ils similaires?
+
+4. Tracez les résidus $r_i = y_i - \hat{y}_i$ en fonction de $x_i$ pour les deux cas. Que remarquez-vous?
+
+5. Pourquoi l'hétéroscédasticité peut-elle être problématique pour l'inférence statistique (intervalles de confiance, tests)?
+````
+
+```{admonition} Solution Exercice 12
+:class: dropdown
+
+1. **Génération des données:**
+
+   ```python
+   np.random.seed(42)
+   x = np.random.uniform(0, 10, 100)
+   
+   # Homoscédastique
+   y_homo = 2*x + np.random.normal(0, 1, 100)
+   
+   # Hétéroscédastique
+   y_hetero = 2*x + np.random.normal(0, 0.3*x, 100)
+   ```
+
+2. **Visualisation:**
+
+   Dans le cas homoscédastique, les points sont dispersés uniformément autour de la droite sur toute la plage de $x$. Dans le cas hétéroscédastique, la dispersion augmente avec $x$: les points sont serrés près de $x = 0$ et très dispersés pour les grandes valeurs de $x$.
+
+3. **Coefficients:**
+
+   Les coefficients MCO sont similaires dans les deux cas (proches de $\theta_1 = 2$, $\theta_0 = 0$). MCO reste non biaisé sous hétéroscédasticité, mais n'est plus optimal (pas de variance minimale).
+
+4. **Résidus:**
+
+   - **Homoscédastique**: les résidus sont répartis uniformément autour de zéro, avec une dispersion constante.
+   - **Hétéroscédastique**: les résidus montrent un "cône" ou "éventail" (*fan shape*): la dispersion augmente avec $x$. C'est le signe classique d'hétéroscédasticité.
+
+5. **Problèmes d'inférence:**
+
+   - Les **erreurs standard** des coefficients sont incorrectes: elles supposent une variance constante.
+   - Les **intervalles de confiance** et **tests t** ne sont pas valides.
+   - Les **tests de significativité** peuvent être trop optimistes ou trop pessimistes.
+   - Solution: utiliser des erreurs standard robustes (Huber-White) ou des moindres carrés pondérés.
+```
+
+````{admonition} Exercice 13: Validation croisée pour le choix de λ ★★
+:class: hint dropdown
+
+La validation croisée permet de choisir l'hyperparamètre $\lambda$ de la régression ridge sans utiliser de données de test.
+
+1. Générez un jeu de données de régression polynomiale ($N = 50$):
+
+   ```python
+   np.random.seed(42)
+   x = np.random.uniform(-3, 3, 50)
+   y = 0.5*x**3 - x**2 + 2*x + np.random.normal(0, 2, 50)
+   ```
+
+2. Créez une matrice de caractéristiques polynomiales de degré 10: $\phi(x) = [1, x, x^2, \ldots, x^{10}]$.
+
+3. Implémentez la validation croisée à 5 plis (*5-fold CV*):
+   - Divisez les données en 5 groupes
+   - Pour chaque $\lambda \in \{10^{-4}, 10^{-3}, \ldots, 10^{2}\}$:
+     - Entraînez sur 4 plis, évaluez sur le 5ème
+     - Calculez l'EQM moyen sur les 5 plis
+
+4. Tracez l'EQM de validation en fonction de $\log_{10}(\lambda)$. Quel $\lambda$ choisiriez-vous?
+
+5. Comparez les performances (sur un ensemble de test séparé) de MCO ($\lambda = 0$) et de Ridge avec le $\lambda$ optimal.
+````
+
+```{admonition} Solution Exercice 13
+:class: dropdown
+
+1-2. **Génération et matrice de caractéristiques:**
+
+   ```python
+   from sklearn.preprocessing import PolynomialFeatures
+   
+   np.random.seed(42)
+   x = np.random.uniform(-3, 3, 50)
+   y = 0.5*x**3 - x**2 + 2*x + np.random.normal(0, 2, 50)
+   
+   poly = PolynomialFeatures(degree=10, include_bias=True)
+   X = poly.fit_transform(x.reshape(-1, 1))
+   ```
+
+3. **Validation croisée:**
+
+   ```python
+   from sklearn.model_selection import KFold
+   from sklearn.linear_model import Ridge
+   
+   lambdas = np.logspace(-4, 2, 20)
+   kf = KFold(n_splits=5, shuffle=True, random_state=42)
+   
+   cv_scores = []
+   for lam in lambdas:
+       fold_scores = []
+       for train_idx, val_idx in kf.split(X):
+           model = Ridge(alpha=lam, fit_intercept=False)
+           model.fit(X[train_idx], y[train_idx])
+           y_pred = model.predict(X[val_idx])
+           mse = np.mean((y[val_idx] - y_pred)**2)
+           fold_scores.append(mse)
+       cv_scores.append(np.mean(fold_scores))
+   ```
+
+4. **Visualisation et choix de λ:**
+
+   ```python
+   plt.plot(np.log10(lambdas), cv_scores)
+   plt.xlabel('log10(λ)')
+   plt.ylabel('EQM de validation')
+   best_idx = np.argmin(cv_scores)
+   best_lambda = lambdas[best_idx]
+   ```
+   
+   La courbe montre typiquement:
+   - EQM élevé pour $\lambda$ très petit (surapprentissage)
+   - EQM minimal pour $\lambda$ intermédiaire
+   - EQM qui remonte pour $\lambda$ grand (sous-apprentissage)
+   
+   Le $\lambda$ optimal se situe au minimum de la courbe (souvent autour de $10^{-1}$ à $10^0$).
+
+5. **Comparaison finale:**
+
+   MCO avec degré 10 surapprend fortement et a un EQM de test élevé. Ridge avec $\lambda$ optimal a un EQM de test beaucoup plus faible car la régularisation empêche les coefficients d'exploser.
+```
+
+````{admonition} Exercice 14: Prédicteur de Bayes optimal (perte quadratique) ★★
+:class: hint dropdown
+
+Le prédicteur de Bayes optimal minimise le risque pour une perte donnée, en supposant que la vraie distribution $p(y|x)$ est connue.
+
+Considérons la distribution conditionnelle suivante pour un $x$ donné:
+
+$$
+p(y|x) = 0.3 \cdot \mathcal{N}(y | 1, 0.5^2) + 0.7 \cdot \mathcal{N}(y | 4, 1^2)
+$$
+
+C'est un mélange de deux gaussiennes.
+
+1. Tracez cette distribution $p(y|x)$.
+
+2. Calculez l'espérance $\mathbb{E}[y|x]$ (utiliser la linéarité de l'espérance).
+
+3. Pour la perte quadratique, le prédicteur optimal est la moyenne conditionnelle. Quelle est donc la prédiction optimale $\hat{y}^*$?
+
+4. Calculez le risque de Bayes (l'erreur minimale atteignable): $\mathcal{R}^* = \mathbb{E}[(y - \hat{y}^*)^2 | x]$.
+
+5. Si vous prédisiez le mode (la valeur la plus probable) au lieu de la moyenne, quelle serait votre prédiction? Quel serait le risque?
+````
+
+```{admonition} Solution Exercice 14
+:class: dropdown
+
+1. **Distribution:**
+
+   ```python
+   y = np.linspace(-2, 8, 200)
+   p = 0.3 * scipy.stats.norm.pdf(y, 1, 0.5) + 0.7 * scipy.stats.norm.pdf(y, 4, 1)
+   plt.plot(y, p)
+   plt.xlabel('y')
+   plt.ylabel('p(y|x)')
+   ```
+   
+   La distribution est bimodale avec un petit pic à $y = 1$ et un grand pic à $y = 4$.
+
+2. **Espérance:**
+
+   Par linéarité: $\mathbb{E}[y|x] = 0.3 \times 1 + 0.7 \times 4 = 0.3 + 2.8 = 3.1$
+
+3. **Prédiction optimale:**
+
+   Pour la perte quadratique, $\hat{y}^* = \mathbb{E}[y|x] = 3.1$
+
+4. **Risque de Bayes:**
+
+   $$
+   \mathcal{R}^* = \mathbb{E}[(y - 3.1)^2 | x] = \text{Var}(y|x)
+   $$
+   
+   Pour un mélange: $\text{Var}(y) = \mathbb{E}[\text{Var}(y|k)] + \text{Var}(\mathbb{E}[y|k])$
+   
+   où $k$ est la composante.
+   
+   - $\mathbb{E}[\text{Var}] = 0.3 \times 0.25 + 0.7 \times 1 = 0.075 + 0.7 = 0.775$
+   - $\text{Var}(\mathbb{E}) = 0.3 \times (1 - 3.1)^2 + 0.7 \times (4 - 3.1)^2 = 0.3 \times 4.41 + 0.7 \times 0.81 = 1.323 + 0.567 = 1.89$
+   - $\mathcal{R}^* = 0.775 + 1.89 = 2.665$
+
+5. **Prédiction par le mode:**
+
+   Le mode est le pic le plus haut, soit $y = 4$ (puisque le poids 0.7 > 0.3).
+   
+   Risque: $\mathbb{E}[(y - 4)^2 | x] = 0.3 \times [(1-4)^2 + 0.25] + 0.7 \times [(4-4)^2 + 1]$
+   $= 0.3 \times 9.25 + 0.7 \times 1 = 2.775 + 0.7 = 3.475$
+   
+   Le mode donne un risque plus élevé (3.475 > 2.665) pour la perte quadratique.
+```
+
+````{admonition} Exercice 15: Prédicteur de Bayes optimal (perte 0-1) ★★
+:class: hint dropdown
+
+Pour la classification avec perte 0-1, le prédicteur de Bayes optimal est le **mode conditionnel** (la classe la plus probable).
+
+Considérons un problème de classification à 3 classes avec les probabilités conditionnelles suivantes pour un $\mathbf{x}$ donné:
+
+$$
+p(y = 0 | \mathbf{x}) = 0.25, \quad p(y = 1 | \mathbf{x}) = 0.45, \quad p(y = 2 | \mathbf{x}) = 0.30
+$$
+
+1. Quel est le prédicteur de Bayes optimal $\hat{y}^*$?
+
+2. Calculez le risque de Bayes $\mathcal{R}^* = P(\hat{y}^* \neq y | \mathbf{x})$.
+
+3. Supposons qu'un classificateur prédit la classe 0 pour cet $\mathbf{x}$. Quel est son risque?
+
+4. **Situation asymétrique**: Supposons que se tromper sur la classe 1 (maladie) coûte 10 fois plus cher que les autres erreurs. Définissez une matrice de coût et trouvez la prédiction optimale.
+
+5. Montrez que pour la perte 0-1, aucun classificateur ne peut avoir un risque inférieur au risque de Bayes.
+````
+
+```{admonition} Solution Exercice 15
+:class: dropdown
+
+1. **Prédicteur optimal:**
+
+   Pour la perte 0-1, $\hat{y}^* = \arg\max_c p(y = c | \mathbf{x})$.
+   
+   Ici, la classe 1 a la probabilité maximale (0.45), donc $\hat{y}^* = 1$.
+
+2. **Risque de Bayes:**
+
+   $$
+   \mathcal{R}^* = P(y \neq 1 | \mathbf{x}) = 1 - P(y = 1 | \mathbf{x}) = 1 - 0.45 = 0.55
+   $$
+   
+   Même le meilleur classificateur possible se trompe 55% du temps pour ce $\mathbf{x}$.
+
+3. **Risque du classificateur sous-optimal:**
+
+   Si on prédit la classe 0:
+   $$
+   P(y \neq 0 | \mathbf{x}) = 1 - 0.25 = 0.75
+   $$
+   
+   Ce classificateur a un risque plus élevé (0.75 > 0.55).
+
+4. **Coûts asymétriques:**
+
+   Matrice de coût $C_{ij}$ = coût de prédire $i$ quand la vraie classe est $j$:
+   
+   |  | $y=0$ | $y=1$ | $y=2$ |
+   |--|-------|-------|-------|
+   | $\hat{y}=0$ | 0 | 10 | 1 |
+   | $\hat{y}=1$ | 1 | 0 | 1 |
+   | $\hat{y}=2$ | 1 | 10 | 0 |
+   
+   Risque espéré pour chaque prédiction:
+   - Prédire 0: $0 \times 0.25 + 10 \times 0.45 + 1 \times 0.30 = 4.80$
+   - Prédire 1: $1 \times 0.25 + 0 \times 0.45 + 1 \times 0.30 = 0.55$
+   - Prédire 2: $1 \times 0.25 + 10 \times 0.45 + 0 \times 0.30 = 4.75$
+   
+   Prédiction optimale: classe 1 (coût minimal 0.55).
+
+5. **Optimalité:**
+
+   Le risque est $\mathbb{E}[\mathbf{1}[y \neq \hat{y}] | \mathbf{x}] = 1 - p(y = \hat{y} | \mathbf{x})$.
+   
+   Pour minimiser cette quantité, il faut maximiser $p(y = \hat{y} | \mathbf{x})$, donc choisir $\hat{y} = \arg\max_c p(y = c | \mathbf{x})$.
+   
+   Tout autre choix donne un risque plus élevé. Le prédicteur de Bayes est donc optimal par construction.
+```
+
+````{admonition} Exercice 16: SVD et facteurs de rétrécissement ★★★
+:class: hint dropdown
+
+La décomposition en valeurs singulières (SVD) de $\mathbf{X}$ révèle pourquoi Ridge "rétrécit" les coefficients de manière différenciée.
+
+1. Pour la matrice de données suivante, calculez la SVD $\mathbf{X} = \mathbf{U} \mathbf{D} \mathbf{V}^\top$:
+
+   $$
+   \mathbf{X} = \begin{pmatrix} 2 & 1 \\ 2 & 2 \\ 2 & 3 \end{pmatrix}
+   $$
+
+2. Vérifiez que $\mathbf{X}^\top \mathbf{X} = \mathbf{V} \mathbf{D}^2 \mathbf{V}^\top$ (les colonnes de $\mathbf{V}$ sont les vecteurs propres de $\mathbf{X}^\top \mathbf{X}$).
+
+3. Pour $\lambda = 1$, calculez les facteurs de rétrécissement $s_j = \frac{d_j^2}{d_j^2 + \lambda}$ pour chaque direction $j$.
+
+4. Expliquez pourquoi la direction avec la plus petite valeur singulière est plus fortement rétrécée.
+
+5. Tracez les facteurs de rétrécissement $s_1$ et $s_2$ en fonction de $\lambda$ pour $\lambda \in [0, 10]$.
+````
+
+```{admonition} Solution Exercice 16
+:class: dropdown
+
+1. **SVD:**
+
+   ```python
+   X = np.array([[2, 1], [2, 2], [2, 3]])
+   U, d, Vt = np.linalg.svd(X, full_matrices=False)
+   V = Vt.T
+   D = np.diag(d)
+   ```
+   
+   Résultat (approximatif):
+   - $d_1 \approx 4.58$, $d_2 \approx 0.77$
+   - $\mathbf{v}_1 \approx [0.58, 0.82]^\top$, $\mathbf{v}_2 \approx [0.82, -0.58]^\top$
+
+2. **Vérification:**
+
+   ```python
+   XtX = X.T @ X
+   VD2Vt = V @ D**2 @ V.T
+   np.allclose(XtX, VD2Vt)  # True
+   ```
+   
+   On peut aussi vérifier que les valeurs propres de $\mathbf{X}^\top \mathbf{X}$ sont $d_1^2 \approx 21$ et $d_2^2 \approx 0.6$.
+
+3. **Facteurs de rétrécissement pour λ = 1:**
+
+   $$
+   s_1 = \frac{d_1^2}{d_1^2 + 1} = \frac{21}{22} \approx 0.95
+   $$
+   
+   $$
+   s_2 = \frac{d_2^2}{d_2^2 + 1} = \frac{0.6}{1.6} \approx 0.37
+   $$
+
+4. **Explication:**
+
+   La direction 2 a une petite valeur singulière ($d_2 \approx 0.77$), ce qui signifie que les données varient peu dans cette direction. L'information est donc "faible" et potentiellement bruitée. Ridge pénalise plus fortement cette direction ($s_2 = 0.37$ vs $s_1 = 0.95$) pour éviter d'ajuster le bruit.
+   
+   En termes de conditionnement: le rapport $d_1/d_2 \approx 6$ indique que la matrice est mal conditionnée. Ridge améliore ce conditionnement en réduisant l'effet des petites valeurs singulières.
+
+5. **Visualisation:**
+
+   ```python
+   lambdas = np.linspace(0, 10, 100)
+   s1 = d[0]**2 / (d[0]**2 + lambdas)
+   s2 = d[1]**2 / (d[1]**2 + lambdas)
+   
+   plt.plot(lambdas, s1, label=f's1 (d1={d[0]:.2f})')
+   plt.plot(lambdas, s2, label=f's2 (d2={d[1]:.2f})')
+   plt.xlabel('λ')
+   plt.ylabel('Facteur de rétrécissement')
+   plt.legend()
+   ```
+   
+   On observe que $s_1$ reste proche de 1 même pour $\lambda$ modéré, tandis que $s_2$ décroît rapidement. C'est le rétrécissement différencié de Ridge.
+```
+
+````{admonition} Exercice 17: Conditionnement et stabilité numérique ★★★
+:class: hint dropdown
+
+Le **nombre de conditionnement** $\kappa(\mathbf{A}) = \|\mathbf{A}\| \cdot \|\mathbf{A}^{-1}\|$ mesure la sensibilité de la solution d'un système linéaire aux perturbations.
+
+Pour une matrice symétrique définie positive, $\kappa(\mathbf{A}) = \lambda_{\max} / \lambda_{\min}$ où $\lambda$ sont les valeurs propres.
+
+1. Calculez le nombre de conditionnement de $\mathbf{A} = \mathbf{X}^\top \mathbf{X}$ pour:
+
+   $$
+   \mathbf{X} = \begin{pmatrix} 1 & 1 \\ 1 & 1.001 \\ 1 & 0.999 \end{pmatrix}
+   $$
+
+2. Résolvez le système $\mathbf{A} \boldsymbol{\theta} = \mathbf{X}^\top \mathbf{y}$ pour $\mathbf{y} = [1, 2, 3]^\top$.
+
+3. Perturbez légèrement $\mathbf{y}$ en $\mathbf{y}' = [1.01, 2, 3]^\top$ et résolvez à nouveau. Comment change la solution?
+
+4. Montrez que pour Ridge, $\kappa(\mathbf{X}^\top \mathbf{X} + \lambda \mathbf{I}) = \frac{\lambda_{\max} + \lambda}{\lambda_{\min} + \lambda}$.
+
+5. Calculez le conditionnement de la matrice Ridge pour $\lambda = 0.1$. Comparez avec le cas MCO.
+````
+
+```{admonition} Solution Exercice 17
+:class: dropdown
+
+1. **Conditionnement de X'X:**
+
+   ```python
+   X = np.array([[1, 1], [1, 1.001], [1, 0.999]])
+   A = X.T @ X
+   eigvals = np.linalg.eigvalsh(A)
+   kappa = eigvals.max() / eigvals.min()
+   print(f"Conditionnement: {kappa:.0f}")
+   ```
+   
+   Le conditionnement est très élevé (de l'ordre de $10^6$) car les colonnes sont presque colinéaires.
+
+2. **Solution MCO:**
+
+   ```python
+   y = np.array([1, 2, 3])
+   theta = np.linalg.solve(A, X.T @ y)
+   ```
+   
+   La solution peut être numériquement instable.
+
+3. **Perturbation:**
+
+   ```python
+   y_perturb = np.array([1.01, 2, 3])  # 1% de perturbation sur y[0]
+   theta_perturb = np.linalg.solve(A, X.T @ y_perturb)
+   print(f"Changement: {np.linalg.norm(theta_perturb - theta)}")
+   ```
+   
+   Une perturbation de 1% sur $\mathbf{y}$ peut causer un changement de plusieurs centaines de % sur $\boldsymbol{\theta}$. C'est le signe d'un système mal conditionné.
+
+4. **Conditionnement Ridge:**
+
+   La matrice Ridge est $\mathbf{A} + \lambda \mathbf{I}$. Ses valeurs propres sont $\lambda_j + \lambda$ (où $\lambda_j$ sont les valeurs propres de $\mathbf{A}$).
+   
+   $$
+   \kappa(\mathbf{A} + \lambda \mathbf{I}) = \frac{\max_j(\lambda_j + \lambda)}{\min_j(\lambda_j + \lambda)} = \frac{\lambda_{\max} + \lambda}{\lambda_{\min} + \lambda}
+   $$
+   
+   Pour $\lambda > 0$, le numérateur et le dénominateur sont tous deux augmentés, mais le dénominateur relativement plus (puisque $\lambda_{\min}$ est petit). Le conditionnement diminue.
+
+5. **Comparaison:**
+
+   ```python
+   lambda_reg = 0.1
+   A_ridge = A + lambda_reg * np.eye(2)
+   eigvals_ridge = np.linalg.eigvalsh(A_ridge)
+   kappa_ridge = eigvals_ridge.max() / eigvals_ridge.min()
+   print(f"Conditionnement MCO: {kappa:.0f}")
+   print(f"Conditionnement Ridge: {kappa_ridge:.0f}")
+   ```
+   
+   Le conditionnement Ridge est beaucoup plus faible (quelques dizaines au lieu de millions), ce qui rend le système numériquement stable.
+```
+
+````{admonition} Exercice 18: Inférence bayésienne complète ★★★
+:class: hint dropdown
+
+L'inférence bayésienne complète calcule la distribution a posteriori des paramètres, pas seulement son mode (MAP).
+
+Considérons un modèle de régression linéaire bayésien avec:
+- Vraisemblance: $p(y | x, \theta) = \mathcal{N}(y | \theta x, \sigma^2)$
+- Prior: $p(\theta) = \mathcal{N}(\theta | 0, \tau^2)$
+
+Supposons $\sigma^2 = 1$ et $\tau^2 = 1$.
+
+1. Pour une seule observation $(x_1, y_1) = (2, 3)$, calculez la distribution a posteriori $p(\theta | x_1, y_1)$. Utilisez le fait que le produit de deux gaussiennes est une gaussienne.
+
+2. Quelle est la moyenne a posteriori $\mu_{\text{post}}$ et la variance a posteriori $\sigma^2_{\text{post}}$?
+
+3. Calculez l'estimateur MAP $\hat{\theta}_{\text{MAP}}$ et comparez avec $\mu_{\text{post}}$.
+
+4. Ajoutez une deuxième observation $(x_2, y_2) = (1, 0.5)$. Mettez à jour la distribution a posteriori.
+
+5. Tracez les distributions a priori, a posteriori après 1 observation, et a posteriori après 2 observations. Que remarquez-vous sur l'évolution de l'incertitude?
+````
+
+```{admonition} Solution Exercice 18
+:class: dropdown
+
+1. **Calcul de la distribution a posteriori:**
+
+   La distribution a posteriori est proportionnelle à:
+   $$
+   p(\theta | y_1) \propto p(y_1 | \theta) \cdot p(\theta)
+   $$
+   
+   En prenant le log:
+   $$
+   \log p(\theta | y_1) \propto -\frac{(y_1 - \theta x_1)^2}{2\sigma^2} - \frac{\theta^2}{2\tau^2}
+   $$
+   
+   C'est une forme quadratique en $\theta$, donc la distribution a posteriori est gaussienne.
+
+2. **Paramètres de la distribution a posteriori:**
+
+   Pour le modèle conjugué gaussien-gaussien:
+   
+   $$
+   \sigma^2_{\text{post}} = \left( \frac{1}{\tau^2} + \frac{x_1^2}{\sigma^2} \right)^{-1} = \left( 1 + 4 \right)^{-1} = 0.2
+   $$
+   
+   $$
+   \mu_{\text{post}} = \sigma^2_{\text{post}} \cdot \frac{x_1 y_1}{\sigma^2} = 0.2 \times \frac{2 \times 3}{1} = 1.2
+   $$
+   
+   Donc $p(\theta | x_1, y_1) = \mathcal{N}(\theta | 1.2, 0.2)$.
+
+3. **Estimateur MAP:**
+
+   Pour une distribution a posteriori gaussienne, le mode = la moyenne:
+   $$
+   \hat{\theta}_{\text{MAP}} = \mu_{\text{post}} = 1.2
+   $$
+   
+   Pour un modèle gaussien conjugué, MAP = moyenne a posteriori.
+
+4. **Mise à jour séquentielle:**
+
+   On utilise la distribution a posteriori après la première observation comme nouvel a priori:
+   
+   $$
+   \sigma^2_{\text{post,2}} = \left( \frac{1}{0.2} + \frac{1^2}{1} \right)^{-1} = \left( 5 + 1 \right)^{-1} = \frac{1}{6} \approx 0.167
+   $$
+   
+   $$
+   \mu_{\text{post,2}} = \sigma^2_{\text{post,2}} \cdot \left( \frac{1.2}{0.2} + \frac{1 \times 0.5}{1} \right) = \frac{1}{6} \times (6 + 0.5) = 1.083
+   $$
+
+5. **Visualisation:**
+
+   ```python
+   theta = np.linspace(-2, 3, 200)
+   prior = scipy.stats.norm.pdf(theta, 0, 1)
+   post1 = scipy.stats.norm.pdf(theta, 1.2, np.sqrt(0.2))
+   post2 = scipy.stats.norm.pdf(theta, 1.083, np.sqrt(1/6))
+   
+   plt.plot(theta, prior, label='A priori')
+   plt.plot(theta, post1, label='A posteriori (1 obs)')
+   plt.plot(theta, post2, label='A posteriori (2 obs)')
+   plt.legend()
+   ```
+   
+   Observations:
+   - L'a priori est large (grande incertitude)
+   - Après 1 observation, la distribution a posteriori se concentre autour de 1.2
+   - Après 2 observations, la distribution a posteriori se concentre davantage (variance diminue)
+   - La moyenne a posteriori est une moyenne pondérée de l'a priori et des données
+```
+
+````{admonition} Exercice 19: Entropie croisée et divergence de Kullback-Leibler ★★★
+:class: hint dropdown
+
+La divergence de Kullback-Leibler (KL) mesure la différence entre deux distributions. L'entropie croisée est liée à la KL divergence.
+
+Définitions pour des distributions discrètes $p$ (vraie) et $q$ (modèle):
+
+$$
+H(p) = -\sum_i p_i \log p_i \quad \text{(entropie)}
+$$
+
+$$
+H(p, q) = -\sum_i p_i \log q_i \quad \text{(entropie croisée)}
+$$
+
+$$
+D_{\text{KL}}(p \| q) = \sum_i p_i \log \frac{p_i}{q_i} \quad \text{(divergence KL)}
+$$
+
+1. Montrez que $H(p, q) = H(p) + D_{\text{KL}}(p \| q)$.
+
+2. Pour la vraie distribution $p = [0.7, 0.3]$ et deux modèles $q_1 = [0.6, 0.4]$ et $q_2 = [0.9, 0.1]$, calculez $D_{\text{KL}}(p \| q_1)$ et $D_{\text{KL}}(p \| q_2)$. Quel modèle est "meilleur"?
+
+3. Montrez que minimiser l'entropie croisée $H(p, q)$ par rapport à $q$ revient à minimiser $D_{\text{KL}}(p \| q)$.
+
+4. Expliquez pourquoi la KL divergence n'est pas symétrique: $D_{\text{KL}}(p \| q) \neq D_{\text{KL}}(q \| p)$. Calculez les deux pour l'exemple de la question 2.
+
+5. Reliez ceci au maximum de vraisemblance: si $p$ est la distribution empirique des données et $q_\theta$ est le modèle, montrez que minimiser la NLV revient à minimiser $D_{\text{KL}}(p \| q_\theta)$.
+````
+
+```{admonition} Solution Exercice 19
+:class: dropdown
+
+1. **Relation entropie croisée et KL:**
+
+   $$
+   H(p, q) = -\sum_i p_i \log q_i
+   $$
+   
+   $$
+   H(p) + D_{\text{KL}}(p \| q) = -\sum_i p_i \log p_i + \sum_i p_i \log \frac{p_i}{q_i}
+   $$
+   
+   $$
+   = -\sum_i p_i \log p_i + \sum_i p_i \log p_i - \sum_i p_i \log q_i
+   $$
+   
+   $$
+   = -\sum_i p_i \log q_i = H(p, q) \quad \checkmark
+   $$
+
+2. **Calcul des KL divergences:**
+
+   $$
+   D_{\text{KL}}(p \| q_1) = 0.7 \log\frac{0.7}{0.6} + 0.3 \log\frac{0.3}{0.4}
+   $$
+   
+   $$
+   = 0.7 \times 0.154 + 0.3 \times (-0.288) = 0.108 - 0.086 = 0.022
+   $$
+   
+   $$
+   D_{\text{KL}}(p \| q_2) = 0.7 \log\frac{0.7}{0.9} + 0.3 \log\frac{0.3}{0.1}
+   $$
+   
+   $$
+   = 0.7 \times (-0.251) + 0.3 \times 1.099 = -0.176 + 0.330 = 0.154
+   $$
+   
+   $q_1$ est meilleur car $D_{\text{KL}}(p \| q_1) < D_{\text{KL}}(p \| q_2)$.
+
+3. **Minimisation:**
+
+   Puisque $H(p, q) = H(p) + D_{\text{KL}}(p \| q)$ et que $H(p)$ ne dépend pas de $q$:
+   
+   $$
+   \arg\min_q H(p, q) = \arg\min_q D_{\text{KL}}(p \| q)
+   $$
+
+4. **Asymétrie de la KL:**
+
+   $$
+   D_{\text{KL}}(q_1 \| p) = 0.6 \log\frac{0.6}{0.7} + 0.4 \log\frac{0.4}{0.3}
+   $$
+   
+   $$
+   = 0.6 \times (-0.154) + 0.4 \times 0.288 = -0.092 + 0.115 = 0.023
+   $$
+   
+   $D_{\text{KL}}(p \| q_1) = 0.022 \neq 0.023 = D_{\text{KL}}(q_1 \| p)$.
+   
+   L'asymétrie vient du fait que la KL pénalise différemment selon quelle distribution est au numérateur du log.
+
+5. **Lien avec le maximum de vraisemblance:**
+
+   La distribution empirique est $\hat{p}(y) = \frac{1}{N} \sum_{i=1}^N \delta(y - y_i)$.
+   
+   $$
+   D_{\text{KL}}(\hat{p} \| q_\theta) = \sum_y \hat{p}(y) \log \frac{\hat{p}(y)}{q_\theta(y)} = H(\hat{p}) - \frac{1}{N} \sum_{i=1}^N \log q_\theta(y_i)
+   $$
+   
+   Puisque $H(\hat{p})$ est constant:
+   
+   $$
+   \arg\min_\theta D_{\text{KL}}(\hat{p} \| q_\theta) = \arg\max_\theta \sum_{i=1}^N \log q_\theta(y_i) = \arg\min_\theta \text{NLV}(\theta)
+   $$
+   
+   Le maximum de vraisemblance cherche le modèle $q_\theta$ le plus proche (au sens KL) de la distribution empirique.
+```

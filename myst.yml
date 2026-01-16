@@ -7,12 +7,6 @@ project:
   authors:
     - name: Pierre-Luc Bacon
   github: https://github.com/pierrelux/mlbook
-  # Enable in-page code execution via Binder
-  jupyter:
-    binder:
-      repo: pierrelux/mlbook
-      ref: main
-      url: https://mybinder.org
   bibliography:
     - references.bib
   math:
@@ -39,6 +33,7 @@ project:
     - file: learning_problem.md
     - title: "Travaux Pratiques"
       children:
+        - file: exercises/tp0_knn.ipynb
         - file: exercises/tp1_learning_problem.ipynb
     # - file: drafts/generalization.md
     # - title: "Partie II: Modèles linéaires"
