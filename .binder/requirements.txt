@@ -1,0 +1,7 @@
+# Lightweight environment for Binder (no PyTorch)
+# This makes Binder builds much faster (~1-2 min instead of 10+)
+numpy
+matplotlib
+scipy
+scikit-learn
+pandas
