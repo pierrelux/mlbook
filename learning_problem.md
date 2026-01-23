@@ -41,6 +41,9 @@ Elle veut prédire la distance de freinage à 30 mph sans faire l'essai. Pour ce
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Configuration pour des figures haute résolution
+%config InlineBackend.figure_format = 'retina'
+
 # Données de freinage (Ezekiel, 1930): vitesse (mph) vs distance d'arrêt (ft)
 speed = np.array([4, 4, 7, 7, 8, 9, 10, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14,
                   14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 18, 19, 19, 19,
@@ -922,9 +925,247 @@ $$
 
 La différence avec MCO est le facteur de rétrécissement $\frac{d_j^2}{d_j^2 + \lambda}$ qui multiplie chaque terme. Ce facteur est toujours inférieur à 1, ce qui "rétrécit" chaque composante vers zéro. L'effet clé est que ce rétrécissement est **différencié**: les directions avec de petites valeurs singulières sont rétrécies plus fortement que celles avec de grandes valeurs singulières.
 
-**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Pour MCO, les longueurs des demi-axes sont proportionnelles à $1/d_j$: plus une direction a une petite valeur singulière $d_j$, plus l'incertitude est grande. Avec Ridge, ces longueurs deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda}$: l'ellipse se rétrécit globalement, et plus rapidement le long des directions associées aux petites valeurs singulières. C'est exactement ce que nous voulons: réduire l'incertitude là où elle est la plus grande.
+**Interprétation géométrique**: Les directions principales $\mathbf{v}_j$ définissent les axes d'une ellipse de confiance dans l'espace des coefficients. Pour MCO, les longueurs des demi-axes sont proportionnelles à $1/d_j$: plus une direction a une petite valeur singulière $d_j$, plus la **variance d'estimation** est grande (nous verrons cette distinction cruciale plus loin). Avec Ridge, ces longueurs deviennent proportionnelles à $\frac{d_j}{d_j^2 + \lambda}$: l'ellipse se rétrécit globalement, et plus rapidement le long des directions associées aux petites valeurs singulières. C'est exactement ce que nous voulons: réduire la variance d'estimation là où elle est la plus grande, c'est-à-dire dans les directions où les données sont peu dispersées.
 
 **Avantages numériques**: Au-delà de l'interprétation, la SVD offre aussi des avantages pratiques. Elle est plus stable numériquement que l'inversion directe de $\mathbf{X}^\top \mathbf{X}$, surtout quand cette matrice est mal conditionnée (c'est-à-dire quand certaines valeurs singulières sont très petites). Les algorithmes SVD gèrent mieux ces cas délicats.
+
+##### Visualisation: ellipse des données et vecteurs singuliers
+
+Pour rendre ces concepts concrets, visualisons ce que la SVD capture sur un nuage de données 2D. Générons des points suivant une distribution gaussienne avec une covariance non triviale (les deux variables sont corrélées).
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+
+np.random.seed(42)
+
+# Générer des données gaussiennes corrélées
+n_points = 200
+mean = [0, 0]
+cov = [[2.0, 1.2], [1.2, 1.0]]  # Covariance non diagonale
+X = np.random.multivariate_normal(mean, cov, n_points)
+
+# Centrer les données
+X_centered = X - X.mean(axis=0)
+
+# SVD de la matrice de données centrée
+U, d, Vt = np.linalg.svd(X_centered, full_matrices=False)
+V = Vt.T
+
+# Les valeurs singulières sont liées aux écarts-types: d_j / sqrt(N-1)
+# Pour l'ellipse, nous utilisons les écarts-types dans chaque direction
+std_1 = d[0] / np.sqrt(n_points - 1)
+std_2 = d[1] / np.sqrt(n_points - 1)
+
+# Créer la figure
+fig, ax = plt.subplots(figsize=(8, 6))
+
+# Tracer les points
+ax.scatter(X_centered[:, 0], X_centered[:, 1], alpha=0.5, s=20, c='tab:blue', label='Données')
+
+# Tracer les vecteurs singuliers (directions principales)
+origin = [0, 0]
+scale = 2  # Facteur d'échelle pour la visualisation
+
+# Premier vecteur singulier (direction de plus grande variance)
+ax.annotate('', xy=V[:, 0] * std_1 * scale, xytext=origin,
+            arrowprops=dict(arrowstyle='->', color='tab:red', lw=2.5))
+ax.annotate('', xy=-V[:, 0] * std_1 * scale, xytext=origin,
+            arrowprops=dict(arrowstyle='->', color='tab:red', lw=2.5))
+
+# Deuxième vecteur singulier (direction de plus petite variance)
+ax.annotate('', xy=V[:, 1] * std_2 * scale, xytext=origin,
+            arrowprops=dict(arrowstyle='->', color='tab:orange', lw=2.5))
+ax.annotate('', xy=-V[:, 1] * std_2 * scale, xytext=origin,
+            arrowprops=dict(arrowstyle='->', color='tab:orange', lw=2.5))
+
+# Ellipse de confiance (2 écarts-types)
+angle = np.degrees(np.arctan2(V[1, 0], V[0, 0]))
+ellipse = Ellipse(xy=(0, 0), width=4*std_1, height=4*std_2, angle=angle,
+                  fill=False, edgecolor='gray', linestyle='--', linewidth=1.5)
+ax.add_patch(ellipse)
+
+# Annotations
+ax.text(V[0, 0] * std_1 * scale * 1.15, V[1, 0] * std_1 * scale * 1.15, 
+        f'$\\mathbf{{v}}_1$ ($d_1 = {d[0]:.1f}$)', fontsize=11, color='tab:red')
+ax.text(V[0, 1] * std_2 * scale * 1.3, V[1, 1] * std_2 * scale * 1.3, 
+        f'$\\mathbf{{v}}_2$ ($d_2 = {d[1]:.1f}$)', fontsize=11, color='tab:orange')
+
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_title('Nuage gaussien et directions principales (SVD)')
+ax.set_aspect('equal')
+ax.grid(True, alpha=0.3)
+ax.axhline(0, color='gray', linewidth=0.5)
+ax.axvline(0, color='gray', linewidth=0.5)
+ax.set_xlim(-4, 4)
+ax.set_ylim(-3, 3)
+
+plt.tight_layout()
+```
+
+La figure montre un nuage de 200 points tirés d'une gaussienne 2D. Les flèches représentent les **vecteurs singuliers** $\mathbf{v}_1$ et $\mathbf{v}_2$:
+
+- Le vecteur $\mathbf{v}_1$ (rouge) pointe dans la direction de **plus grande variance**. La valeur singulière $d_1$ mesure l'amplitude de la dispersion dans cette direction.
+- Le vecteur $\mathbf{v}_2$ (orange) pointe dans la direction de **plus petite variance**, perpendiculaire à $\mathbf{v}_1$. La valeur singulière $d_2$ est plus petite.
+
+L'ellipse en pointillés représente la région contenant environ 95% des données si elles suivent exactement la distribution gaussienne. Ses axes coïncident avec les vecteurs singuliers, et les longueurs des demi-axes sont proportionnelles aux valeurs singulières.
+
+Cette visualisation illustre pourquoi la SVD est si utile: elle identifie automatiquement les **axes naturels** des données. Dans le contexte de la régression, si les caractéristiques forment un nuage allongé (valeurs singulières très différentes), alors certaines directions contiennent beaucoup d'information (grandes valeurs singulières) tandis que d'autres en contiennent peu (petites valeurs singulières).
+
+##### Deux variances: données vs estimation
+
+```{margin}
+**Attention**: Le mot « variance » désigne deux quantités distinctes selon le contexte. Ne pas les confondre!
+```
+
+Avant d'aller plus loin, clarifions une source fréquente de confusion. Le mot **variance** apparaît dans deux contextes très différents lorsqu'on parle de SVD et de régularisation:
+
+1. **Variance des données** (dispersion): mesure l'étalement des données le long d'une direction $\mathbf{v}_j$. Elle est proportionnelle à $d_j^2$. Une grande valeur singulière $d_j$ signifie que les données sont très dispersées dans cette direction.
+
+2. **Variance d'estimation** (incertitude): mesure l'incertitude sur notre estimé $\hat{\theta}_j$ du paramètre correspondant à la direction $\mathbf{v}_j$. Elle est proportionnelle à $1/d_j^2$. Une petite valeur singulière $d_j$ signifie que notre estimé est très incertain.
+
+Ces deux variances sont **inversement reliées**:
+
+| Valeur singulière $d_j$ | Variance des données | Variance d'estimation | Interprétation |
+|-------------------------|---------------------|----------------------|----------------|
+| Grande | Élevée (données étalées) | Faible (estimé précis) | Beaucoup d'information |
+| Petite | Faible (données concentrées) | Élevée (estimé incertain) | Peu d'information |
+
+**Intuition**: Imaginez estimer une pente à partir de données. Si les points sont très étalés horizontalement (grande variance des données en $x$), la pente est facile à déterminer avec précision (faible variance d'estimation). Si les points sont tous regroupés (petite variance des données), la pente est très incertaine (grande variance d'estimation).
+
+C'est cette relation inverse qui explique le comportement de Ridge:
+- Ridge rétrécit les directions où $d_j$ est **petit** (faible variance des données)
+- Ce sont précisément les directions où la **variance d'estimation** est grande
+- En rétrécissant ces directions, Ridge réduit la variance d'estimation au prix d'un biais
+
+Ainsi, quand nous disons que « Ridge contrôle la variance », nous parlons de la **variance d'estimation** des paramètres, pas de la variance des données. La régularisation n'affecte pas la dispersion des données; elle réduit l'incertitude de nos estimés en les « tirant » vers zéro.
+
+##### Spectre des valeurs singulières et rang effectif
+
+En pratique, les données réelles ont souvent des dizaines ou des centaines de dimensions. Comment se comportent les valeurs singulières dans ce cas? Examinons un exemple avec des données de dimension plus élevée.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+# Simuler des données avec une structure de rang bas + bruit
+n_samples = 100
+n_features = 30
+
+# Vraie structure: combinaison de 5 facteurs latents
+n_latent = 5
+latent = np.random.randn(n_samples, n_latent)
+loadings = np.random.randn(n_latent, n_features)
+X_signal = latent @ loadings
+
+# Ajouter du bruit
+noise_level = 0.5
+X = X_signal + noise_level * np.random.randn(n_samples, n_features)
+
+# Centrer
+X_centered = X - X.mean(axis=0)
+
+# SVD
+U, d, Vt = np.linalg.svd(X_centered, full_matrices=False)
+
+# Variance expliquée
+variance_explained = d**2 / np.sum(d**2)
+cumulative_variance = np.cumsum(variance_explained)
+
+# Créer la figure
+fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+
+# Panneau gauche: spectre des valeurs singulières
+ax1 = axes[0]
+ax1.semilogy(range(1, len(d)+1), d, 'o-', markersize=6, linewidth=1.5, color='tab:blue')
+ax1.axhline(d[n_latent], color='tab:red', linestyle='--', linewidth=1.5, 
+            label=f'Seuil (rang effectif = {n_latent})')
+ax1.fill_between(range(1, n_latent+1), d[:n_latent], alpha=0.3, color='tab:green', label='Signal')
+ax1.fill_between(range(n_latent+1, len(d)+1), d[n_latent:], alpha=0.3, color='tab:orange', label='Bruit')
+ax1.set_xlabel('Indice $j$')
+ax1.set_ylabel('Valeur singulière $d_j$ (échelle log)')
+ax1.set_title('Spectre des valeurs singulières')
+ax1.legend(loc='upper right')
+ax1.grid(True, alpha=0.3, which='both')
+ax1.set_xlim(0.5, len(d)+0.5)
+
+# Panneau droit: variance expliquée cumulative
+ax2 = axes[1]
+ax2.plot(range(1, len(d)+1), cumulative_variance * 100, 'o-', markersize=6, 
+         linewidth=1.5, color='tab:blue')
+ax2.axhline(95, color='gray', linestyle='--', linewidth=1, label='Seuil 95%')
+ax2.axvline(n_latent, color='tab:red', linestyle='--', linewidth=1.5)
+
+# Trouver k pour 95% de variance
+k_95 = np.searchsorted(cumulative_variance, 0.95) + 1
+ax2.scatter([k_95], [cumulative_variance[k_95-1]*100], s=100, color='tab:red', zorder=5)
+ax2.annotate(f'{k_95} composantes\npour 95%', xy=(k_95, cumulative_variance[k_95-1]*100),
+             xytext=(k_95+5, cumulative_variance[k_95-1]*100-10), fontsize=10,
+             arrowprops=dict(arrowstyle='->', color='gray'))
+
+ax2.set_xlabel('Nombre de composantes $k$')
+ax2.set_ylabel('Variance expliquée cumulative (%)')
+ax2.set_title('Variance expliquée')
+ax2.grid(True, alpha=0.3)
+ax2.set_xlim(0.5, len(d)+0.5)
+ax2.set_ylim(0, 105)
+
+plt.tight_layout()
+```
+
+Le panneau de gauche montre le **spectre des valeurs singulières** en échelle logarithmique. On observe un schéma typique:
+
+- Les premières valeurs singulières sont grandes: elles correspondent aux **directions du signal**, la vraie structure sous-jacente des données.
+- Après un certain point (ici, autour de $j = 5$), les valeurs singulières chutent et forment un "plancher": ce sont les **directions du bruit**.
+
+Le **rang effectif** est le nombre de valeurs singulières significativement au-dessus du plancher de bruit. Dans cet exemple, nous avons simulé 5 facteurs latents, et le spectre révèle bien cette structure: les 5 premières valeurs singulières dominent.
+
+Le panneau de droite montre la **variance expliquée cumulative**. C'est un outil pratique pour choisir combien de composantes retenir:
+
+- **Critère du seuil**: Retenir assez de composantes pour expliquer 95% (ou 99%) de la variance.
+- **Critère du coude**: Chercher le "coude" dans le spectre où les valeurs singulières cessent de décroître rapidement.
+- **Critère du gap**: Si le spectre présente un saut net (comme ici entre $d_5$ et $d_6$), c'est un bon point de coupure.
+
+##### De la troncature à la réduction de dimension (ACP)
+
+L'analyse ci-dessus suggère une idée: si les dernières directions ne contiennent que du bruit, pourquoi ne pas simplement les ignorer? Au lieu de rétrécir les coefficients comme Ridge, nous pourrions **tronquer** la représentation en ne gardant que les $k$ premières directions principales.
+
+C'est exactement l'idée de l'**analyse en composantes principales** (ACP). Au lieu de travailler avec les $d$ caractéristiques originales, nous projetons les données sur les $k$ premiers vecteurs singuliers:
+
+$$
+\mathbf{z}_n = \mathbf{V}_k^\top (\mathbf{x}_n - \bar{\mathbf{x}}) \in \mathbb{R}^k
+$$
+
+où $\mathbf{V}_k$ contient les $k$ premiers vecteurs singuliers (les colonnes de $\mathbf{V}$ correspondant aux $k$ plus grandes valeurs singulières).
+
+Cette projection préserve au mieux la variance des données: les $k$ composantes principales capturent la direction où les données varient le plus. La reconstruction à partir de cette représentation compressée s'écrit:
+
+$$
+\hat{\mathbf{x}}_n = \mathbf{V}_k \mathbf{z}_n + \bar{\mathbf{x}}
+$$
+
+L'erreur de reconstruction est minimale parmi toutes les projections linéaires sur un sous-espace de dimension $k$.
+
+**Lien entre Ridge et ACP**: Les deux approches traitent le même problème (les directions à faible valeur singulière sont bruitées) mais différemment:
+
+| Approche | Traitement des directions bruitées | Type de régularisation |
+|----------|-----------------------------------|------------------------|
+| **Ridge** | Rétrécit (soft thresholding) | Continue: garde tout, pénalise |
+| **ACP** | Élimine (hard thresholding) | Discrète: garde $k$, ignore le reste |
+
+Ridge est appropriée pour la régression supervisée, où même les petites directions peuvent contenir du signal utile pour prédire $\mathbf{y}$. L'ACP est appropriée pour la réduction de dimension non supervisée, où nous voulons une représentation compacte des données elles-mêmes.
+
+```{margin} ACP en détail
+L'analyse en composantes principales mérite un traitement approfondi. Nous y reviendrons dans un chapitre dédié à l'apprentissage non supervisé, où nous explorerons aussi les méthodes de clustering et les modèles génératifs.
+```
 
 #### Pourquoi $\lambda \mathbf{I}$ aide
 
@@ -1070,7 +1311,7 @@ ax2.plot(theta_path[:, 0], theta_path[:, 1], 'tab:orange', linewidth=1.5,
 
 ax2.set_xlabel('$\\theta_1$')
 ax2.set_ylabel('$\\theta_2$')
-ax2.set_title('Paysage RSS et contrainte $\\|\\boldsymbol{\\theta}\\|^2$')
+ax2.set_title('Paysage RSS et chemin de régularisation')
 ax2.legend(loc='upper right', fontsize=9)
 ax2.grid(True, alpha=0.3)
 ax2.set_xlim(-0.5, 3)
@@ -1159,13 +1400,13 @@ Image(filename='_static/ridge_geometry.gif')
 
 L'animation relie trois perspectives sur la régularisation Ridge lorsque $\lambda$ augmente de 0 à 10:
 
-**Panneau de gauche — Données et ajustement**: Les points bleus sont les données d'entraînement. La droite noire est l'ajustement MCO ($\lambda = 0$), la droite orange est l'ajustement Ridge. À mesure que $\lambda$ augmente, la pente de la droite Ridge **diminue**, se rapprochant de la ligne horizontale (prédiction constante égale à la moyenne). C'est le **rétrécissement vers zéro**: Ridge "tire" les coefficients vers l'origine, ce qui réduit la pente.
+**Panneau de gauche (données et ajustement)**: Les points bleus sont les données d'entraînement. La droite noire est l'ajustement MCO ($\lambda = 0$), la droite orange est l'ajustement Ridge. À mesure que $\lambda$ augmente, la pente de la droite Ridge **diminue**, se rapprochant de la ligne horizontale (prédiction constante égale à la moyenne). C'est le **rétrécissement vers zéro**: Ridge "tire" les coefficients vers l'origine, ce qui réduit la pente.
 
-**Panneau central — Paysage de perte**: Chaque point de ce plan représente un choix de coefficients $(\theta_1, \theta_2)$. Les contours gris montrent la fonction de coût RSS: plus on est proche du point noir (MCO), plus l'erreur sur les données d'entraînement est faible. L'ellipse est allongée car $x_1$ et $x_2$ sont corrélées (colinéarité). L'origine $\boldsymbol{\theta} = (0, 0)$ correspond à une **pente nulle** (prédiction constante). Le cercle orange représente la contrainte Ridge $\|\boldsymbol{\theta}\|_2 \leq c$: plus $\lambda$ est grand, plus le cercle est petit, forçant la solution à se rapprocher de l'origine. La solution Ridge (point orange) se déplace le long du **chemin de régularisation**, compromis entre minimiser la RSS et rester proche de zéro.
+**Panneau central (paysage de perte)**: Chaque point de ce plan représente un choix de coefficients $(\theta_1, \theta_2)$. Les contours gris montrent la fonction de coût RSS: plus on est proche du point noir (MCO), plus l'erreur sur les données d'entraînement est faible. L'ellipse est allongée car $x_1$ et $x_2$ sont corrélées (colinéarité). L'origine $\boldsymbol{\theta} = (0, 0)$ correspond à une **pente nulle** (prédiction constante). Le cercle orange montre la norme de la solution Ridge courante $\|\hat{\boldsymbol{\theta}}_{\text{ridge}}\|_2$. La formulation pénalisée $\text{RSS} + \lambda\|\boldsymbol{\theta}\|^2$ est équivalente à la formulation contrainte $\min \text{RSS}$ sous $\|\boldsymbol{\theta}\|^2 \leq t$, où $\lambda$ joue le rôle du multiplicateur de Lagrange: pour chaque $\lambda$, il existe un $t$ tel que les deux problèmes ont la même solution. À mesure que $\lambda$ augmente, la solution se déplace le long du **chemin de régularisation** vers l'origine.
 
-**Panneau de droite — Rétrécissement différencié**: La direction "forte" (grande valeur singulière $d_1$, où les données sont dispersées) est peu affectée par la régularisation. La direction "faible" (petite valeur singulière $d_2$, direction de colinéarité) est **rétrécit beaucoup plus rapidement**. C'est le cœur de l'effet Ridge: pénaliser davantage les directions où le signal est faible et l'estimation instable.
+**Panneau de droite (rétrécissement différencié)**: La direction "forte" (grande valeur singulière $d_1$, où les données sont dispersées) est peu affectée par la régularisation. La direction "faible" (petite valeur singulière $d_2$, direction de colinéarité) est **rétrécit beaucoup plus rapidement**. C'est le cœur de l'effet Ridge: pénaliser davantage les directions où le signal est faible et l'estimation instable.
 
-L'intuition géométrique est la suivante: quand les données sont colinéaires, l'ellipse RSS est très allongée. De petites perturbations dans les données causent de grands déplacements de la solution MCO le long de l'axe allongé. La contrainte Ridge "coupe" cette ellipse avec un cercle, forçant une solution plus proche de l'origine et donc plus stable.
+L'intuition géométrique est la suivante: quand les données sont colinéaires, l'ellipse RSS est très allongée. De petites perturbations dans les données causent de grands déplacements de la solution MCO le long de l'axe allongé. La pénalité Ridge ajoute un terme $\lambda\|\boldsymbol{\theta}\|^2$ qui « tire » la solution vers l'origine. Dans la formulation contrainte équivalente, cela correspond à chercher le minimum de RSS à l'intérieur d'une boule de rayon $\sqrt{t}$. Plus la boule est petite (plus $\lambda$ est grand), plus la solution est proche de l'origine et donc plus stable.
 
 3. **Stabilité numérique**: Quand $\mathbf{X}^\top \mathbf{X}$ est presque singulière, de petites perturbations dans les données causent de grandes variations dans $\hat{\boldsymbol{\theta}}_{\text{MCO}}$. La régularisation réduit cette sensibilité.
 
@@ -1292,6 +1533,58 @@ plt.tight_layout()
 ```
 
 L'erreur d'entraînement diminue avec le degré du polynôme. L'erreur de test diminue d'abord (quand le modèle gagne en expressivité), puis augmente (quand le modèle commence à mémoriser le bruit). Le meilleur modèle se trouve à l'intersection de ces deux tendances. La régularisation Ridge, vue précédemment, est une alternative au choix du degré: elle permet d'utiliser un modèle de haute capacité tout en contrôlant le surapprentissage.
+
+#### Décomposition biais-variance
+
+Ce compromis peut être formalisé mathématiquement. Supposons que les données suivent le modèle $y = f^*(\mathbf{x}) + \epsilon$, où $f^*$ est la vraie fonction (le prédicteur de Bayes optimal pour la perte quadratique), et $\epsilon$ est un bruit de moyenne nulle et de variance $\sigma^2$.
+
+**Clarification sur les variables aléatoires**: Dans cette analyse, il y a trois sources d'aléa qu'il faut bien distinguer:
+
+- **$f^*(\mathbf{x})$** est une valeur **déterministe** (fixe) pour chaque $\mathbf{x}$. C'est la vraie fonction sous-jacente, qui ne dépend d'aucun tirage aléatoire.
+- **$\epsilon$** est une variable aléatoire représentant le bruit d'observation. C'est l'aléa intrinsèque aux données.
+- **$\hat{f}$** est notre estimateur, une **fonction apprise** à partir de l'échantillon d'entraînement $\mathcal{D}$. Comme $\mathcal{D}$ est tiré aléatoirement, différents tirages de $\mathcal{D}$ produisent différentes fonctions $\hat{f}$. Pour un point test $\mathbf{x}$ fixé, la **prédiction** $\hat{f}(\mathbf{x})$ est donc une variable aléatoire (un scalaire qui varie selon $\mathcal{D}$), même si $\hat{f}$ elle-même est une fonction.
+
+Autrement dit, l'espérance $\mathbb{E}[\hat{f}(\mathbf{x})]$ moyenne sur tous les échantillons d'entraînement possibles: si nous pouvions répéter l'expérience d'apprentissage un grand nombre de fois avec différents $\mathcal{D}$, quelle serait la prédiction moyenne pour ce $\mathbf{x}$?
+
+L'erreur quadratique moyenne, moyennée sur les échantillons d'entraînement possibles et le bruit, se décompose comme suit:
+
+$$
+\mathbb{E}_{\mathcal{D}, \epsilon}[(\hat{f}(\mathbf{x}) - y)^2] = \mathbb{E}[(\hat{f}(\mathbf{x}) - f^*(\mathbf{x}) - \epsilon)^2]
+$$
+
+En développant le carré et utilisant $\mathbb{E}[\epsilon] = 0$ ainsi que l'indépendance entre $\epsilon$ et $\hat{f}$:
+
+$$
+= \mathbb{E}[(\hat{f}(\mathbf{x}) - f^*(\mathbf{x}))^2] + \sigma^2
+$$
+
+Pour le premier terme, ajoutons et retranchons $\mathbb{E}[\hat{f}(\mathbf{x})]$:
+
+$$
+\mathbb{E}[(\hat{f} - f^*)^2] = \mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}] + \mathbb{E}[\hat{f}] - f^*)^2]
+$$
+
+En développant et utilisant $\mathbb{E}[\hat{f} - \mathbb{E}[\hat{f}]] = 0$:
+
+$$
+= \underbrace{\mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}])^2]}_{\text{Var}(\hat{f})} + \underbrace{(\mathbb{E}[\hat{f}] - f^*)^2}_{\text{Biais}^2(\hat{f})}
+$$
+
+Nous obtenons la **décomposition biais-variance**:
+
+$$
+\boxed{\mathbb{E}[(\hat{f}(\mathbf{x}) - y)^2] = \text{Biais}^2(\hat{f}(\mathbf{x})) + \text{Var}(\hat{f}(\mathbf{x})) + \sigma^2}
+$$
+
+Chaque terme a une interprétation précise:
+
+- **Biais²**: L'écart entre la prédiction moyenne de notre estimateur et la vraie fonction $f^*$. Un modèle trop simple (classe $\mathcal{H}$ trop restrictive) aura un biais élevé car il ne peut pas approcher $f^*$.
+
+- **Variance**: La sensibilité de notre estimateur à l'échantillon d'entraînement particulier. Un modèle trop complexe aura une variance élevée car de petites variations dans les données causent de grandes variations dans les prédictions.
+
+- **$\sigma^2$**: Le bruit irréductible, inhérent aux données. Aucun estimateur ne peut faire mieux que cette erreur.
+
+Cette décomposition explique pourquoi l'erreur de test a une forme en U: à faible complexité, le biais domine; à haute complexité, la variance domine. Le minimum se trouve au point où la somme des deux est minimale.
 
 ### Intuition géométrique: pourquoi la dimension supérieure aide
 

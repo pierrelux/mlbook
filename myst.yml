@@ -35,6 +35,9 @@ project:
       children:
         - file: exercises/tp0_knn.ipynb
         - file: exercises/tp1_learning_problem.ipynb
+    # - title: "Présentations"
+    #   children:
+    #     - file: slides/linear_models.md
     # - file: drafts/generalization.md
     # - title: "Partie II: Modèles linéaires"
     #   children:
