@@ -3797,7 +3797,7 @@ La validation croisée permet de choisir l'hyperparamètre $\lambda$ de la régr
 5. Comparez les performances (sur un ensemble de test séparé) de MCO ($\lambda = 0$) et de Ridge avec le $\lambda$ optimal.
 ````
 
-```{admonition} Solution Exercice 13
+````{admonition} Solution Exercice 13
 :class: dropdown
 
 1-2. **Génération et matrice de caractéristiques:**
@@ -3854,7 +3854,7 @@ La validation croisée permet de choisir l'hyperparamètre $\lambda$ de la régr
 5. **Comparaison finale:**
 
    MCO avec degré 10 surapprend fortement et a un EQM de test élevé. Ridge avec $\lambda$ optimal a un EQM de test beaucoup plus faible car la régularisation empêche les coefficients d'exploser.
-```
+````
 
 ````{admonition} Exercice 14: Prédicteur de Bayes optimal (perte quadratique) ★★
 :class: hint dropdown
