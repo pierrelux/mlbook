@@ -1616,7 +1616,7 @@ ax1.plot(x, x**2, 'g-', linewidth=2, label=r'$\phi_2(x) = x^2$')
 ax1.axhline(0, color='gray', linewidth=0.5)
 ax1.axvline(0, color='gray', linewidth=0.5)
 ax1.set_xlabel('$x$')
-ax1.set_ylabel('$\phi_j(x)$')
+ax1.set_ylabel(r'$\phi_j(x)$')
 ax1.set_title('Les fonctions de base')
 ax1.legend()
 ax1.set_ylim(-2.5, 4.5)
@@ -4021,7 +4021,7 @@ La décomposition en valeurs singulières (SVD) de $\mathbf{X}$ révèle pourquo
 5. Tracez les facteurs de rétrécissement $s_1$ et $s_2$ en fonction de $\lambda$ pour $\lambda \in [0, 10]$.
 ````
 
-```{admonition} Solution Exercice 16
+````{admonition} Solution Exercice 16
 :class: dropdown
 
 1. **SVD:**
@@ -4078,7 +4078,7 @@ La décomposition en valeurs singulières (SVD) de $\mathbf{X}$ révèle pourquo
    ```
    
    On observe que $s_1$ reste proche de 1 même pour $\lambda$ modéré, tandis que $s_2$ décroît rapidement. C'est le rétrécissement différencié de Ridge.
-```
+````
 
 ````{admonition} Exercice 17: Conditionnement et stabilité numérique ★★★
 :class: hint dropdown
@@ -4102,7 +4102,7 @@ Pour une matrice symétrique définie positive, $\kappa(\mathbf{A}) = \lambda_{\
 5. Calculez le conditionnement de la matrice Ridge pour $\lambda = 0.1$. Comparez avec le cas MCO.
 ````
 
-```{admonition} Solution Exercice 17
+````{admonition} Solution Exercice 17
 :class: dropdown
 
 1. **Conditionnement de X'X:**
@@ -4158,7 +4158,7 @@ Pour une matrice symétrique définie positive, $\kappa(\mathbf{A}) = \lambda_{\
    ```
    
    Le conditionnement Ridge est beaucoup plus faible (quelques dizaines au lieu de millions), ce qui rend le système numériquement stable.
-```
+````
 
 ````{admonition} Exercice 18: Inférence bayésienne complète ★★★
 :class: hint dropdown
@@ -4182,7 +4182,7 @@ Supposons $\sigma^2 = 1$ et $\tau^2 = 1$.
 5. Tracez les distributions a priori, a posteriori après 1 observation, et a posteriori après 2 observations. Que remarquez-vous sur l'évolution de l'incertitude?
 ````
 
-```{admonition} Solution Exercice 18
+````{admonition} Solution Exercice 18
 :class: dropdown
 
 1. **Calcul de la distribution a posteriori:**
@@ -4253,7 +4253,7 @@ Supposons $\sigma^2 = 1$ et $\tau^2 = 1$.
    - Après 1 observation, la distribution a posteriori se concentre autour de 1.2
    - Après 2 observations, la distribution a posteriori se concentre davantage (variance diminue)
    - La moyenne a posteriori est une moyenne pondérée de l'a priori et des données
-```
+````
 
 ````{admonition} Exercice 19: Entropie croisée et divergence de Kullback-Leibler ★★★
 :class: hint dropdown
