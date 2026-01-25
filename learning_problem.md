@@ -3389,7 +3389,7 @@ $$
 5. Que se passe-t-il si vous utilisez $\phi(x) = [1, x, x^2, x^3, x^4, x^5]$? Discutez du risque de surapprentissage.
 ````
 
-```{admonition} Solution Exercice 7
+````{admonition} Solution Exercice 7
 :class: dropdown
 
 1. **Génération des données:**
@@ -3434,7 +3434,7 @@ $$
 5. **Expansion de degré 5:**
 
    Avec plus de termes, le modèle peut s'ajuster encore mieux aux données d'entraînement (EQM très faible), mais il risque de capturer le bruit plutôt que le signal. Sur de nouvelles données, les performances se dégradent. C'est le **surapprentissage**: le modèle a trop de capacité par rapport à la complexité réelle de la relation.
-```
+````
 
 ````{admonition} Exercice 8: EMV comme cas particulier de MAP ★
 :class: hint dropdown
@@ -3517,7 +3517,7 @@ La colinéarité entre les caractéristiques rend la matrice $\mathbf{X}^\top \m
 5. Tracez le "chemin de régularisation": les coefficients en fonction de $\log(\lambda)$.
 ````
 
-```{admonition} Solution Exercice 9
+````{admonition} Solution Exercice 9
 :class: dropdown
 
 1. **Génération des données:** (code fourni dans l'énoncé)
@@ -3571,7 +3571,7 @@ La colinéarité entre les caractéristiques rend la matrice $\mathbf{X}^\top \m
    ```
    
    On observe que pour $\lambda$ petit, les coefficients sont instables et peuvent être extrêmes. Pour $\lambda$ grand, ils convergent vers zéro. Il existe une zone intermédiaire où les coefficients sont raisonnables.
-```
+````
 
 ````{admonition} Exercice 10: Softmax et classification multiclasse ★★
 :class: hint dropdown
@@ -3734,7 +3734,7 @@ En régression, l'**homoscédasticité** suppose que la variance du bruit est co
 5. Pourquoi l'hétéroscédasticité peut-elle être problématique pour l'inférence statistique (intervalles de confiance, tests)?
 ````
 
-```{admonition} Solution Exercice 12
+````{admonition} Solution Exercice 12
 :class: dropdown
 
 1. **Génération des données:**
@@ -3769,7 +3769,7 @@ En régression, l'**homoscédasticité** suppose que la variance du bruit est co
    - Les **intervalles de confiance** et **tests t** ne sont pas valides.
    - Les **tests de significativité** peuvent être trop optimistes ou trop pessimistes.
    - Solution: utiliser des erreurs standard robustes (Huber-White) ou des moindres carrés pondérés.
-```
+````
 
 ````{admonition} Exercice 13: Validation croisée pour le choix de λ ★★
 :class: hint dropdown
@@ -3880,7 +3880,7 @@ C'est un mélange de deux gaussiennes.
 5. Si vous prédisiez le mode (la valeur la plus probable) au lieu de la moyenne, quelle serait votre prédiction? Quel serait le risque?
 ````
 
-```{admonition} Solution Exercice 14
+````{admonition} Solution Exercice 14
 :class: dropdown
 
 1. **Distribution:**
@@ -3925,7 +3925,7 @@ C'est un mélange de deux gaussiennes.
    $= 0.3 \times 9.25 + 0.7 \times 1 = 2.775 + 0.7 = 3.475$
    
    Le mode donne un risque plus élevé (3.475 > 2.665) pour la perte quadratique.
-```
+````
 
 ````{admonition} Exercice 15: Prédicteur de Bayes optimal (perte 0-1) ★★
 :class: hint dropdown
