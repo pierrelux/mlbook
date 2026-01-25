@@ -354,11 +354,11 @@ $$= \mathbb{E}[(\hat{f}(\mathbf{x}) - f^*(\mathbf{x}))^2] + \sigma^2$$
 
 Ajoutons et retranchons $\mathbb{E}[\hat{f}(\mathbf{x})]$ dans le premier terme :
 
-$$\mathbb{E}[(\hat{f} - f^*)^2] = \mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}] + \mathbb{E}[\hat{f}] - f^*)^2]$$
+$$\mathbb{E}[(\hat{f}(\mathbf{x}) - f^*(\mathbf{x}))^2] = \mathbb{E}[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})] + \mathbb{E}[\hat{f}(\mathbf{x})] - f^*(\mathbf{x}))^2]$$
 
-$$= \underbrace{\mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}])^2]}_{\text{Var}(\hat{f})} + \underbrace{(\mathbb{E}[\hat{f}] - f^*)^2}_{\text{Biais}^2} + 2\underbrace{\mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}])](\mathbb{E}[\hat{f}] - f^*)}_{= 0}$$
+$$= \underbrace{\mathbb{E}[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})])^2]}_{\text{Var}(\hat{f}(\mathbf{x}))} + \underbrace{(\mathbb{E}[\hat{f}(\mathbf{x})] - f^*(\mathbf{x}))^2}_{\text{Biais}^2}$$
 
-$$\boxed{\text{Erreur} = \text{Biais}^2(\hat{f}) + \text{Var}(\hat{f}) + \sigma^2}$$
+$$\boxed{\text{Erreur} = \text{Biais}^2(\hat{f}(\mathbf{x})) + \text{Var}(\hat{f}(\mathbf{x})) + \sigma^2}$$
 
 | Terme | Signification | Dépend de |
 |-------|---------------|-----------|

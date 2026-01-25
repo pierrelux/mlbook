@@ -1561,13 +1561,13 @@ $$
 Pour le premier terme, ajoutons et retranchons $\mathbb{E}[\hat{f}(\mathbf{x})]$:
 
 $$
-\mathbb{E}[(\hat{f} - f^*)^2] = \mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}] + \mathbb{E}[\hat{f}] - f^*)^2]
+\mathbb{E}[(\hat{f}(\mathbf{x}) - f^*(\mathbf{x}))^2] = \mathbb{E}[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})] + \mathbb{E}[\hat{f}(\mathbf{x})] - f^*(\mathbf{x}))^2]
 $$
 
-En développant et utilisant $\mathbb{E}[\hat{f} - \mathbb{E}[\hat{f}]] = 0$:
+En développant et utilisant $\mathbb{E}[\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})]] = 0$:
 
 $$
-= \underbrace{\mathbb{E}[(\hat{f} - \mathbb{E}[\hat{f}])^2]}_{\text{Var}(\hat{f})} + \underbrace{(\mathbb{E}[\hat{f}] - f^*)^2}_{\text{Biais}^2(\hat{f})}
+= \underbrace{\mathbb{E}[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})])^2]}_{\text{Var}(\hat{f}(\mathbf{x}))} + \underbrace{(\mathbb{E}[\hat{f}(\mathbf{x})] - f^*(\mathbf{x}))^2}_{\text{Biais}^2(\hat{f}(\mathbf{x}))}
 $$
 
 Nous obtenons la **décomposition biais-variance**:
