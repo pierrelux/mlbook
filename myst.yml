@@ -34,8 +34,9 @@ project:
       children:
         - file: ch1_learning_problem.md
         - file: ch2_linear_regression.md
-        - file: ch3_generalization.md
-        - file: ch4_probabilistic.md
+        - file: ch3_classification.md
+        - file: ch4_generalization.md
+        - file: ch5_probabilistic.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb

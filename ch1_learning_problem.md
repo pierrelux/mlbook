@@ -17,6 +17,7 @@ kernelspec:
 - Formuler le principe de minimisation du risque empirique
 - Dériver le prédicteur de Bayes optimal pour différentes fonctions de perte
 - Expliquer pourquoi le risque de Bayes est la limite théorique de performance
+- Formuler le principe du maximum de vraisemblance et son lien avec les fonctions de perte
 ```
 
 Le chapitre précédent a présenté les méthodes non paramétriques, comme les k plus proches voisins, qui conservent les données d'entraînement et les consultent au moment de la prédiction. Cette approche est intuitive, mais elle a un coût: les données doivent rester en mémoire, et chaque prédiction requiert de parcourir l'ensemble d'entraînement. Ce chapitre développe une approche différente: plutôt que de garder les données, nous cherchons à les *résumer* dans un ensemble fixe de **paramètres**. L'apprentissage devient alors un problème d'**optimisation**.
@@ -632,7 +633,7 @@ Cette situation crée un compromis fondamental en apprentissage automatique:
 - **Ce que nous voulons minimiser**: Le risque $\mathcal{R}(f)$, qui mesure la performance sur toutes les données possibles
 - **Ce que nous pouvons minimiser**: Le risque empirique $\hat{\mathcal{R}}(f, \mathcal{D})$, qui mesure la performance sur nos données d'entraînement
 
-L'écart entre ces deux quantités est au cœur de l'apprentissage automatique. Un modèle peut avoir un risque empirique très faible (il performe bien sur les données d'entraînement) tout en ayant un risque élevé (il performe mal sur de nouvelles données). C'est le problème du **surapprentissage**, que nous explorerons dans le chapitre sur la [généralisation](ch3_generalization.md).
+L'écart entre ces deux quantités est au cœur de l'apprentissage automatique. Un modèle peut avoir un risque empirique très faible (il performe bien sur les données d'entraînement) tout en ayant un risque élevé (il performe mal sur de nouvelles données). C'est le problème du **surapprentissage**, que nous explorerons dans le chapitre sur la [généralisation](ch4_generalization.md).
 
 ## Minimisation du risque empirique
 
@@ -716,7 +717,81 @@ $$
 \mathcal{R}(\hat{f}) - \mathcal{R}^* \geq 0
 $$
 
-Cette différence, appelée **excès de risque**, se décompose en deux parties que nous étudierons dans le chapitre sur la [généralisation](ch3_generalization.md): l'erreur d'approximation (notre classe $\mathcal{F}$ ne contient peut-être pas $f^*$) et l'erreur d'estimation (nous n'avons qu'un échantillon fini pour choisir dans $\mathcal{F}$).
+Cette différence, appelée **excès de risque**, se décompose en deux parties que nous étudierons dans le chapitre sur la [généralisation](ch4_generalization.md): l'erreur d'approximation (notre classe $\mathcal{F}$ ne contient peut-être pas $f^*$) et l'erreur d'estimation (nous n'avons qu'un échantillon fini pour choisir dans $\mathcal{F}$).
+
+## Le modèle probabiliste et la vraisemblance
+
+Nous avons vu comment minimiser le risque empirique pour une fonction de perte donnée. Mais d'où vient le choix de la perte? Pourquoi la perte quadratique pour la régression et non une autre? Cette section introduit une perspective qui justifie ces choix de manière principielle.
+
+### Du prédicteur au modèle probabiliste
+
+Jusqu'ici, notre modèle produit une prédiction déterministe $\hat{y} = f(\mathbf{x}; \boldsymbol{\theta})$. Une vue plus riche est de modéliser une **distribution de probabilité** sur les sorties possibles:
+
+$$
+p(y | \mathbf{x}; \boldsymbol{\theta})
+$$
+
+Ce modèle probabiliste répond à la question: pour une entrée $\mathbf{x}$ et des paramètres $\boldsymbol{\theta}$, quelle est la probabilité (ou densité) de chaque valeur possible de $y$?
+
+Par exemple, en régression, nous pourrions supposer que $y$ suit une gaussienne centrée sur notre prédiction:
+
+$$
+p(y | \mathbf{x}; \boldsymbol{\theta}) = \mathcal{N}(y \,|\, f(\mathbf{x}; \boldsymbol{\theta}), \sigma^2)
+$$
+
+En classification binaire, nous pourrions supposer que $y$ suit une distribution de Bernoulli avec une probabilité qui dépend de $\mathbf{x}$:
+
+$$
+p(y | \mathbf{x}; \boldsymbol{\theta}) = \text{Ber}(y \,|\, \mu(\mathbf{x}; \boldsymbol{\theta}))
+$$
+
+Cette perspective probabiliste unifie régression et classification dans un même cadre.
+
+### La vraisemblance et l'hypothèse i.i.d.
+
+Comment évaluer si des paramètres $\boldsymbol{\theta}$ sont bons? Une idée naturelle: les bons paramètres devraient rendre nos observations **probables**. Si le modèle assigne une probabilité élevée aux données que nous avons effectivement observées, c'est un signe qu'il capture bien le phénomène sous-jacent.
+
+Pour un seul exemple $(\mathbf{x}_1, y_1)$, nous évaluons $p(y_1 | \mathbf{x}_1; \boldsymbol{\theta})$. Mais nous avons $N$ exemples. Comment combiner leurs probabilités?
+
+C'est ici qu'intervient l'**hypothèse i.i.d.** (indépendants et identiquement distribués): nous supposons que les exemples sont tirés indépendamment de la même distribution. Sous cette hypothèse fondamentale, la probabilité conjointe se factorise en un **produit**:
+
+$$
+p(y_1, \ldots, y_N | \mathbf{x}_1, \ldots, \mathbf{x}_N; \boldsymbol{\theta}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Cette quantité, vue comme fonction de $\boldsymbol{\theta}$, s'appelle la **vraisemblance**:
+
+$$
+\mathcal{L}(\boldsymbol{\theta}; \mathcal{D}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Elle répond à la question: pour ce choix de paramètres, quelle est la probabilité d'avoir observé exactement ces données?
+
+### Le maximum de vraisemblance
+
+Le principe du **maximum de vraisemblance** (EMV, ou MLE en anglais) consiste à choisir les paramètres qui maximisent cette probabilité:
+
+$$
+\hat{\boldsymbol{\theta}}_{\text{EMV}} = \arg\max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}; \mathcal{D}) = \arg\max_{\boldsymbol{\theta}} \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+En pratique, nous travaillons avec le logarithme. Comme le logarithme est une fonction croissante, maximiser la vraisemblance équivaut à maximiser la log-vraisemblance, ou de manière équivalente, à **minimiser la log-vraisemblance négative** (LVN):
+
+$$
+\text{LVN}(\boldsymbol{\theta}) = -\log \mathcal{L}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+$$
+
+Le logarithme transforme le produit en somme, ce qui est plus stable numériquement et plus facile à optimiser.
+
+### Lien avec les fonctions de perte
+
+Voici le résultat clé: **la forme de la LVN dépend du modèle probabiliste choisi**, et cette forme définit une fonction de perte naturelle.
+
+- **Modèle gaussien** (régression): Si $p(y|\mathbf{x}; \boldsymbol{\theta}) = \mathcal{N}(y | f(\mathbf{x}; \boldsymbol{\theta}), \sigma^2)$, alors la LVN est proportionnelle à la **somme des carrés des résidus**. Le maximum de vraisemblance donne exactement les moindres carrés.
+
+- **Modèle de Bernoulli** (classification binaire): Si $p(y|\mathbf{x}; \boldsymbol{\theta}) = \mu^y (1-\mu)^{1-y}$ avec $\mu = \sigma(\boldsymbol{\theta}^\top \mathbf{x})$, alors la LVN est l'**entropie croisée binaire**.
+
+Les chapitres suivants développent ces connexions en détail: le [chapitre 2](ch2_linear_regression.md) pour la régression et le [chapitre 3](ch3_classification.md) pour la classification. Le [chapitre 5](ch5_probabilistic.md) étend ce cadre avec l'inférence bayésienne et le maximum a posteriori.
 
 Le chapitre suivant applique ce cadre au cas concret de la **régression linéaire**, en dérivant des solutions analytiques et en explorant les outils pour résoudre le problème d'optimisation.
 
@@ -737,6 +812,8 @@ Ce chapitre a posé les bases formelles de l'apprentissage supervisé:
 - La **minimisation du risque empirique** (MRE) est le principe fondamental: choisir $\hat{f} = \arg\min_{f \in \mathcal{F}} \hat{\mathcal{R}}(f, \mathcal{D})$.
 
 - Le **prédicteur de Bayes optimal** $f^*$ minimise le risque si la vraie distribution est connue. Pour la perte quadratique, c'est la moyenne conditionnelle $\mathbb{E}[y|\mathbf{x}]$; pour la perte 0-1, c'est le mode conditionnel. Le **risque de Bayes** $\mathcal{R}^*$ est la limite théorique de performance.
+
+- Le **maximum de vraisemblance** (EMV) justifie le choix des fonctions de perte de manière principielle: sous l'hypothèse i.i.d., nous choisissons les paramètres qui rendent les données observées les plus probables. Le modèle probabiliste (gaussien, Bernoulli, etc.) détermine la forme de la perte.
 
 Le chapitre suivant applique ce cadre au cas concret de la **régression linéaire**, en dérivant des solutions analytiques et en explorant les outils pour résoudre le problème d'optimisation.
 

@@ -69,6 +69,36 @@ $$
 
 Cette solution porte le nom d'estimateur des **moindres carrés ordinaires** (MCO, ou *ordinary least squares*, OLS). Elle peut être calculée directement sans itération, ce qui en fait un exemple classique de solution analytique.
 
+### Interprétation probabiliste: MCO = EMV sous bruit gaussien
+
+Pourquoi minimiser la somme des carrés? Le [chapitre 1](ch1_learning_problem.md) a introduit le maximum de vraisemblance comme principe pour choisir les paramètres. Appliquons-le à la régression.
+
+Supposons que les observations suivent le modèle:
+
+$$
+y = \boldsymbol{\theta}^\top \mathbf{x} + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+Le bruit $\varepsilon$ est gaussien, de moyenne nulle et de variance $\sigma^2$ constante. Ce modèle implique que, pour chaque observation:
+
+$$
+p(y | \mathbf{x}; \boldsymbol{\theta}) = \mathcal{N}(y \,|\, \boldsymbol{\theta}^\top \mathbf{x}, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(y - \boldsymbol{\theta}^\top \mathbf{x})^2}{2\sigma^2}\right)
+$$
+
+Sous l'hypothèse i.i.d., la log-vraisemblance négative est:
+
+$$
+\text{LVN}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta}) = \frac{N}{2}\log(2\pi\sigma^2) + \frac{1}{2\sigma^2} \sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2
+$$
+
+Le premier terme est une constante (ne dépend pas de $\boldsymbol{\theta}$). Minimiser la LVN revient donc à minimiser:
+
+$$
+\sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 = \text{RSS}(\boldsymbol{\theta})
+$$
+
+Nous retrouvons exactement la somme des carrés des résidus. Ainsi, **les moindres carrés ordinaires sont l'estimateur du maximum de vraisemblance sous l'hypothèse de bruit gaussien**. Ce n'est pas un choix arbitraire: c'est la solution optimale si nous croyons que le bruit suit une distribution normale.
+
 ### Généralisation et surapprentissage
 
 La différence entre le risque et le risque empirique est l'**écart de généralisation**:
@@ -141,7 +171,7 @@ $$
 C(\boldsymbol{\theta}) = \|\boldsymbol{\theta}\|_2^2 = \sum_j \theta_j^2
 $$
 
-Cette pénalisation pousse les paramètres vers zéro, ce qui a pour effet de lisser la fonction apprise. En régression linéaire, l'ajout de cette pénalité donne la **régression Ridge**:
+Cette pénalisation pousse les paramètres vers zéro, ce qui a pour effet de lisser la fonction apprise. En régression linéaire, l'ajout de cette pénalité donne la **régularisation Ridge**:
 
 $$
 \hat{\boldsymbol{\theta}}_{\text{ridge}} = \arg\min_{\boldsymbol{\theta}} \frac{1}{N}\sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 + \lambda \|\boldsymbol{\theta}\|_2^2
@@ -217,9 +247,9 @@ plt.tight_layout()
 
 Sans régularisation ($\lambda = 0$), le polynôme de degré 15 oscille fortement. Avec une régularisation modérée ($\lambda = 10^{-3}$), les oscillations sont atténuées et l'erreur de test diminue. Avec une régularisation trop forte ($\lambda = 1$), le modèle devient trop contraint et sous-apprend.
 
-### Solution analytique de la régression Ridge
+### Solution analytique de Ridge
 
-Comme pour les moindres carrés ordinaires, la régression Ridge admet une solution analytique. L'objectif régularisé est:
+Comme pour les moindres carrés ordinaires, Ridge admet une solution analytique. L'objectif régularisé est:
 
 $$
 \text{RSS}_\lambda(\boldsymbol{\theta}) = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2 + \lambda \|\boldsymbol{\theta}\|_2^2
@@ -247,7 +277,7 @@ Comparons avec la solution MCO: $\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\math
 
 ## Interprétation via la SVD
 
-Cette section présente une autre façon d'exprimer les solutions MCO et Ridge, en utilisant la **décomposition en valeurs singulières** (SVD). Si vous n'avez jamais rencontré la SVD, ne vous inquiétez pas: nous allons l'introduire progressivement. Cette approche n'est pas strictement nécessaire pour comprendre la régression Ridge, mais elle offre une interprétation géométrique très éclairante qui révèle *pourquoi* la régularisation fonctionne.
+Cette section présente une autre façon d'exprimer les solutions MCO et Ridge, en utilisant la **décomposition en valeurs singulières** (SVD). Si vous n'avez jamais rencontré la SVD, ne vous inquiétez pas: nous allons l'introduire progressivement. Cette approche n'est pas strictement nécessaire pour comprendre Ridge, mais elle offre une interprétation géométrique très éclairante qui révèle *pourquoi* la régularisation fonctionne.
 
 ### Qu'est-ce que la SVD?
 
@@ -794,7 +824,7 @@ Ce chapitre a développé les outils fondamentaux pour la régression linéaire:
 
 - Le **spectre des valeurs singulières** révèle la structure des données et permet de distinguer signal et bruit.
 
-Mais comment choisir $\lambda$? Et pourquoi exactement MCO échoue-t-il parfois à généraliser? Le [chapitre suivant](ch3_generalization.md) explore ces questions à travers le **compromis biais-variance** et les techniques de **sélection de modèle**.
+Nous avons vu comment résoudre la régression. Mais la régression n'est qu'un type de problème supervisé. Le [chapitre suivant](ch3_classification.md) aborde la **classification linéaire**, où la sortie est une catégorie plutôt qu'un nombre réel.
 
 ## Exercices
 

@@ -17,7 +17,7 @@ kernelspec:
 - Expliquer pourquoi les fonctions de perte de substitution sont nécessaires en classification
 ```
 
-Le [chapitre précédent](ch2_linear_regression.md) a développé les outils pour résoudre la régression linéaire avec MCO et Ridge. Mais un problème fondamental demeure: comment savoir si notre modèle généralisera bien à de nouvelles données? Ce chapitre explore cette question à travers le **compromis biais-variance**, les techniques d'**expansion de caractéristiques**, et les méthodes de **sélection de modèle**.
+Les chapitres précédents ont développé les deux modèles linéaires fondamentaux: la [régression](ch2_linear_regression.md) (MCO, Ridge) et la [classification](ch3_classification.md) (régression logistique, entropie croisée). Mais un problème fondamental demeure: comment savoir si notre modèle généralisera bien à de nouvelles données? Ce chapitre explore cette question à travers le **compromis biais-variance**, les techniques d'**expansion de caractéristiques**, et les méthodes de **sélection de modèle**.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -521,17 +521,17 @@ Ces hypothèses sont nécessaires pour que l'apprentissage soit possible. Sans e
 
 La perte 0-1 pose un problème pratique. Les méthodes d'optimisation itératives, comme la descente de gradient, requièrent que la fonction objectif soit différentiable. Or la perte 0-1 est constante par morceaux: sa dérivée est nulle presque partout et indéfinie aux points de discontinuité.
 
-Nous contournons ce problème en utilisant des **fonctions de perte de substitution**: des approximations convexes et différentiables de la perte originale.
+Nous contournons ce problème en utilisant des **fonctions de perte de substitution**: des approximations convexes et différentiables de la perte originale. L'entropie croisée, que nous avons dérivée dans le [chapitre précédent](ch3_classification.md) à partir du maximum de vraisemblance, en est un exemple central. Examinons ici une vue unifiée des pertes de substitution les plus courantes.
 
 Pour la classification binaire, plutôt que de prédire directement une classe, les modèles produisent souvent un **score** $s = f(\mathbf{x})$ (un nombre réel). La prédiction de classe se fait ensuite en prenant le signe de ce score: si $s > 0$, on prédit la classe $+1$; si $s < 0$, on prédit la classe $-1$. La valeur absolue de $s$ mesure la confiance: plus $|s|$ est grand, plus le modèle est confiant dans sa prédiction.
 
-Pour la classification binaire avec $y \in \{-1, +1\}$, la **perte logistique** est:
+Avec la convention $y \in \{-1, +1\}$ (plutôt que $\{0, 1\}$), la **perte logistique** s'écrit:
 
 $$
 \ell_{\text{log}}(y, s) = \log(1 + e^{-y \cdot s})
 $$
 
-où $s = f(\mathbf{x})$ est le score produit par le modèle. Cette fonction est convexe et différentiable partout. Lorsque $y$ et $s$ ont le même signe (prédiction correcte avec confiance), la perte est faible. Lorsqu'ils ont des signes opposés (erreur), la perte croît linéairement avec l'amplitude de l'erreur.
+où $s = f(\mathbf{x})$ est le score produit par le modèle. Cette formulation est équivalente à l'entropie croisée binaire du [chapitre 3](ch3_classification.md), mais avec la convention $y \in \{-1, +1\}$ plutôt que $y \in \{0, 1\}$. La fonction est convexe et différentiable partout. Lorsque $y$ et $s$ ont le même signe (prédiction correcte avec confiance), la perte est faible. Lorsqu'ils ont des signes opposés (erreur), la perte croît linéairement avec l'amplitude de l'erreur.
 
 La **perte à charnière** (hinge loss) est utilisée dans les machines à vecteurs de support:
 
@@ -598,7 +598,7 @@ Ce chapitre a exploré les fondements théoriques et pratiques de la généralis
 
 - Les **biais inductifs** (hypothèses sur la structure des données) sont inévitables et nécessaires à l'apprentissage.
 
-Mais d'où viennent ces choix de fonctions de perte? Pourquoi la perte quadratique pour la régression et la perte logistique pour la classification? Le [chapitre suivant](ch4_probabilistic.md) répond à ces questions en présentant le **cadre probabiliste**, qui unifie ces approches via le maximum de vraisemblance et le maximum a posteriori.
+Mais d'où viennent ces choix de fonctions de perte? Pourquoi la perte quadratique pour la régression et l'entropie croisée pour la classification? Le [chapitre suivant](ch5_probabilistic.md) répond à ces questions en présentant le **cadre probabiliste**, qui unifie ces approches via le maximum de vraisemblance et le maximum a posteriori.
 
 ## Exercices
 
@@ -672,7 +672,7 @@ $$
 ````{admonition} Exercice 2: Validation croisée pour le choix de λ ★★
 :class: hint dropdown
 
-La validation croisée permet de choisir l'hyperparamètre $\lambda$ de la régression ridge sans utiliser de données de test.
+La validation croisée permet de choisir l'hyperparamètre $\lambda$ de Ridge sans utiliser de données de test.
 
 1. Générez un jeu de données de régression polynomiale ($N = 50$):
 

@@ -17,16 +17,17 @@ IFT6390 – Fondements de l'apprentissage machine
 
 ## Plan de la présentation
 
-1. **Minimisation du risque empirique (MRE)**
-2. **Prédicteur de Bayes optimal** : pourquoi la perte L2 donne la moyenne conditionnelle
-3. **Moindres carrés ordinaires (MCO)** : solution analytique
-4. **Décomposition en valeurs singulières (DVS)** : comprendre et résoudre MCO
-5. **Généralisation** : surapprentissage et compromis biais-variance
-6. **Régression Ridge** : régularisation L2
-7. **Cadre probabiliste** : prédiction bayésienne
-8. **Du maximum de vraisemblance au MAP** : lien entre Ridge et a priori gaussien
+1. **Minimisation du risque empirique (MRE)** et prédicteur de Bayes optimal
+2. **Moindres carrés ordinaires (MCO)** et décomposition en valeurs singulières (DVS)
+3. **Expansion de caractéristiques** : du linéaire au non linéaire
+4. **Généralisation** : surapprentissage et compromis biais-variance
+5. **Régression Ridge** : régularisation L2
+6. **Cadre probabiliste** : EMV, MAP et lien avec Ridge
+7. **Classification linéaire** : régression logistique, entropie croisée, SGD
 
 ---
+
+<!-- footer: "📖 Chapitre 1 : Le problème d'apprentissage" -->
 
 ## Apprentissage supervisé : le problème
 
@@ -140,6 +141,8 @@ $$\mathcal{R}^* = \mathcal{R}(f^*) = \mathbb{E}[\text{Var}(y | \mathbf{x})]$$
 Ce risque représente le bruit intrinsèque dans les données. **Aucun algorithme ne peut faire mieux**, peu importe la quantité de données ou la puissance de calcul.
 
 ---
+
+<!-- footer: "📖 Chapitre 2 : Régression linéaire" -->
 
 ## Le modèle linéaire
 
@@ -301,6 +304,52 @@ $$\hat{\boldsymbol{\theta}}_{\text{MCO}} = \sum_{j=1}^d \frac{\mathbf{u}_j^\top 
 
 ---
 
+<!-- footer: "📖 Chapitre 4 : Généralisation et sélection de modèles" -->
+
+## Expansion de caractéristiques
+
+Pour capturer des relations non linéaires tout en gardant un modèle linéaire dans les paramètres, nous transformons les entrées.
+
+**Trois familles de modèles** de complexité croissante :
+
+| Famille | Modèle | Caractéristiques |
+|---------|--------|------------------|
+| Linéaire | $f(\mathbf{x}) = \boldsymbol{\theta}^\top \mathbf{x}$ | Fixées, simples |
+| Expansion | $f(\mathbf{x}) = \boldsymbol{\theta}^\top \boldsymbol{\phi}(\mathbf{x})$ | Fixées, complexes |
+| Réseaux de neurones | $f(\mathbf{x}) = f_K(\cdots f_1(\mathbf{x}))$ | **Apprises** |
+
+L'expansion de caractéristiques utilise une transformation $\boldsymbol{\phi}: \mathbb{R}^d \to \mathbb{R}^D$ non linéaire fixée à l'avance.
+
+---
+
+## Régression polynomiale
+
+En **régression polynomiale**, nous appliquons une fonction $\phi: \mathbb{R} \to \mathbb{R}^{k+1}$ :
+
+$$\phi(x) = [1, x, x^2, \ldots, x^k]$$
+
+La prédiction devient $f(x; \boldsymbol{\theta}) = \boldsymbol{\theta}^\top \phi(x) = \theta_0 + \theta_1 x + \cdots + \theta_k x^k$.
+
+**Polynomiale en $x$, mais linéaire en $\boldsymbol{\theta}$** : mêmes algorithmes (MCO, Ridge)!
+
+| Degré $k$ | Comportement |
+|-----------|--------------|
+| $k = 1$ | Droite |
+| $k$ modéré | Capture la structure |
+| $k = N-1$ | Interpole exactement les $N$ points |
+
+Le degré $k$ contrôle la **capacité** du modèle.
+
+---
+
+## Intuition géométrique : séparer l'inséparable
+
+![w:900](../_static/feature_expansion_3d.gif)
+
+En projetant dans un espace de dimension supérieure, des données **non linéairement séparables** deviennent **linéairement séparables**.
+
+---
+
 ## L'écart de généralisation
 
 $$\text{Écart} = \underbrace{\mathcal{R}(f)}_{\text{Erreur sur nouvelles données}} - \underbrace{\hat{\mathcal{R}}(f; \mathcal{D}_{\text{train}})}_{\text{Erreur d'entraînement}}$$
@@ -381,6 +430,8 @@ $$\boxed{\text{Erreur} = \text{Biais}^2(\hat{f}(\mathbf{x})) + \text{Var}(\hat{f
 **Lien avec la DVS** : Les directions à petites valeurs singulières (faible variance des données) ont une grande **variance d'estimation**, amplifiant le bruit. Ridge cible précisément ces directions.
 
 ---
+
+<!-- footer: "📖 Chapitre 2 : Régression linéaire (section Ridge)" -->
 
 ## Besoin de régularisation
 
@@ -474,6 +525,8 @@ Ridge est appropriée pour la régression supervisée. L'ACP est appropriée pou
 
 ---
 
+<!-- footer: "📖 Chapitre 5 : Le cadre probabiliste" -->
+
 ## L'approche bayésienne
 
 Plutôt que de choisir une perte arbitraire, **modélisons** explicitement la génération des données :
@@ -565,6 +618,40 @@ L'a priori devient naturellement un **terme de régularisation**.
 
 ---
 
+## Limites de l'EMV : exemple de la pièce
+
+Supposons 3 lancers de pièce, tous face. Quel est l'EMV de $\theta = P(\text{face})$?
+
+$$\mathcal{L}(\theta) = \theta^3 \quad \Rightarrow \quad \hat{\theta}_{\text{EMV}} = \arg\max_{\theta \in [0,1]} \theta^3 = 1$$
+
+L'EMV prédit que la pièce tombe **toujours** sur face!
+
+| Problème | Cause |
+|----------|-------|
+| Estimation extrême | Peu de données |
+| Pas de modération | A priori uniforme implicite |
+
+**Solution** : Un a priori informatif peut « tirer » l'estimation vers des valeurs plus raisonnables.
+
+---
+
+## Lissage de Laplace
+
+Avec un a priori **Beta**(2, 2), l'estimateur MAP devient :
+
+$$\hat{\theta}_{\text{MAP}} = \frac{N_1 + 1}{N_1 + N_0 + 2}$$
+
+Avec 3 faces et 0 pile : $\hat{\theta}_{\text{MAP}} = \frac{3+1}{3+0+2} = \frac{4}{5} = 0{,}8$
+
+| Estimateur | Valeur | Interprétation |
+|------------|--------|----------------|
+| EMV | 1,0 | 100% face |
+| MAP | 0,8 | Plus raisonnable |
+
+C'est comme si nous avions observé 1 face et 1 pile supplémentaires avant de commencer.
+
+---
+
 ## A priori gaussien et régularisation L2
 
 Supposons un a priori gaussien centré (isotrope) :
@@ -613,16 +700,169 @@ Les deux perspectives sont **équivalentes** mathématiquement, mais offrent des
 
 ---
 
+<!-- _class: lead -->
+
+# Classification linéaire
+
+De la régression à la classification
+
+---
+
+<!-- footer: "📖 Chapitre 3 : Classification linéaire" -->
+
+## De la régression à la classification
+
+| Régression | Classification |
+|------------|----------------|
+| $y \in \mathbb{R}$ (continu) | $y \in \{0, 1, \ldots, C-1\}$ (discret) |
+| Prédire une valeur | Prédire une catégorie |
+| Perte quadratique | Perte 0-1 |
+| Bruit gaussien | Distribution de Bernoulli/catégorielle |
+
+**Problème** : $\boldsymbol{\theta}^\top \mathbf{x}$ peut produire n'importe quelle valeur réelle, pas une probabilité dans $[0, 1]$.
+
+**Solution** : Transformer le score par une fonction qui « écrase » vers $[0, 1]$.
+
+---
+
+## La fonction sigmoïde
+
+![w:800](../_static/sigmoid_approximation.gif)
+
+$$\sigma(a) = \frac{1}{1 + e^{-a}}$$
+
+La sigmoïde transforme un score réel en probabilité. Elle approxime la fonction échelon tout en restant **différentiable**.
+
+---
+
+## Régression logistique binaire
+
+**Modèle** : La probabilité de la classe positive est
+
+$$p(y = 1 | \mathbf{x}; \boldsymbol{\theta}) = \sigma(\boldsymbol{\theta}^\top \mathbf{x}) = \frac{1}{1 + e^{-\boldsymbol{\theta}^\top \mathbf{x}}}$$
+
+| Valeur de $\boldsymbol{\theta}^\top \mathbf{x}$ | Probabilité $p(y=1)$ | Interprétation |
+|------------------------------------------------|---------------------|----------------|
+| $\ll 0$ | $\approx 0$ | Confiant classe 0 |
+| $= 0$ | $0{,}5$ | Équiprobable |
+| $\gg 0$ | $\approx 1$ | Confiant classe 1 |
+
+La distribution conditionnelle suit une loi de **Bernoulli** :
+$$p(y | \mathbf{x}; \boldsymbol{\theta}) = \mu^y (1 - \mu)^{1-y}, \quad \mu = \sigma(\boldsymbol{\theta}^\top \mathbf{x})$$
+
+---
+
+## Frontière de décision
+
+Pour classifier, nous prédisons la classe la plus probable :
+
+$$\hat{y} = \mathbb{1}(\boldsymbol{\theta}^\top \mathbf{x} > 0)$$
+
+La **frontière de décision** est l'ensemble des points où les deux classes sont équiprobables :
+
+$$\{\mathbf{x} : \boldsymbol{\theta}^\top \mathbf{x} = 0\}$$
+
+C'est un **hyperplan** dans l'espace des entrées :
+- En 2D : une droite
+- En 3D : un plan
+- Le vecteur $\boldsymbol{\theta}$ est perpendiculaire à cet hyperplan
+
+---
+
+## Maximum de vraisemblance pour Bernoulli
+
+Sous l'hypothèse i.i.d., la vraisemblance est :
+
+$$\mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^N \mu_i^{y_i} (1 - \mu_i)^{1-y_i}$$
+
+La log-vraisemblance négative (LVN) est :
+
+$$\text{LVN}(\boldsymbol{\theta}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log \mu_i + (1 - y_i) \log(1 - \mu_i) \right]$$
+
+Cette quantité est l'**entropie croisée binaire**. Ce n'est pas un choix arbitraire : elle découle du maximum de vraisemblance!
+
+---
+
+## Gradient de l'entropie croisée
+
+Le gradient a une forme remarquablement simple :
+
+$$\nabla_{\boldsymbol{\theta}} \text{LVN}(\boldsymbol{\theta}) = \frac{1}{N} \sum_{i=1}^N (\mu_i - y_i) \mathbf{x}_i = \frac{1}{N} \mathbf{X}^\top (\boldsymbol{\mu} - \mathbf{y})$$
+
+| Terme | Signification |
+|-------|---------------|
+| $\mu_i - y_i$ | Erreur de prédiction pour l'exemple $i$ |
+| $\mathbf{x}_i$ | Direction de mise à jour |
+
+**Comparaison avec MCO** : Le gradient de la SCR est $\frac{1}{N}\mathbf{X}^\top(\mathbf{X}\boldsymbol{\theta} - \mathbf{y})$.
+
+Forme similaire, mais pas de solution analytique (équation non linéaire en $\boldsymbol{\theta}$).
+
+---
+
+## Classification multiclasse : softmax
+
+Pour $C$ classes, nous généralisons la sigmoïde par la fonction **softmax** :
+
+$$p(y = c | \mathbf{x}; \boldsymbol{\Theta}) = \frac{e^{a_c}}{\sum_{j=1}^{C} e^{a_j}}$$
+
+où $\mathbf{a} = \boldsymbol{\Theta} \mathbf{x}$ est le vecteur de **logits** (un score par classe).
+
+| Propriété | Valeur |
+|-----------|--------|
+| $\text{softmax}(\mathbf{a})_c$ | $> 0$ pour tout $c$ |
+| $\sum_c \text{softmax}(\mathbf{a})_c$ | $= 1$ |
+
+La perte est l'**entropie croisée catégorielle** : $-\log p(y = y_i | \mathbf{x}_i)$.
+
+Pour $C = 2$, le softmax se réduit à la sigmoïde.
+
+---
+
+## Descente de gradient stochastique (SGD)
+
+Contrairement à MCO, pas de solution analytique. Nous utilisons la **descente de gradient** :
+
+$$\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \nabla_{\boldsymbol{\theta}} \text{LVN}(\boldsymbol{\theta}_t)$$
+
+**Problème** : Calculer le gradient exact requiert de parcourir tous les $N$ exemples.
+
+**SGD** : Utiliser un **mini-lot** $\mathcal{B}_t$ de quelques dizaines d'exemples :
+
+$$\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \cdot \frac{1}{|\mathcal{B}_t|} \sum_{i \in \mathcal{B}_t} (\mu_i - y_i) \mathbf{x}_i$$
+
+Cette estimation est **non biaisée** : en espérance, elle égale le vrai gradient.
+
+---
+
+## Synthèse : régression vs classification
+
+| | Régression | Classification |
+|-|------------|----------------|
+| **Modèle probabiliste** | $\mathcal{N}(y \| \boldsymbol{\theta}^\top\mathbf{x}, \sigma^2)$ | $\text{Ber}(y \| \sigma(\boldsymbol{\theta}^\top\mathbf{x}))$ |
+| **Perte (LVN)** | Somme des carrés | Entropie croisée |
+| **Gradient** | $\mathbf{X}^\top(\mathbf{X}\boldsymbol{\theta} - \mathbf{y})$ | $\mathbf{X}^\top(\boldsymbol{\mu} - \mathbf{y})$ |
+| **Solution** | Analytique (MCO) | Itérative (SGD) |
+| **Régularisation** | Ridge ($+ \lambda\|\boldsymbol{\theta}\|^2$) | Ridge ($+ \lambda\|\boldsymbol{\theta}\|^2$) |
+
+Le cadre probabiliste unifie les deux : le choix du modèle (gaussien vs Bernoulli) détermine la perte optimale.
+
+---
+
+<!-- footer: "" -->
+
 ## Résumé
 
-1. **MRE** : Minimiser l'erreur d'entraînement comme approximation du vrai risque
-2. **Bayes optimal** : Pour la perte L2, le prédicteur optimal est $\mathbb{E}[y|\mathbf{x}]$
-3. **MCO** : Solution analytique $(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$
-4. **DVS** : Révèle l'instabilité (petites valeurs singulières amplifient le bruit)
-5. **Généralisation** : Compromis biais-variance, surapprentissage
-6. **Ridge** : $(\mathbf{X}^\top\mathbf{X} + \lambda\mathbf{I})^{-1}\mathbf{X}^\top\mathbf{y}$
-7. **Probabiliste** : EMV = MCO sous bruit gaussien
-8. **MAP** : A priori gaussien + EMV = Ridge, avec $\lambda = \sigma^2/\tau^2$
+| Concept | Idée clé |
+|---------|----------|
+| **MRE** | Minimiser l'erreur d'entraînement comme approximation du vrai risque |
+| **MCO/DVS** | Solution analytique, instabilité pour petites valeurs singulières |
+| **Expansion** | $\phi(x) = [1, x, x^2, \ldots]$ pour capturer des relations non linéaires |
+| **Biais-variance** | Modèle simple = biais élevé; complexe = variance élevée |
+| **Ridge** | Régularisation L2 = a priori gaussien (MAP) |
+| **Classification** | Sigmoïde/softmax + entropie croisée + SGD |
+
+Le cadre probabiliste **unifie** régression et classification : le modèle de bruit détermine la perte.
 
 ---
 
@@ -631,6 +871,7 @@ Les deux perspectives sont **équivalentes** mathématiquement, mais offrent des
 # Questions?
 
 **Exercices recommandés** :
-- Exercice 14 : Prédicteur de Bayes optimal
-- Exercice 11 : MAP et régression Ridge
-- Exercice 16 : DVS et facteurs de rétrécissement
+- Exercice 1 (ch4) : Expansion de caractéristiques
+- Exercice 3 (ch4) : Décomposition biais-variance empirique
+- Exercice 5 (ch5) : MAP avec a priori gaussien et Ridge
+- Exercice 2 (ch3) : Régularisation de la régression logistique

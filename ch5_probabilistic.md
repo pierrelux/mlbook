@@ -11,12 +11,13 @@ kernelspec:
 
 À la fin de ce chapitre, vous serez en mesure de:
 - Expliquer le cadre bayésien et le rôle de l'a priori, la vraisemblance et l'a posteriori
-- Comprendre le maximum de vraisemblance (EMV) et son lien avec les moindres carrés
+- Comprendre pourquoi l'inférence bayésienne complète est souvent intractable
 - Appliquer le maximum a posteriori (MAP) et montrer son équivalence avec la régularisation
-- Unifier les perspectives décisionnelle et probabiliste de l'apprentissage
+- Interpréter l'EMV comme la minimisation de la divergence KL
+- Unifier les perspectives décisionnelle, probabiliste et informationnelle de l'apprentissage
 ```
 
-Le [chapitre précédent](ch3_generalization.md) a exploré les outils pour évaluer et sélectionner des modèles. Mais pourquoi exactement choisissons-nous la perte quadratique pour la régression et l'entropie croisée pour la classification? Ce chapitre répond à cette question en présentant le **cadre probabiliste**, qui offre une fondation principielle pour ces choix.
+Les chapitres précédents ont utilisé le maximum de vraisemblance pour justifier nos fonctions de perte: le [chapitre 1](ch1_learning_problem.md) a introduit le principe, le [chapitre 2](ch2_linear_regression.md) l'a appliqué à la régression (donnant les moindres carrés), et le [chapitre 3](ch3_classification.md) à la classification (donnant l'entropie croisée). Ce chapitre va plus loin en présentant le **cadre bayésien complet**, qui offre une perspective plus riche sur l'apprentissage.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -30,9 +31,9 @@ import matplotlib.pyplot as plt
 
 ## Le cadre probabiliste
 
-Jusqu'ici, nous avons choisi des fonctions de perte de manière ad hoc: la perte quadratique semble raisonnable pour la régression, la perte logistique pour la classification. Mais d'où viennent ces choix? Existe-t-il un principe unificateur?
+Le maximum de vraisemblance, introduit au chapitre 1, nous a donné un principe pour choisir les paramètres: maximiser la probabilité des données observées. Mais l'EMV n'est qu'un point de départ. Comment intégrer des connaissances préalables? Comment quantifier notre incertitude sur les paramètres?
 
-Le **cadre probabiliste** offre une réponse: plutôt que de choisir une perte arbitraire, nous modélisons explicitement comment les données ont été générées. Cette section présente d'abord le cadre général de l'inférence bayésienne, puis développe deux approches concrètes: le maximum de vraisemblance (EMV) et le maximum a posteriori (MAP).
+Le **cadre bayésien** offre des réponses à ces questions en traitant les paramètres eux-mêmes comme des variables aléatoires. Cette section présente d'abord le cadre général de l'inférence bayésienne, puis montre comment le maximum a posteriori (MAP) relie l'approche bayésienne à la régularisation.
 
 ### Le cadre bayésien
 
@@ -63,7 +64,7 @@ $$
 
 Cette **distribution prédictive a posteriori** intègre l'incertitude sur les paramètres. Elle ne s'engage pas sur une valeur unique de $\boldsymbol{\theta}$, mais considère toutes les valeurs plausibles.
 
-Le problème: cette intégrale est rarement calculable analytiquement. Elle nécessite de sommer sur un espace de paramètres de grande dimension, ce qui est coûteux ou impossible en pratique. C'est pourquoi nous recourons souvent à des **estimateurs ponctuels**: plutôt que d'intégrer sur tous les $\boldsymbol{\theta}$, nous en choisissons un seul, comme l'EMV ou le MAP.
+Le problème: cette intégrale est rarement calculable analytiquement. Elle nécessite d'intégrer sur un espace de paramètres de grande dimension, ce qui est coûteux ou impossible en pratique. C'est pourquoi nous recourons souvent à des **estimateurs ponctuels**: plutôt que d'intégrer sur tous les $\boldsymbol{\theta}$, nous en choisissons un seul, comme l'EMV ou le MAP.
 
 ### Utilité du modèle probabiliste
 
@@ -77,51 +78,15 @@ Si nous finissons souvent par utiliser un estimateur ponctuel, pourquoi adopter 
 
 4. **Ouvrir la porte à l'inférence complète**: Quand les ressources le permettent (méthodes de Monte Carlo, inférence variationnelle), nous pouvons approximer la distribution prédictive complète plutôt que de nous limiter à un point.
 
-## Maximum de vraisemblance
+## Maximum de vraisemblance: rappel et approfondissement
 
-Le **maximum de vraisemblance** est la première approche concrète dans le cadre probabiliste: nous cherchons les paramètres qui rendent nos observations les plus probables.
+Le [chapitre 1](ch1_learning_problem.md) a introduit le principe du maximum de vraisemblance: choisir les paramètres $\boldsymbol{\theta}$ qui maximisent la probabilité des données observées sous l'hypothèse i.i.d. Le [chapitre 2](ch2_linear_regression.md) a montré que ce principe, appliqué à un modèle gaussien, donne les moindres carrés. Le [chapitre 3](ch3_classification.md) a montré qu'appliqué à un modèle de Bernoulli, il donne l'entropie croisée.
 
-### Construction de la vraisemblance
+Cette section approfondit ces idées en explorant des extensions importantes: la régression hétéroscédastique et le lien avec la minimisation du risque empirique.
 
-Supposons que nous avons un modèle paramétrique $p(y|\mathbf{x}; \boldsymbol{\theta})$ qui, pour chaque entrée $\mathbf{x}$ et choix de paramètres $\boldsymbol{\theta}$, définit une distribution sur les sorties possibles $y$. Par exemple, en régression, ce pourrait être une gaussienne centrée sur $f(\mathbf{x}; \boldsymbol{\theta})$.
+### L'EMV comme minimisation du risque empirique
 
-Considérons un seul exemple $(\mathbf{x}_1, y_1)$. Pour des paramètres $\boldsymbol{\theta}$ fixés, nous pouvons évaluer $p(y_1 | \mathbf{x}_1; \boldsymbol{\theta})$: la probabilité (ou densité) que le modèle assigne à l'observation $y_1$. Si cette valeur est élevée, les paramètres $\boldsymbol{\theta}$ «expliquent bien» cette observation. Si elle est faible, $y_1$ est une valeur improbable sous ce modèle.
-
-Avec deux exemples indépendants $(\mathbf{x}_1, y_1)$ et $(\mathbf{x}_2, y_2)$, la probabilité conjointe est le produit:
-
-$$
-p(y_1, y_2 | \mathbf{x}_1, \mathbf{x}_2; \boldsymbol{\theta}) = p(y_1 | \mathbf{x}_1; \boldsymbol{\theta}) \cdot p(y_2 | \mathbf{x}_2; \boldsymbol{\theta})
-$$
-
-Avec $N$ exemples indépendants, nous obtenons la **vraisemblance**:
-
-$$
-\mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
-$$
-
-Cette quantité est une fonction de $\boldsymbol{\theta}$. Elle répond à la question: pour ce choix de paramètres, quelle est la probabilité d'avoir observé exactement ces données?
-
-### Pourquoi maximiser?
-
-Si $\mathcal{L}(\boldsymbol{\theta}_A) > \mathcal{L}(\boldsymbol{\theta}_B)$, alors les données observées sont plus probables sous $\boldsymbol{\theta}_A$ que sous $\boldsymbol{\theta}_B$. Les paramètres $\boldsymbol{\theta}_A$ rendent les observations moins «surprenantes».
-
-L'**estimateur du maximum de vraisemblance** (EMV, ou *MLE* pour *maximum likelihood estimator* en anglais) choisit les paramètres qui maximisent cette probabilité:
-
-$$
-\hat{\boldsymbol{\theta}}_{\text{EMV}} = \arg\max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}) = \arg\max_{\boldsymbol{\theta}} \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
-$$
-
-C'est le choix de paramètres sous lequel nos données sont les plus «attendues».
-
-### Du produit à la somme
-
-En pratique, multiplier $N$ probabilités (souvent petites) pose des problèmes numériques: le résultat devient rapidement trop petit pour être représenté par un ordinateur. Le logarithme résout ce problème: il transforme le produit en somme et, comme c'est une fonction croissante, il ne change pas le maximiseur:
-
-$$
-\log \mathcal{L}(\boldsymbol{\theta}) = \sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
-$$
-
-Pour l'optimisation, nous préférons minimiser plutôt que maximiser (par convention). La **log-vraisemblance négative** (LVN, ou *NLL* pour *negative log-likelihood* en anglais) est notre fonction objectif:
+La log-vraisemblance négative (LVN) prend la forme:
 
 $$
 \text{LVN}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
@@ -129,35 +94,11 @@ $$
 
 Remarquez la structure: c'est une somme sur les exemples d'une quantité $-\log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})$ qui dépend de chaque observation. Cette quantité joue le rôle d'une fonction de perte. Le maximum de vraisemblance est donc un cas particulier de la minimisation du risque empirique, où la perte est définie par le modèle probabiliste lui-même.
 
-### Régression avec bruit gaussien: d'où vient la perte quadratique?
-
-Appliquons ce principe à la régression. Le modèle de génération des données suppose que la sortie observée est la prédiction «vraie» du modèle, corrompue par un bruit aléatoire gaussien:
-
-$$
-y = f(\mathbf{x}; \boldsymbol{\theta}) + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2)
-$$
-
-Ce modèle dit que si nous connaissions les vrais paramètres $\boldsymbol{\theta}$ et que nous mesurions $y$ pour un $\mathbf{x}$ donné, nous obtiendrions $f(\mathbf{x}; \boldsymbol{\theta})$ plus ou moins $\sigma$ la plupart du temps.
-
-La distribution conditionnelle qui en découle est:
-
-$$
-p(y|\mathbf{x}; \boldsymbol{\theta}) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(y - f(\mathbf{x}; \boldsymbol{\theta}))^2}{2\sigma^2}\right)
-$$
-
-Calculons la log-vraisemblance négative:
-
-$$
-\text{LVN}(\boldsymbol{\theta}) = -\sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta}) = \frac{1}{2\sigma^2} \sum_{i=1}^N (y_i - f(\mathbf{x}_i; \boldsymbol{\theta}))^2 + \frac{N}{2}\log(2\pi\sigma^2)
-$$
-
-Le second terme ne dépend pas de $\boldsymbol{\theta}$. Minimiser la LVN revient donc exactement à minimiser la somme des erreurs quadratiques.
-
-C'est un résultat fondamental: **la perte quadratique n'est pas un choix arbitraire**. Elle découle naturellement de l'hypothèse que les erreurs de mesure suivent une loi gaussienne. Le maximum de vraisemblance sous bruit gaussien coïncide avec les moindres carrés.
-
 ### Régression homoscédastique et hétéroscédastique
 
-Dans ce modèle, nous avons supposé que la variance $\sigma^2$ est constante pour toutes les entrées $\mathbf{x}$. C'est ce qu'on appelle la **régression homoscédastique** (du grec *homos*, même, et *skedasis*, dispersion). C'est l'hypothèse standard en régression linéaire.
+Le [chapitre 2](ch2_linear_regression.md) a montré que sous le modèle $y = f(\mathbf{x}; \boldsymbol{\theta}) + \varepsilon$ avec $\varepsilon \sim \mathcal{N}(0, \sigma^2)$, minimiser la LVN revient à minimiser la somme des erreurs quadratiques. La perte quadratique découle donc de l'hypothèse gaussienne.
+
+Dans ce modèle, la variance $\sigma^2$ est constante pour toutes les entrées $\mathbf{x}$. C'est ce qu'on appelle la **régression homoscédastique** (du grec *homos*, même, et *skedasis*, dispersion). C'est l'hypothèse standard en régression linéaire.
 
 En pratique, l'incertitude peut varier selon l'entrée. Par exemple, les mesures à haute vitesse peuvent être plus bruitées que celles à basse vitesse. La **régression hétéroscédastique** modélise cette variation en faisant dépendre la variance de $\mathbf{x}$:
 
@@ -403,13 +344,21 @@ $$
 \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathcal{D} | \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) \right]
 $$
 
-Cette expression révèle une structure familière. Si nous posons $C(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$, nous obtenons:
+Cette expression révèle une structure familière. Développons la log-vraisemblance et posons $R(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$:
 
 $$
-\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{LVN}(\boldsymbol{\theta}) + C(\boldsymbol{\theta}) \right]
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ -\log p(\mathcal{D} | \boldsymbol{\theta}) - \log p(\boldsymbol{\theta}) \right] = \arg\min_{\boldsymbol{\theta}} \left[ \underbrace{\sum_{i=1}^N -\log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})}_{\text{LVN}(\boldsymbol{\theta})} + R(\boldsymbol{\theta}) \right]
 $$
 
-C'est exactement la forme du risque empirique régularisé. La **régularisation correspond à l'ajout d'un a priori** sur les paramètres. Le terme de régularisation $C(\boldsymbol{\theta})$ est le logarithme négatif de la distribution a priori.
+Comparons avec le risque empirique régularisé introduit au [chapitre 2](ch2_linear_regression.md):
+
+$$
+\hat{\boldsymbol{\theta}} = \arg\min_{\boldsymbol{\theta}} \left[ \frac{1}{N} \sum_{i=1}^N \ell(y_i, f(\mathbf{x}_i; \boldsymbol{\theta})) + \lambda \, C(\boldsymbol{\theta}) \right]
+$$
+
+La structure est identique: une somme de pertes sur les exemples, plus un terme de régularisation. La différence est l'absence du facteur $1/N$ devant la somme dans l'objectif MAP. Cette différence n'affecte pas le minimiseur (multiplier par une constante positive ne change pas l'argmin), mais elle a une conséquence importante: le poids relatif de l'a priori $R(\boldsymbol{\theta})$ par rapport aux données diminue quand $N$ augmente. Avec plus de données, l'a priori a moins d'influence, ce qui est le comportement souhaité.
+
+La régularisation correspond donc à l'ajout d'un a priori sur les paramètres. Le terme $R(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$ joue le rôle du régulariseur $\lambda \, C(\boldsymbol{\theta})$.
 
 ### Le maximum de vraisemblance comme cas particulier
 
@@ -425,17 +374,39 @@ L'EMV est donc un cas particulier du MAP: celui où nous supposons implicitement
 
 ### Limites de l'a priori uniforme
 
-L'a priori uniforme (et donc l'EMV) peut être problématique quand les données sont peu nombreuses. Considérons l'estimation de la probabilité $\theta$ qu'une pièce tombe sur face.
+L'a priori uniforme (et donc l'EMV) peut être problématique quand les données sont peu nombreuses. Illustrons ceci avec un exemple concret.
 
-Supposons que nous lancions la pièce 3 fois et obtenions 3 faces. L'estimateur du maximum de vraisemblance pour une distribution de Bernoulli est:
+```{admonition} Exemple: EMV pour une pièce de monnaie
+:class: tip
+
+Supposons que nous lancions une pièce 3 fois et obtenions 3 faces. Quel est l'EMV du paramètre $\theta = P(\text{face})$?
+
+Pour une distribution de Bernoulli, la probabilité d'observer $k$ faces sur $N$ lancers est:
 
 $$
-\hat{\theta}_{\text{EMV}} = \frac{N_1}{N_0 + N_1} = \frac{3}{0 + 3} = 1
+\mathcal{L}(\theta) = \theta^k (1 - \theta)^{N-k}
 $$
 
-où $N_1$ est le nombre de faces et $N_0$ le nombre de piles. Cette estimation dit que la probabilité d'obtenir face est de 100%. Si nous utilisions ce modèle pour prédire de futurs lancers, nous prédirons toujours face, ce qui est peu plausible pour une vraie pièce.
+Avec $k = 3$ et $N = 3$, nous avons $\mathcal{L}(\theta) = \theta^3$. Pour trouver le maximum, passons au logarithme et dérivons:
 
-Le problème est que l'EMV (avec son a priori uniforme implicite) dispose de suffisamment de flexibilité pour reproduire parfaitement les données d'entraînement, même quand celles-ci sont peu nombreuses ou non représentatives. Un a priori informatif peut atténuer ce problème.
+$$
+\log \mathcal{L}(\theta) = 3 \log \theta \quad \Rightarrow \quad \frac{d}{d\theta} \log \mathcal{L}(\theta) = \frac{3}{\theta}
+$$
+
+Cette dérivée est toujours positive sur $(0, 1)$: la log-vraisemblance croît avec $\theta$. Le maximum est donc atteint à la borne $\theta = 1$.
+
+Résultat: $\hat{\theta}_{\text{EMV}} = 1$. L'EMV prédit que la pièce tombe toujours sur face!
+
+Dans le cas général avec $k$ faces sur $N$ lancers, en posant la dérivée égale à zéro:
+
+$$
+\frac{d}{d\theta} \log \mathcal{L}(\theta) = \frac{k}{\theta} - \frac{N - k}{1 - \theta} = 0 \quad \Rightarrow \quad \hat{\theta}_{\text{EMV}} = \frac{k}{N}
+$$
+
+L'EMV est simplement la fréquence empirique des faces.
+```
+
+Cette estimation de 100% est peu plausible pour une vraie pièce. Le problème est que l'EMV (avec son a priori uniforme implicite) n'a aucun mécanisme pour modérer les estimations extrêmes quand les données sont peu nombreuses. Un a priori informatif peut atténuer ce problème.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -602,7 +573,7 @@ $$
 \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{LVN}(\boldsymbol{\theta}) + \frac{1}{2\sigma_\theta^2}\|\boldsymbol{\theta}\|_2^2 \right]
 $$
 
-C'est exactement la régression ridge, avec $\lambda = 1/(2\sigma_\theta^2)$. Cette correspondance nous donne une interprétation de l'hyperparamètre:
+C'est exactement Ridge, avec $\lambda = 1/(2\sigma_\theta^2)$. Cette correspondance nous donne une interprétation de l'hyperparamètre:
 
 - **Grande valeur de $\lambda$** (petite variance $\sigma_\theta^2$): forte croyance que les paramètres sont proches de zéro
 - **Petite valeur de $\lambda$** (grande variance $\sigma_\theta^2$): a priori peu informatif, on fait confiance aux données
@@ -615,13 +586,54 @@ Les sections précédentes ont présenté deux approches pour l'apprentissage su
 
 Ces deux approches semblent différentes, mais elles aboutissent aux mêmes algorithmes. En choisissant la **perte logarithmique** $\ell(y, \hat{y}) = -\log p(y | \hat{y})$, le risque empirique devient exactement la log-vraisemblance négative (à un facteur $1/N$ près). Minimiser l'un revient à minimiser l'autre. Sous bruit gaussien, cette perte se réduit à la perte quadratique; sous modèle de Bernoulli, à l'entropie croisée.
 
-De même, ajouter une régularisation $\ell_2$ au risque empirique revient à supposer un a priori gaussien sur les paramètres. La régression ridge n'est rien d'autre que l'estimation MAP avec cet a priori. Le coefficient $\lambda$ encode la force de notre croyance a priori: plus $\lambda$ est grand, plus nous «tirons» les paramètres vers zéro.
+De même, ajouter une régularisation $\ell_2$ au risque empirique revient à supposer un a priori gaussien sur les paramètres. Ridge n'est rien d'autre que l'estimation MAP avec cet a priori. Le coefficient $\lambda$ encode la force de notre croyance a priori: plus $\lambda$ est grand, plus nous «tirons» les paramètres vers zéro.
 
 Pourquoi alors utiliser deux langages? Parce qu'ils éclairent des aspects différents du problème. Le langage décisionnel (risque, perte, minimisation) est opérationnel: il dit comment construire un algorithme. Le langage probabiliste (vraisemblance, a priori, a posteriori) est interprétatif: il dit ce que nous supposons sur les données et pourquoi nos choix sont raisonnables. Ensemble, ils permettent de *concevoir* des algorithmes et de *comprendre* leur comportement.
 
 ### Interprétation informationnelle
 
-La théorie de l'information offre une troisième perspective. L'EMV peut se comprendre comme la recherche du modèle paramétrique le plus proche de la distribution empirique des données.
+La théorie de l'information offre une troisième perspective sur l'apprentissage, et révèle une connexion profonde entre le maximum de vraisemblance et la notion de distance entre distributions.
+
+#### Entropie et quantité d'information
+
+L'**entropie** d'une distribution discrète $p$ mesure l'incertitude moyenne ou la quantité d'information nécessaire pour décrire un tirage:
+
+$$
+\mathbb{H}(p) = -\sum_y p(y) \log p(y)
+$$
+
+Une distribution concentrée (faible incertitude) a une entropie faible. Une distribution uniforme (incertitude maximale) a une entropie maximale. L'entropie est toujours positive ou nulle.
+
+Pour une distribution continue, l'**entropie différentielle** est définie de manière analogue:
+
+$$
+\mathbb{H}(p) = -\int p(y) \log p(y) \, dy
+$$
+
+Par exemple, une gaussienne $\mathcal{N}(\mu, \sigma^2)$ a une entropie $\frac{1}{2}\log(2\pi e \sigma^2)$: plus la variance est grande, plus l'incertitude est grande.
+
+#### La divergence de Kullback-Leibler
+
+La **divergence de Kullback-Leibler** (ou divergence KL) mesure combien une distribution $q$ diffère d'une distribution de référence $p$:
+
+$$
+D_{\text{KL}}(p \| q) = \sum_y p(y) \log \frac{p(y)}{q(y)} = \mathbb{E}_{y \sim p}\left[\log \frac{p(y)}{q(y)}\right]
+$$
+
+Cette quantité a plusieurs propriétés importantes:
+- **Non-négative**: $D_{\text{KL}}(p \| q) \geq 0$ toujours (inégalité de Gibbs)
+- **Nulle si et seulement si** $p = q$ (les distributions sont identiques)
+- **Non symétrique**: $D_{\text{KL}}(p \| q) \neq D_{\text{KL}}(q \| p)$ en général
+
+On peut réécrire la divergence KL en faisant apparaître l'entropie:
+
+$$
+D_{\text{KL}}(p \| q) = -\mathbb{H}(p) + \mathbb{H}_{\text{ce}}(p, q)
+$$
+
+où $\mathbb{H}_{\text{ce}}(p, q) = -\sum_y p(y) \log q(y)$ est l'**entropie croisée** entre $p$ et $q$.
+
+#### L'EMV minimise la divergence KL
 
 La **distribution empirique** place une masse $1/N$ sur chaque observation:
 
@@ -629,19 +641,43 @@ $$
 p_{\mathcal{D}}(y) = \frac{1}{N} \sum_{i=1}^N \delta(y - y_i)
 $$
 
-La **divergence de Kullback-Leibler** mesure la dissimilarité entre deux distributions:
+Considérons maintenant la divergence KL entre cette distribution empirique et notre modèle paramétrique $p(y | \boldsymbol{\theta})$:
 
 $$
-D_{\text{KL}}(p \| q) = \sum_y p(y) \log \frac{p(y)}{q(y)}
+D_{\text{KL}}(p_{\mathcal{D}} \| p(\cdot | \boldsymbol{\theta})) = -\mathbb{H}(p_{\mathcal{D}}) + \mathbb{H}_{\text{ce}}(p_{\mathcal{D}}, p(\cdot | \boldsymbol{\theta}))
 $$
 
-Cette quantité est toujours positive ou nulle, et vaut zéro si et seulement si les deux distributions sont identiques. En posant $p = p_{\mathcal{D}}$ (ce que nous avons observé) et $q = p(\cdot | \boldsymbol{\theta})$ (notre modèle), on peut montrer que:
+Le terme $\mathbb{H}(p_{\mathcal{D}})$ ne dépend pas de $\boldsymbol{\theta}$. Donc:
 
 $$
-\arg\min_{\boldsymbol{\theta}} D_{\text{KL}}(p_{\mathcal{D}} \| p(\cdot|\boldsymbol{\theta})) = \arg\min_{\boldsymbol{\theta}} \text{LVN}(\boldsymbol{\theta})
+\arg\min_{\boldsymbol{\theta}} D_{\text{KL}}(p_{\mathcal{D}} \| p(\cdot|\boldsymbol{\theta})) = \arg\min_{\boldsymbol{\theta}} \mathbb{H}_{\text{ce}}(p_{\mathcal{D}}, p(\cdot|\boldsymbol{\theta}))
 $$
 
-L'EMV trouve les paramètres qui rendent notre modèle aussi proche que possible de ce que nous avons observé, au sens de la divergence KL. Cette interprétation géométrique complète les perspectives décisionnelle et probabiliste.
+L'entropie croisée avec la distribution empirique est exactement la log-vraisemblance négative:
+
+$$
+\mathbb{H}_{\text{ce}}(p_{\mathcal{D}}, p(\cdot|\boldsymbol{\theta})) = -\frac{1}{N} \sum_{i=1}^N \log p(y_i | \mathbf{x}_i; \boldsymbol{\theta}) = \text{LVN}(\boldsymbol{\theta})
+$$
+
+Ainsi, **le maximum de vraisemblance trouve les paramètres qui minimisent la divergence KL entre notre modèle et la distribution empirique**. C'est une interprétation géométrique de l'EMV: nous cherchons le modèle paramétrique le plus «proche» des données observées, au sens de la divergence KL.
+
+#### Unification: régression et classification
+
+Cette perspective informationnelle unifie nos deux modèles principaux:
+
+| Problème | Modèle probabiliste | LVN à minimiser |
+|----------|---------------------|-----------------|
+| Régression | $p(y|\mathbf{x}; \boldsymbol{\theta}) = \mathcal{N}(y | f(\mathbf{x}; \boldsymbol{\theta}), \sigma^2)$ | $\frac{1}{2\sigma^2}\sum_i (y_i - f(\mathbf{x}_i; \boldsymbol{\theta}))^2 + \text{cst}$ |
+| Classification binaire | $p(y|\mathbf{x}; \boldsymbol{\theta}) = \text{Ber}(y | \sigma(\boldsymbol{\theta}^\top\mathbf{x}))$ | $-\sum_i [y_i \log \mu_i + (1-y_i)\log(1-\mu_i)]$ |
+
+Dans les deux cas:
+1. Nous spécifions un modèle probabiliste pour les observations
+2. La log-vraisemblance négative définit la fonction de perte
+3. Minimiser cette perte revient à minimiser la divergence KL avec la distribution empirique
+
+La perte quadratique n'est pas un choix arbitraire: elle découle de l'hypothèse que le bruit est gaussien. L'entropie croisée n'est pas arbitraire non plus: elle découle de l'hypothèse que les étiquettes suivent une distribution de Bernoulli (binaire) ou catégorielle (multiclasse).
+
+Cette unification révèle que **le choix de la fonction de perte encode notre hypothèse sur la distribution du bruit**. Changer de modèle probabiliste change la perte optimale. Inversement, choisir une perte particulière revient implicitement à supposer un certain modèle de bruit.
 
 ## Résumé
 
@@ -653,9 +689,11 @@ Ce chapitre a développé le cadre probabiliste pour l'apprentissage supervisé:
 
 - Le **maximum de vraisemblance** (EMV) trouve les paramètres qui rendent les données observées les plus probables. Sous bruit gaussien, l'EMV coïncide avec les moindres carrés.
 
-- Le **maximum a posteriori** (MAP) incorpore un a priori sur les paramètres. Avec un a priori gaussien, le MAP correspond exactement à la régression ridge. Le coefficient de régularisation encode la force de l'a priori.
+- Le **maximum a posteriori** (MAP) incorpore un a priori sur les paramètres. Avec un a priori gaussien, le MAP correspond exactement à Ridge. Le coefficient de régularisation encode la force de l'a priori.
 
-- Les **perspectives décisionnelle et probabiliste** sont complémentaires: la première est opérationnelle (comment construire l'algorithme), la seconde est interprétative (pourquoi ces choix sont raisonnables).
+- L'**interprétation informationnelle** révèle que l'EMV minimise la divergence KL entre notre modèle et la distribution empirique. Cette perspective unifie régression (bruit gaussien → perte quadratique) et classification (distribution de Bernoulli → entropie croisée).
+
+- Les trois perspectives (décisionnelle, probabiliste, informationnelle) sont complémentaires: la première est opérationnelle (comment construire l'algorithme), la deuxième est interprétative (ce que nous supposons sur les données), la troisième est géométrique (quelle distance minimisons-nous).
 
 Le chapitre suivant étend ces fondations aux **réseaux de neurones**, où la capacité d'apprendre des représentations non linéaires ouvre de nouvelles possibilités et de nouveaux défis.
 
@@ -888,7 +926,7 @@ $$
    Seule la composante correspondant à la vraie classe contribue à la perte.
 ```
 
-````{admonition} Exercice 5: MAP avec a priori gaussien et régression ridge ★★
+````{admonition} Exercice 5: MAP avec a priori gaussien et Ridge ★★
 :class: hint dropdown
 
 Considérons un modèle de régression linéaire gaussien:

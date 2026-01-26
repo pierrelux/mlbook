@@ -783,7 +783,7 @@ $$
 C(\boldsymbol{\theta}) = \|\boldsymbol{\theta}\|_2^2 = \sum_j \theta_j^2
 $$
 
-Cette pénalisation pousse les paramètres vers zéro, ce qui a pour effet de lisser la fonction apprise. En régression linéaire, l'ajout de cette pénalité donne la **régression ridge**:
+Cette pénalisation pousse les paramètres vers zéro, ce qui a pour effet de lisser la fonction apprise. En régression linéaire, l'ajout de cette pénalité donne la **régularisation Ridge**:
 
 $$
 \hat{\boldsymbol{\theta}}_{\text{ridge}} = \arg\min_{\boldsymbol{\theta}} \frac{1}{N}\sum_{i=1}^N (y_i - \boldsymbol{\theta}^\top \mathbf{x}_i)^2 + \lambda \|\boldsymbol{\theta}\|_2^2
@@ -859,9 +859,9 @@ plt.tight_layout()
 
 Sans régularisation ($\lambda = 0$), le polynôme de degré 15 oscille fortement. Avec une régularisation modérée ($\lambda = 10^{-3}$), les oscillations sont atténuées et l'erreur de test diminue. Avec une régularisation trop forte ($\lambda = 1$), le modèle devient trop contraint et sous-apprend.
 
-#### Solution analytique de la régression ridge
+#### Solution analytique de Ridge
 
-Comme pour les moindres carrés ordinaires, la régression ridge admet une solution analytique. L'objectif régularisé est:
+Comme pour les moindres carrés ordinaires, Ridge admet une solution analytique. L'objectif régularisé est:
 
 $$
 \text{RSS}_\lambda(\boldsymbol{\theta}) = \|\mathbf{y} - \mathbf{X}\boldsymbol{\theta}\|_2^2 + \lambda \|\boldsymbol{\theta}\|_2^2
@@ -889,7 +889,7 @@ Comparons avec la solution MCO: $\hat{\boldsymbol{\theta}}_{\text{MCO}} = (\math
 
 ##### Solution via décomposition en valeurs singulières (SVD)
 
-Cette section présente une autre façon d'exprimer les solutions MCO et Ridge, en utilisant la **décomposition en valeurs singulières** (SVD). Si vous n'avez jamais rencontré la SVD, ne vous inquiétez pas: nous allons l'introduire progressivement. Cette approche n'est pas strictement nécessaire pour comprendre la régression ridge, mais elle offre une interprétation géométrique très éclairante qui révèle *pourquoi* la régularisation fonctionne.
+Cette section présente une autre façon d'exprimer les solutions MCO et Ridge, en utilisant la **décomposition en valeurs singulières** (SVD). Si vous n'avez jamais rencontré la SVD, ne vous inquiétez pas: nous allons l'introduire progressivement. Cette approche n'est pas strictement nécessaire pour comprendre Ridge, mais elle offre une interprétation géométrique très éclairante qui révèle *pourquoi* la régularisation fonctionne.
 
 **Qu'est-ce que la SVD?** Si vous avez déjà rencontré la **décomposition en valeurs propres**, la SVD en est une généralisation. Pour une matrice carrée symétrique $\mathbf{A}$, la décomposition en valeurs propres s'écrit $\mathbf{A} = \mathbf{Q} \boldsymbol{\Lambda} \mathbf{Q}^\top$, où $\mathbf{Q}$ contient les vecteurs propres et $\boldsymbol{\Lambda}$ les valeurs propres. La SVD généralise cette idée à **n'importe quelle matrice**, même rectangulaire.
 
@@ -2294,7 +2294,7 @@ $$
 
 Cette **distribution prédictive a posteriori** intègre l'incertitude sur les paramètres. Elle ne s'engage pas sur une valeur unique de $\boldsymbol{\theta}$, mais considère toutes les valeurs plausibles.
 
-Le problème: cette intégrale est rarement calculable analytiquement. Elle nécessite de sommer sur un espace de paramètres de grande dimension, ce qui est coûteux ou impossible en pratique. C'est pourquoi nous recourons souvent à des **estimateurs ponctuels**: plutôt que d'intégrer sur tous les $\boldsymbol{\theta}$, nous en choisissons un seul, comme l'EMV ou le MAP.
+Le problème: cette intégrale est rarement calculable analytiquement. Elle nécessite d'intégrer sur un espace de paramètres de grande dimension, ce qui est coûteux ou impossible en pratique. C'est pourquoi nous recourons souvent à des **estimateurs ponctuels**: plutôt que d'intégrer sur tous les $\boldsymbol{\theta}$, nous en choisissons un seul, comme l'EMV ou le MAP.
 
 ### Utilité du modèle probabiliste
 
@@ -2318,19 +2318,23 @@ Supposons que nous avons un modèle paramétrique $p(y|\mathbf{x}; \boldsymbol{\
 
 Considérons un seul exemple $(\mathbf{x}_1, y_1)$. Pour des paramètres $\boldsymbol{\theta}$ fixés, nous pouvons évaluer $p(y_1 | \mathbf{x}_1; \boldsymbol{\theta})$: la probabilité (ou densité) que le modèle assigne à l'observation $y_1$. Si cette valeur est élevée, les paramètres $\boldsymbol{\theta}$ "expliquent bien" cette observation. Si elle est faible, $y_1$ est une valeur improbable sous ce modèle.
 
-Avec deux exemples indépendants $(\mathbf{x}_1, y_1)$ et $(\mathbf{x}_2, y_2)$, la probabilité conjointe est le produit:
+Comment passer d'un seul exemple à un ensemble de données $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$? C'est ici qu'intervient l'**hypothèse i.i.d.** (indépendants et identiquement distribués): nous supposons que les exemples sont tirés indépendamment de la même distribution $p(\mathbf{x}, y)$. Cette hypothèse est fondamentale en apprentissage statistique.
+
+Sous cette hypothèse, avec deux exemples $(\mathbf{x}_1, y_1)$ et $(\mathbf{x}_2, y_2)$, la probabilité conjointe se factorise en produit:
 
 $$
 p(y_1, y_2 | \mathbf{x}_1, \mathbf{x}_2; \boldsymbol{\theta}) = p(y_1 | \mathbf{x}_1; \boldsymbol{\theta}) \cdot p(y_2 | \mathbf{x}_2; \boldsymbol{\theta})
 $$
 
-Avec $N$ exemples indépendants, nous obtenons la **vraisemblance**:
+Cette factorisation est une conséquence directe de l'indépendance: la valeur de $y_2$ n'apporte aucune information sur $y_1$ une fois que nous conditionnons sur $\mathbf{x}_1$ et $\boldsymbol{\theta}$.
+
+Pour l'ensemble de données complet $\mathcal{D}$, nous obtenons la **vraisemblance**:
 
 $$
-\mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+\mathcal{L}(\boldsymbol{\theta}; \mathcal{D}) = p(\mathcal{D} | \boldsymbol{\theta}) = \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
 $$
 
-Cette quantité est une fonction de $\boldsymbol{\theta}$. Elle répond à la question: pour ce choix de paramètres, quelle est la probabilité d'avoir observé exactement ces données?
+Cette quantité est une fonction de $\boldsymbol{\theta}$ pour un $\mathcal{D}$ fixé. Elle répond à la question: pour ce choix de paramètres, quelle est la probabilité d'avoir observé exactement ces données?
 
 #### Pourquoi maximiser?
 
@@ -2339,10 +2343,10 @@ Si $\mathcal{L}(\boldsymbol{\theta}_A) > \mathcal{L}(\boldsymbol{\theta}_B)$, al
 L'**estimateur du maximum de vraisemblance** (EMV, ou *MLE* pour *maximum likelihood estimator* en anglais) choisit les paramètres qui maximisent cette probabilité:
 
 $$
-\hat{\boldsymbol{\theta}}_{\text{EMV}} = \arg\max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}) = \arg\max_{\boldsymbol{\theta}} \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
+\hat{\boldsymbol{\theta}}_{\text{EMV}} = \arg\max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}; \mathcal{D}) = \arg\max_{\boldsymbol{\theta}} \prod_{i=1}^N p(y_i | \mathbf{x}_i; \boldsymbol{\theta})
 $$
 
-C'est le choix de paramètres sous lequel nos données sont les plus "attendues".
+C'est le choix de paramètres sous lequel nos données $\mathcal{D}$ sont les plus "attendues".
 
 #### Du produit à la somme
 
@@ -2370,7 +2374,15 @@ $$
 
 Ce modèle dit que si nous connaissions les vrais paramètres $\boldsymbol{\theta}$ et que nous mesurions $y$ pour un $\mathbf{x}$ donné, nous obtiendrions $f(\mathbf{x}; \boldsymbol{\theta})$ plus ou moins $\sigma$ la plupart du temps.
 
-La distribution conditionnelle qui en découle est:
+Quelle est la distribution de $y$ sachant $\mathbf{x}$ et $\boldsymbol{\theta}$? La réponse vient de la propriété de translation des gaussiennes: si $\varepsilon \sim \mathcal{N}(0, \sigma^2)$, alors $\mu + \varepsilon \sim \mathcal{N}(\mu, \sigma^2)$ pour toute constante $\mu$. Cette propriété découle de la formule de changement de variable: si $y = g(\varepsilon)$ avec $g$ inversible, alors
+
+$$
+p_Y(y) = p_\varepsilon(g^{-1}(y)) \cdot \left| \frac{d g^{-1}}{dy} \right|
+$$
+
+Pour la translation $y = \mu + \varepsilon$ (donc $\varepsilon = y - \mu$), le jacobien vaut 1 et la densité de $y$ est simplement celle de $\varepsilon$ évaluée en $y - \mu$. Ainsi, écrire $y = f(\mathbf{x}; \boldsymbol{\theta}) + \varepsilon$ avec $\varepsilon \sim \mathcal{N}(0, \sigma^2)$ est équivalent à écrire $y | \mathbf{x}, \boldsymbol{\theta} \sim \mathcal{N}(f(\mathbf{x}; \boldsymbol{\theta}), \sigma^2)$.
+
+La distribution conditionnelle qui en découle est donc:
 
 $$
 p(y|\mathbf{x}; \boldsymbol{\theta}) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(y - f(\mathbf{x}; \boldsymbol{\theta}))^2}{2\sigma^2}\right)
@@ -2384,7 +2396,7 @@ $$
 
 Le second terme ne dépend pas de $\boldsymbol{\theta}$. Minimiser la NLV revient donc exactement à minimiser la somme des erreurs quadratiques.
 
-C'est un résultat fondamental: **la perte quadratique n'est pas un choix arbitraire**. Elle découle naturellement de l'hypothèse que les erreurs de mesure suivent une loi gaussienne. Le maximum de vraisemblance sous bruit gaussien coïncide avec les moindres carrés.
+C'est un résultat fondamental: la perte quadratique n'est pas un choix arbitraire. Elle découle naturellement de l'hypothèse que les erreurs de mesure suivent une loi gaussienne. Le maximum de vraisemblance sous bruit gaussien coïncide avec les moindres carrés.
 
 Dans ce modèle, nous avons supposé que la variance $\sigma^2$ est constante pour toutes les entrées $\mathbf{x}$. C'est ce qu'on appelle la **régression homoscédastique** (du grec *homos*, même, et *skedasis*, dispersion). C'est l'hypothèse standard en régression linéaire.
 
@@ -2816,13 +2828,21 @@ $$
 \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\max_{\boldsymbol{\theta}} \left[ \log p(\mathcal{D} | \boldsymbol{\theta}) + \log p(\boldsymbol{\theta}) \right]
 $$
 
-Cette expression révèle une structure familière. Si nous posons $C(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$, nous obtenons:
+Cette expression révèle une structure familière. Développons la log-vraisemblance et posons $R(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$:
 
 $$
-\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{NLV}(\boldsymbol{\theta}) + C(\boldsymbol{\theta}) \right]
+\hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ -\log p(\mathcal{D} | \boldsymbol{\theta}) - \log p(\boldsymbol{\theta}) \right] = \arg\min_{\boldsymbol{\theta}} \left[ \underbrace{\sum_{i=1}^N -\log p(y_i | \mathbf{x}_i; \boldsymbol{\theta})}_{\text{LVN}(\boldsymbol{\theta})} + R(\boldsymbol{\theta}) \right]
 $$
 
-C'est exactement la forme du risque empirique régularisé. La **régularisation correspond à l'ajout d'un a priori** sur les paramètres. Le terme de régularisation $C(\boldsymbol{\theta})$ est le logarithme négatif de la distribution a priori.
+Comparons avec le risque empirique régularisé:
+
+$$
+\hat{\boldsymbol{\theta}} = \arg\min_{\boldsymbol{\theta}} \left[ \frac{1}{N} \sum_{i=1}^N \ell(y_i, f(\mathbf{x}_i; \boldsymbol{\theta})) + \lambda \, C(\boldsymbol{\theta}) \right]
+$$
+
+La structure est identique: une somme de pertes sur les exemples, plus un terme de régularisation. La différence est l'absence du facteur $1/N$ devant la somme dans l'objectif MAP. Cette différence n'affecte pas le minimiseur (multiplier par une constante positive ne change pas l'argmin), mais elle a une conséquence importante: le poids relatif de l'a priori $R(\boldsymbol{\theta})$ par rapport aux données diminue quand $N$ augmente. Avec plus de données, l'a priori a moins d'influence, ce qui est le comportement souhaité.
+
+La régularisation correspond donc à l'ajout d'un a priori sur les paramètres. Le terme $R(\boldsymbol{\theta}) = -\log p(\boldsymbol{\theta})$ joue le rôle du régulariseur $\lambda \, C(\boldsymbol{\theta})$.
 
 #### Le maximum de vraisemblance comme cas particulier
 
@@ -2838,17 +2858,39 @@ L'EMV est donc un cas particulier du MAP: celui où nous supposons implicitement
 
 #### Limites de l'a priori uniforme
 
-L'a priori uniforme (et donc l'EMV) peut être problématique quand les données sont peu nombreuses. Considérons l'estimation de la probabilité $\theta$ qu'une pièce tombe sur face.
+L'a priori uniforme (et donc l'EMV) peut être problématique quand les données sont peu nombreuses. Illustrons ceci avec un exemple concret.
 
-Supposons que nous lancions la pièce 3 fois et obtenions 3 faces. L'estimateur du maximum de vraisemblance pour une distribution de Bernoulli est:
+```{admonition} Exemple: EMV pour une pièce de monnaie
+:class: tip
+
+Supposons que nous lancions une pièce 3 fois et obtenions 3 faces. Quel est l'EMV du paramètre $\theta = P(\text{face})$?
+
+Pour une distribution de Bernoulli, la probabilité d'observer $k$ faces sur $N$ lancers est:
 
 $$
-\hat{\theta}_{\text{EMV}} = \frac{N_1}{N_0 + N_1} = \frac{3}{0 + 3} = 1
+\mathcal{L}(\theta) = \theta^k (1 - \theta)^{N-k}
 $$
 
-où $N_1$ est le nombre de faces et $N_0$ le nombre de piles. Cette estimation dit que la probabilité d'obtenir face est de 100%. Si nous utilisions ce modèle pour prédire de futurs lancers, nous prédirons toujours face, ce qui est peu plausible pour une vraie pièce.
+Avec $k = 3$ et $N = 3$, nous avons $\mathcal{L}(\theta) = \theta^3$. Pour trouver le maximum, passons au logarithme et dérivons:
 
-Le problème est que l'EMV (avec son a priori uniforme implicite) dispose de suffisamment de flexibilité pour reproduire parfaitement les données d'entraînement, même quand celles-ci sont peu nombreuses ou non représentatives. Un a priori informatif peut atténuer ce problème.
+$$
+\log \mathcal{L}(\theta) = 3 \log \theta \quad \Rightarrow \quad \frac{d}{d\theta} \log \mathcal{L}(\theta) = \frac{3}{\theta}
+$$
+
+Cette dérivée est toujours positive sur $(0, 1)$: la log-vraisemblance croît avec $\theta$. Le maximum est donc atteint à la borne $\theta = 1$.
+
+Résultat: $\hat{\theta}_{\text{EMV}} = 1$. L'EMV prédit que la pièce tombe toujours sur face!
+
+Dans le cas général avec $k$ faces sur $N$ lancers, en posant la dérivée égale à zéro:
+
+$$
+\frac{d}{d\theta} \log \mathcal{L}(\theta) = \frac{k}{\theta} - \frac{N - k}{1 - \theta} = 0 \quad \Rightarrow \quad \hat{\theta}_{\text{EMV}} = \frac{k}{N}
+$$
+
+L'EMV est simplement la fréquence empirique des faces.
+```
+
+Cette estimation de 100% est peu plausible pour une vraie pièce. Le problème est que l'EMV (avec son a priori uniforme implicite) n'a aucun mécanisme pour modérer les estimations extrêmes quand les données sont peu nombreuses. Un a priori informatif peut atténuer ce problème.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -3015,7 +3057,7 @@ $$
 \hat{\boldsymbol{\theta}}_{\text{MAP}} = \arg\min_{\boldsymbol{\theta}} \left[ \text{NLV}(\boldsymbol{\theta}) + \frac{1}{2\sigma_\theta^2}\|\boldsymbol{\theta}\|_2^2 \right]
 $$
 
-C'est exactement la régression ridge, avec $\lambda = 1/(2\sigma_\theta^2)$. Cette correspondance nous donne une interprétation de l'hyperparamètre:
+C'est exactement Ridge, avec $\lambda = 1/(2\sigma_\theta^2)$. Cette correspondance nous donne une interprétation de l'hyperparamètre:
 
 - **Grande valeur de $\lambda$** (petite variance $\sigma_\theta^2$): forte croyance que les paramètres sont proches de zéro
 - **Petite valeur de $\lambda$** (grande variance $\sigma_\theta^2$): a priori peu informatif, on fait confiance aux données
@@ -3028,7 +3070,7 @@ Les sections précédentes ont présenté deux approches pour l'apprentissage su
 
 Ces deux approches semblent différentes, mais elles aboutissent aux mêmes algorithmes. En choisissant la **perte logarithmique** $\ell(y, \hat{y}) = -\log p(y | \hat{y})$, le risque empirique devient exactement la log-vraisemblance négative (à un facteur $1/N$ près). Minimiser l'un revient à minimiser l'autre. Sous bruit gaussien, cette perte se réduit à la perte quadratique; sous modèle de Bernoulli, à l'entropie croisée.
 
-De même, ajouter une régularisation $\ell_2$ au risque empirique revient à supposer un a priori gaussien sur les paramètres. La régression ridge n'est rien d'autre que l'estimation MAP avec cet a priori. Le coefficient $\lambda$ encode la force de notre croyance a priori: plus $\lambda$ est grand, plus nous "tirons" les paramètres vers zéro.
+De même, ajouter une régularisation $\ell_2$ au risque empirique revient à supposer un a priori gaussien sur les paramètres. Ridge n'est rien d'autre que l'estimation MAP avec cet a priori. Le coefficient $\lambda$ encode la force de notre croyance a priori: plus $\lambda$ est grand, plus nous "tirons" les paramètres vers zéro.
 
 Pourquoi alors utiliser deux langages? Parce qu'ils éclairent des aspects différents du problème. Le langage décisionnel (risque, perte, minimisation) est opérationnel: il dit comment construire un algorithme. Le langage probabiliste (vraisemblance, a priori, a posteriori) est interprétatif: il dit ce que nous supposons sur les données et pourquoi nos choix sont raisonnables. Ensemble, ils permettent de *concevoir* des algorithmes et de *comprendre* leur comportement.
 
@@ -3635,7 +3677,7 @@ $$
    Seule la composante correspondant à la vraie classe contribue à la perte.
 ```
 
-````{admonition} Exercice 11: MAP avec a priori gaussien et régression ridge ★★
+````{admonition} Exercice 11: MAP avec a priori gaussien et Ridge ★★
 :class: hint dropdown
 
 Considérons un modèle de régression linéaire gaussien:
@@ -3774,7 +3816,7 @@ En régression, l'**homoscédasticité** suppose que la variance du bruit est co
 ````{admonition} Exercice 13: Validation croisée pour le choix de λ ★★
 :class: hint dropdown
 
-La validation croisée permet de choisir l'hyperparamètre $\lambda$ de la régression ridge sans utiliser de données de test.
+La validation croisée permet de choisir l'hyperparamètre $\lambda$ de Ridge sans utiliser de données de test.
 
 1. Générez un jeu de données de régression polynomiale ($N = 50$):
 
