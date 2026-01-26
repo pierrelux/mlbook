@@ -30,7 +30,12 @@ project:
   toc:
     - file: drafts/intro.md
     - file: drafts/knn.md
-    - file: learning_problem.md
+    - title: "Partie I: Fondements"
+      children:
+        - file: ch1_learning_problem.md
+        - file: ch2_linear_regression.md
+        - file: ch3_generalization.md
+        - file: ch4_probabilistic.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb

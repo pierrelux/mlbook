@@ -1,0 +1,2562 @@
+
+
+0:04
+/
+1:49:34
+Search transcript
+0:02
+OK, donc je vais l'ouvrir également de mon côté pour qu'on puisse regarder
+0:06
+ensemble. Bon, prendre un two factor authentication.
+0:14
+OK. Donc c'est une section qui est qui est
+0:22
+double ici là. Donc, il y a des étudiants ici qui sont en 33 euh 3395
+0:29
+puis d'autres qui sont du côté de 6390. On a à peu près le même nombre
+0:34
+d'étudiants là, je pense c'est 30 40 d'un côté ou de l'autre. Euh le contenu
+0:39
+c'est le même. Je je vais pas me je vais pas me séparer en deux. Donc
+0:43
+j'enseigne la même manière. C'est juste que les évaluations sont un petit peu
+0:46
+modulé selon selon de d'où vous venez.
+0:52
+Voilà. le
+0:56
+la vie évolue d'une manière assez intense de nos jours. Donc
+1:02
+c'est c'est à chaque à chaque à chaque fois que j'enseigne toujours
+1:06
+je me pose toujours la question comment est-ce qu'on doit maintenant enseigner
+1:09
+là euh j'ai fait l'exercice encore hier puis j'en suis venu à la conclusion que
+1:16
+euh la manière dont vous alliez être évalué c'est la la suivante.
+1:21
+Puis ça s'aligne sur ce que mes collègues ont fait également à
+1:24
+l'automne. Donc juste un petit rappel que maintenant on offre une section en
+1:28
+français évidemment je parle en français devant vous mais on a également une
+1:31
+section qui est en anglais à l'automne. Je sais que certains d'entre vous euh
+1:36
+m'ont m'ont envoyé un message par rapport à la langue d'enseignement euh
+1:42
+et euh et donc ben je vous êtes au courant là, mais si c'est trop difficile
+1:47
+de suivre, vaut mieux peut-être attendre à l'automne. Euh ceci étant dit, pour la
+1:54
+langue d'enseignement, c'est en français, mais vous pouvez toujours
+1:58
+envoyer vos devoirs, ben les communications avec moi ou bien les
+2:02
+examens, ça c'est ça ça me va. Il y a pas de souci si vous écrivez en anglais.
+2:06
+Euh, habituellement, j'essaie d'imprimer les copies des examens en français, en
+2:10
+anglais. Ça devrait être le cas encore une fois.
+2:13
+Vous pouvez me le dire à l'avance également. Vous avez besoin d'une copie
+2:15
+en anglais pu en préparer puis en imprimer suffisamment.
+2:19
+Euh donc ça c'est par rapport à la langue. Puis euh comme vous voyez,
+2:26
+bon on a pas de caméra malheureusement au plafond mais
+2:31
+je vais tenter de d'enregistrer les cours. C'est ce que je fais déjà quand
+2:35
+j'enseigne à Milan. Tous mes cours sont enregistrés. Euh puis ce qui est bien
+2:40
+avec ça, c'est que si justement vous maîtrisez pas le français, les en
+2:44
+mettant en ligne les vidéos sur Google Drive, lorsque vous faites jouer les
+2:49
+vidéos dans Google Drive, il y a une option de traduction ben de de de
+2:54
+sous-titres instantané. Puis les sous-titres sont multilingues, donc vous
+2:58
+pouvez les mettre en anglais ou en chinois ou en n'importe quelle langue.
+3:02
+Puis c'est quand même pas mal. Là, ça peut arriver à traduire mon français.
+3:07
+québécois. Très bien. Donc euh si vous arrivez pas à à suivre ce que ce que je
+3:13
+dis en classe là, c'est probablement une bonne une bonne manière de de rattraper
+3:17
+à la maison. Euh je crois que je fais l'erreur de vous transmettre un lien qui
+3:21
+est à partir de mon compte Mila, ce qui fait que vous avez peut-être pas les
+3:25
+accès là. Je vais je vais remettre à jour le lien, mais le lien du Google
+3:29
+Drive est sur la page Studium. Euh ça va juste être un un dossier puis je vais
+3:35
+mettre les enregistrements là-dedans. Euh s'il y a des diapo également, je
+3:40
+vais les mettre dedans. Et cette année, ce que je vais tenter de faire, c'est de
+3:45
+vous produire également des notes pour accompagner le cours.
+3:50
+C'est ce que j'ai fait dans mon cours de d'apprentissage par renforcement. Je
+3:53
+crois que c'est c'est bien apprécié. Euh, ceci étant dit, il existe un un
+3:59
+livre que je recommande, ça fait plusieurs années que je l'utilise
+4:02
+maintenant. C'est le livre que vous pouvez trouver qui est en anglais
+4:05
+seulement par exemple qui est probabilistic machine learning PML par
+4:10
+Murphy et il est disponible en ligne. Donc Kevin Murphy a écrit là plusieurs
+4:19
+livres. Nous, on va principalement utiliser le contenu qui est dans le
+4:24
+livre numéro 1 et vous pouvez le trouver ici. Donc, vous avez seulement à faire
+4:29
+la la recherche sur Google. Probabilistic Machine Learning. Je crois
+4:33
+que c'est un excellent livre. Puis c'est ça, il est disponible sur GitHub.
+4:40
+vous avez pas besoin de le pirater. Vous pouvez également l'acheter en papier
+4:44
+mais je vais vous écrire des notes également
+4:48
+en français qui vont complémenter puis qui vont qui vont utiliser la même
+4:52
+notation également que que le livre de de PML.
+4:57
+Donc ça c'est ça pour aujourd'hui. Je vais réutiliser mes slides que j'ai
+5:01
+écrit l'année dernière. J'étais en congé de paternité. Donc
+5:05
+euh j'ai la dernière fois que j'ai enseigné le cours, c'était en 2023. Euh
+5:10
+le monde change également très vite là. Donc ça va être du contenu que je vais
+5:14
+mettre à jour. Je vous ai pas partagé aujourd'hui les diapos parce que je
+5:17
+compte de faire une petite un petit refactoring comme on dit en
+5:22
+anglais de ce contenu là avant de le partager avec vous. Mais autrement là je
+5:26
+vais je vais tenter de vous communiquer le matériel à l'avance parce que je sais
+5:30
+que c'est quelque chose qui vous qui vous intéresse habituellement.
+5:34
+Euh bon, je vais commencer sans sans continuer là à vous parler de des
+5:40
+évaluations. Donc ça ressemble à ça. C'est c'est un peu peut-être radical
+5:45
+cette année, mais c'est aligné sur la manière dont mes mes collègues ont
+5:50
+enseigné également. On aura pas de devoir on aura pas de devoir évaluer. Je
+5:56
+vais quand même tenter de vous donner des exercices mais ça va être des
+5:59
+exercices qui vont pas être évalués. Les évaluations vont être les suivantes.
+6:04
+Donc, on va avoir deux projets de type cadle. C'est des euh c'est des projets
+6:10
+appliqué d'une manière. Vous pouvez voir ça comme deux mini projets. Euh donc, on
+6:14
+va vous donner des instructions, un jeu de données et vous allez devoir
+6:20
+appliquer les techniques que vous avez apprises dans le cours et
+6:25
+nous soumettre une description minimale de ce que vous avez fait. Ceci étant
+6:30
+dit, ce qui est très important dans ces exercices là, c'est que euh vous allez
+6:35
+non seulement soumettre vos votre travail, mais par la suite, moi et mon
+6:42
+qui est euh on va faire des entrevues. Ce que je
+6:47
+veux dire par les entrevues, c'est des peut-être app comme un examen oral, mais
+6:52
+je vais prendre du temps pour vous rencontrer tous individuellement euh
+6:56
+pour poser des questions sur votre solution pour tenter de comprendre ce
+7:00
+que vous comprenez puis ce que vous comprenez pas réellement. Euh à mon
+7:05
+avis, c'est une excellente manière de vraiment comprendre là puis euh de
+7:11
+déterminer si c'est où les vous avez des les lacunes. Donc ça va être la manière
+7:16
+de faire euh projet 1, projet 2, type cagle. J'ai fait j'ai regardé le
+7:23
+calendrier hier, ça pourrait ressembler à ça. Donc si vous voulez le mettre sur
+7:27
+votre calendrier là, projet 1 et entreelvu, ben le projet 1 va être va
+7:33
+être probablement dans le coin du 9 au 13 février. L'examen train du 23 27.
+7:41
+Ensuite, on va avoir le le spring break euh la semaine de relâche en début mars
+7:47
+qui est du 2 au 8. le deuxème projet après la semaine de
+7:51
+relâche l'examen final qui est à la fin avril de
+7:57
+ça va ressembler à ça. Les cours comme vous avez vu sont les
+8:07
+lundis et les vendredis. Habituellement, après ce cours-ci, euh j'ai mon
+8:14
+assistant de cours qui va donner une séance plus pratique.
+8:19
+Euh pour aujourd'hui. Euh on pas finaliser l'embauche malheureusement de
+8:24
+ce de cette cet assistant là. Donc ça va ça va aller à l'année à la semaine
+8:28
+prochaine. Euh le cours du lundi va être un 2h
+8:34
+magistral puis c'est ça le vendredi il va avoir 1
+8:38
+heure là magistral suivi de un autre heure plus plus interactive.
+8:45
+Ça ça enregistrement. Bon ben je pense que c'est pas mal tout ce que je vais à
+8:49
+vous dire. Est-ce que vous avez d'autres questions pratiqu pratique sur
+8:53
+l'organisation du cours ? Ah oui, il aurait peut-être aussi la question de
+8:56
+des autres cours mais oui pour moi plus projet c'est
+9:00
+non ça va être en équipe ça va être en équipe. C'est pour ça
+9:03
+aussi que je fais des entrevues parce que pour aller déterminer dans l'équipe
+9:07
+également ce que les gens connaissent comprennent euh équipe de trois ça va
+9:11
+aller. Ouais c'est ça.
+9:16
+Oui. Euh que j'ai montré le PML,
+9:25
+c'est je l'ai pas mis sur la page Studium, mais si tu vas dans Google puis
+9:30
+tu écris probabilistic Machine Learning, euh ça devrait être facile à trouver ici
+9:36
+par Patrick Murphy. Je vais le mettre par la suite en ligne.
+9:42
+Ah oui, ce que je vais commencer à dire c'est les autres offres de cours au Diro
+9:47
+puis à Mila. Donc on a un cours qui s'appelle également Sciences des données
+9:53
+qui est enseigné par mes collègues Gautier. En fait, c'était mon postdoc
+9:59
+Vincent qui l'a qui l'a enseigné la dernière fois.
+10:03
+Puis euh je crois que Glan également l'a enseigné.
+10:08
+En gros, science des données est très reliée finalement à ce cours-ci, mais on
+10:13
+tente de donner un angle plus ben évidemment plus data science, plus euh
+10:19
+plus appliqué, plus ancré sur peut-être les pratiques de l'industrie.
+10:24
+Euh tandis que ce coursci classiquement s'aligne plus dans la lignée de euh
+10:31
+présentation des fondements théoriques. C'est plus un cours théorique dans
+10:35
+lequel vous êtes aujourd'hui. il va avoir des composants pratiques,
+10:40
+mais euh on va faire des détours euh dans les fondement théorique de
+10:46
+l'apprentissage machine. C'est pas non plus un cours de je dirais en anglais
+10:51
+là, c'est pas un cours hardcore de théorie, mais c'est pas non plus un
+10:56
+cours de programmation pour l'aspect peut-être plus
+10:59
+programmation, c'est peut-être plus sciences et données qui qui serait
+11:03
+adéquat. Et évidemment le cours subséquent à
+11:08
+celui-ci c'est souvent le cours d'apprentissage de qu'on dit le cours de
+11:13
+deep learning mais je crois que s'appelle
+11:17
+apprentissage de représentation quelque chose comme ça. C'est mon cours qui est
+11:20
+enseigné par c'est le cours qui est enseigné par mes
+11:23
+collègues Ashoria puis donc voilà c'est le cours qui suit. On
+11:30
+va faire on va parler de deep learning évidemment, c'est incontournable dans ce
+11:35
+cours-ci, mais euh pour consacrer là 100 %, ça va être le cours suivant.
+11:42
+Donc je crois que celui-ci c'est un prérequis de toute manière à celui de
+11:47
+puis d'Auria par la suite. Quoi d'autre ? Ça ressemble pas mal à ça
+11:53
+au niveau de des offres de cours. Moi, j'enseigne un cours en apprentissage par
+11:57
+renforcement qui évidemment beaucoup de notions qui ont
+12:02
+rapport à tout ça. Donc c'est un cours aussi que vous pouvez prendre par la
+12:05
+suite. Moi, je l'enseigne sur le campus à à Mila, c'est un cours de niveau
+12:11
+gradué là, ce qui nous permet d'enseigner là-bas. Puis quoi d'autre ?
+12:15
+dans l'offre également. On a aussi un cours qui est enseigné par
+12:19
+mon collègue Simon sur les modèles probablistes graphique. C'est aussi des
+12:25
+concepts qu'on qu'on va voir aussi dans le cours mais qui on a un cours qui est
+12:29
+détient entièrement à ces concepts. Donc c'est ça, c'est pas mal c'est pas
+12:34
+mal la base ce cours là. C'est la base mais c'est des c'est des fondements
+12:38
+théoriques qui restent qui demeure malgré le fait que notre domaine a
+12:45
+changé énormément puis évolue à une vitesse folle. Donc c'est ça qui fait un
+12:50
+cours de fondement, c'est c'est des bases qui restent peu importe qu'on soit
+12:55
+en 1995 ou qu'on soit en 2026 avec les LLM, ça reste plus ou moins les mêmes
+13:01
+les mêmes éléments. C'est bon. Euh
+13:08
+écoutez, je me pose la question moi aussi là sur comment on doit enseigner
+13:12
+ces coursiers. Je pense que je vais aussi réadapter également ma
+13:15
+présentation là. Permettez-moi juste de télécharger ça ici. Mais euh évidemment,
+13:21
+on veut parler des bases, mais aussi je pense qui est important, le challenge,
+13:25
+c'est de connecter ces bases là à ce qui ce qu'on fait maintenant. Puis euh ça,
+13:30
+je vous dirais que on a tous du rattrapage à faire un peu dans la
+13:34
+manière dont on enseigne. OK, je vais juste changer d'écran ici. C'est pas
+13:39
+long. Voilà, ici. Voilà. OK.
+13:50
+Donc parlons juste un peu maintenant du contenu à proprement dit. Là, ça va être
+13:55
+une introduction plutôt euh plutôt en doucheur
+13:59
+et par la suite, on va aller un petit peu plus profondément dans tout dans
+14:02
+tous ces concepts là. Donc euh
+14:06
+en apprentissage machine, on va avoir plusieurs
+14:14
+plusieurs sous-prèmes qu'on va auquels on va s'intéresser. Mais vous allez
+14:18
+souvent entendre parler d'expression modèle. On veut apprendre un modèle.
+14:23
+C'est une expression qui est un petit peu
+14:26
+qui manque un peu peut-être de de de formalisation, c'est-à-dire qu'est-ce
+14:30
+qu'on veut dire par un modèle ? Ce qu'on veut dire par un modèle dans notre cas
+14:33
+ici, c'est qu'on veut on veut
+14:39
+on veut trouver de manière automatique une procédure. On veut inférer une
+14:44
+procédure qui nous permet
+14:49
+ultimement dans notre domaine qui nous permet
+14:51
+ultimement de faire des prédictions. Si vous êtes quelqu'un qui provient d'une
+14:55
+d'un département par exemple de statistique
+14:59
+en math, parfois la prédiction c'est peut-être pas l'élément principal qui
+15:03
+vous intéresse dans d'autres disciplines. parfois
+15:06
+l'identification d'un modèle, c'est-à-dire c'est c'est ça l'
+15:10
+signification que par exemple en physique ou en chimie où on
+15:15
+va euh on va faire des hypothèses sur la
+15:19
+manière dont le monde peut fonctionner puis ensuite on va tenter d'identifier
+15:23
+les paramètres qui permettent à notre à notre modèle
+15:27
+d'expliquer la réalité. Pour ce qui est de l'apprentissage
+15:32
+machine de l'IA, le problème d'intérêt pour nous, c'est de faire des
+15:36
+prédictions. C'est-à-dire euh d'après des données historiques, d'après
+15:45
+des données, d'après des observations, on veut tenter
+15:49
+de voir au-delà, de généraliser euh à de nouvelles paires de données. La
+15:58
+présentation qui est faite ici dans cette diapo que je vais partager avec
+16:02
+vous, ça en est une où on fait la supposition
+16:07
+euh d'un problème qu'on appelle un problème
+16:11
+d'apprentissage supervisé. Les apprentissages supervisés sont ceux où
+16:17
+on a des paires de données d'entrée. C'est ce qu'on voit ici dans la notation
+16:22
+X et Y. des paires de données d'entrée euh qui qui représentent la relation
+16:29
+d'entrée sortie dans un phénomène qu'on tente de de représenter.
+16:35
+Ça peut être un phénomène physique, ça peut être un phénomène social, c'est une
+16:39
+relation qui existe qu'on tente d'inférer, d'expliquer automatiquement
+16:46
+d'après les données. Donc c'est ce qu'on veut dire le problème de production
+16:50
+aussi. Mais ce qui est absolument crucial et qui distingue
+16:56
+le problème d'apprentissage par rapport à d'autres euh d'autres
+17:01
+problèmes par exemple, c'est c'est vraiment cette notion là de
+17:05
+généralisation. Pourquoi ? parce que simplement
+17:12
+collecter des données, ça va pas nécessairement nous permettre
+17:17
+de bien prédire au-delà des données qu'on a
+17:20
+obtenu. Donc c'est un c'est un thème qui va nous
+17:25
+revenir là euh toujours, c'est cette tension là entre euh la mémorisation
+17:31
+versus la généralisation. Bon exemple classique ici de prédiction
+17:37
+en apprentissage supervisé. Par exemple, on peut avoir des problèmes
+17:40
+de de prédiction sur des images, on peut avoir sur différentes modalités, sur le
+17:45
+son, sur le texte. Euh mais allons-y ici avec les images. Euh donc par exemple,
+17:50
+on peut euh avoir en entrée des données qui représente des pixels dans une
+17:56
+image. Et le problème ici, c'est de déterminer le type de euh de la la fleur
+18:02
+qui nous est présentée. Donc c'est un problème ici de classification
+18:07
+et la relation d'entrée de sortie
+18:13
+tente à ce qu'on tente de faire ici c'est
+18:17
+justement d'apprendre classifiur qui qui nous dit quelle quelle fleur on a dans
+18:22
+not dans notre dans notre image. Euh la représentation de cette image là va être
+18:30
+très importante. C'est-à-dire, je sais pas si vous avez déjà travaillé avec des
+18:34
+images dans des dans vos programmes, mais vous savez que
+18:39
+les ces images là bon vont être représentées
+18:43
+manière bon dans la manière habituelle, ça va être sous forme de représentation
+18:48
+RGB. Donc chaque pixel dans cette image là va avoir trois canaux
+18:53
+RGB qui vont varier de 0 à 255 habituellement.
+18:58
+Donc dans la forme brute de ces donnéeslà, c'est c'est ce qu'on observe.
+19:03
+C'est une collection de en fait c'est c'est on va parler plus
+19:10
+tard de de représentation tensorielle ou de de de
+19:17
+tableau multidimensionnel. C'est le cas ici. Vous pouvez voir ça
+19:21
+comme étant une matrice qui est qui est également une dimension
+19:26
+qui est celle des des canaux RGB. Donc c'est la représentation d'entrée.
+19:31
+Mais cette représentation là va souvent être trop va manquer trop de structure
+19:38
+pour être utile. Et une grande partie de ce qui rend les méthodes d'apprentissage
+19:46
+superisé utiles, c'est c'est finalement c'est c'est la transformation de ces ces
+19:51
+données brutes là en une représentation qui nous permet de prendre des décisions
+19:56
+et d'apprendre ces relations là de manière efficace. Donc par exemple ce
+20:01
+qui serait fait euh le plus souvent c'est plutôt que de travailler
+20:05
+directement dans l'espace brut des pixels des des canaux RGB.
+20:10
+Ce qu'on va faire, c'est avoir une représentation intermédiaire plutôt que
+20:14
+donner l'image brute. Ce qu'on veut donner, c'est par exemple des mesures
+20:18
+qu'on va avoir fait sur les sur les données. Par exemple, la la la
+20:24
+les dimensions de des pétales et ainsi de suite. Et ces caractéristiques là, on
+20:31
+présume que sont des caractéristiques qui sont représentatives de la relation
+20:35
+qu'on tente d'inférer automatiquement. Donc on parle ici là, on est juste dans
+20:41
+dans le vocabulaire. Donc je utiliser le le terme également ici caractéristique.
+20:46
+L'expression qu'on utilise en anglais c'est features.
+20:50
+Donc en apprentissage supervisé une grande part de l'effort en fait est
+20:56
+dédié à l'extraction de caractéristiques.
+21:00
+Cette extraction de caractéristiques là peut être fait de manière automatique,
+21:03
+mais ce qui fait le succès d'un projet en apprentissage automatique, c'est
+21:10
+souvent euh l'effort humain qui va être déployé
+21:16
+pour trouver des caractéristiques utiles pour notre problème. Je dirais que 95 %
+21:24
+du travail d'un D scientiste de nos jours, ça va être de comprendre leur
+21:28
+problèmes suffisamment. puis de déterminer les caractéristiques de leurs
+21:33
+problèmes qui vont être utiles. Le reste honnêtement surtout que de nos
+21:39
+jours, on peut générer les codes là très facilement.
+21:43
+L'application du modèle lui-même de l'algorithme de production va être va
+21:47
+être très très simple. La plus grande partie du workflow
+21:51
+maintenant d'un scientist va quand même être à ce niveau.
+21:56
+Donc donc voilà, caractéristique très features et euh souvent on va parler,
+22:01
+c'est une expression qu'on va voir de manière un peu plus mathématique plus
+22:03
+tard, mais on va parler parfois de
+22:09
+d'un espace. Donc on va transformer des données dans un autre espace un espace
+22:15
+de redescription. C'est une expression qui est jolie en français et qu'en
+22:20
+anglais c'est simplement ce qu'on appelle le feature space.
+22:24
+Le feature space, c'est l'espace dans lequel on a on a exprimé nos données
+22:29
+brutes, qu'on les a transformé dans un espace qui est qui est peut-être plus
+22:33
+simple mais qui est suffisamment riche pour permettre de tirer des conclusions,
+22:41
+de faire des prédictions par rapport aux données qu'on a pas vu.
+22:45
+J'ai vraiment pas envie cette année de commencer avec ça. Euh habituellement,
+22:50
+ce cours-ci est enseigné de la manière suivante. On commence avec
+22:54
+cette classe de méthodes là qui sont les méthodes non paramétriques. C'est des
+22:58
+méthodes qui euh qui tente de d'inférer
+23:07
+ces prédicurs là à partir des données elles-mêmes et qui gardent les données
+23:12
+elles-mêmes en mémoire tout le temps.
+23:17
+J'ai vraiment envie là de de sauter un autre partie puis de revenir à ça plus
+23:22
+loin. Euh est-ce que je me je me
+23:29
+Allons-y avec ça. On va y aller avec la présentation classique. On viendra
+23:32
+peut-être au deuxème cours là. Je vais je réorganiser les choses avec ça parce
+23:37
+que en fait où est-ce que je veux vous emmener là le plus rapidement possible ?
+23:41
+du côté de de ces méthodes qu'on dit paramétriques là qui sont euh qui sont
+23:45
+beaucoup plus représentatives des choses qu'on fait en en deep learning par
+23:49
+exemple de nos jours euh et qui sont un peu plus ancrés sur l'optimisation
+23:54
+euh à mon avis qui est un langage aussi plus adéquat là. Mais allons-y avec ça.
+24:00
+OK, on va pas trop se se casser la tête, mais allons-y avec ça parce que quand
+24:03
+même un élément qui est qui est euh pardon qui est qui est intuitif dans ces
+24:08
+méthodesl pour le c'est la raison pour laquelle on les avait choisi là
+24:11
+initialement sont intuitifs parce que c'est quelque
+24:14
+chose que vous pourriez coder très très efficacement. En fait, je
+24:18
+pense que le premier TP dans ce cours-ci euh vous demande de faire ça. Puis la
+24:23
+raison pour laquelle on le met au début du cours, c'est que c'est facile à coder
+24:28
+sans avoir à connaître quoi que ce soit sur l'optimisation mathématique.
+24:33
+C'est vraiment des méthodes qui sont algorithmiques. Allons avec ça. Première
+24:36
+méthode qui s'appelle celle des cas plus proches
+24:41
+voisins en anglais qui est une méthode très très
+24:47
+intuive. Ce qu'on veut faire ici, c'est par
+24:49
+exemple de classifier. Retournons à à notre exemple de classification des
+24:54
+images. On classifier euh d'après les observations, à quelle
+25:00
+classe appartient euh l'instance d'entrée. He souvenez-vous là dans dans
+25:04
+les symboles qu'on utilise, on utilise X et Y. X c'est l'entrée. Y ça va être la
+25:10
+décision, la prédiction en sortie pour la classification. Ça va être par
+25:14
+exemple un type de fleur, ça peut être la classification binaire 01. Ça peut
+25:20
+être dans les problèmes de classification, la relation d'entrée
+25:24
+sortie en est une où la sortie va être dans un espace discret.
+25:31
+On va prédire une catégorie et ça ça va être en en en ben pas en
+25:37
+opposition là mais ça va complémenter l'autre perspective
+25:43
+qui est celle de régression où l'espace de sortie l'espace de prédiction va être
+25:49
+un espace continu. Donc la seule distinction qu'on fait ici là, c'est que
+25:53
+on est continu dans le nombre discret, on va faire de
+25:56
+la classification avec les cas plus proche voisin. L'idée est très simple,
+26:02
+on a disons si on regarde l'image qui est ici,
+26:07
+imaginez par exemple nos données sont en 2D sont pas en 2D quand on a une image
+26:12
+dans espace de très grande dimension en fait.
+26:17
+Imaginons, je vais juste poser la question euh
+26:21
+imaginons qu'on a une image, qu'est-ce qui serait une taille d'image de nos
+26:26
+jours qui est bon, on va dire 128 par 128 pixels, c'est très petit mais
+26:30
+allons-y avec 128 par 128 pixels RGB qui la dimensionnalité de cette observation
+26:37
+là, c'est 128 par 128 x 3. C'est quand même un espace de dimension assez
+26:42
+grande. ici là c'est juste sur un une représentation simplifiée en 2D. Donc
+26:48
+imaginez par exemple que vous avez un problème de de classification que vous
+26:51
+voulez faire puis ça ben c'est écoutez j'ai pas j'ai pas de d'explication à ce
+26:56
+que serait ce domaineelà en particulier. C'est vraiment un un exemple
+27:00
+pédagogique, mais imaginez que vous voulez classifier des
+27:04
+groupes de points. Vous avez des groupes de points bleus, des groupes de points
+27:06
+rouge, des groupes de points verts et vous voulez les les classifier.
+27:11
+Et on vous a donné en entrée un jeu de données. Euh on vous a dit à l'avance
+27:17
+voici un exemple de de telle telle fleur et voici l'étiquette on a à cette fleur
+27:23
+là. Donc euh imaginez que c'est c'est une représentation de ces données là que
+27:28
+vous avez ici. Et quel qu'est-ce qu'on fait ici avec les cas plus proche voisin
+27:32
+? Donc par exemple ce système là évidemment ce qu'on
+27:38
+voudrait faire c'est prendre notre téléphone disons le pointer à une fleur
+27:43
+dans notre jardin puis avoir une prédiction sur quelle est la le type de
+27:49
+fleur qu'on existe une application en passant qui fait s'appelle naturalist
+27:54
+donc euh c'est quelque chose qui existe euh
+27:59
+qu'est-ce que ça veut dire de prendre son téléphone le pointer à une fla Ça
+28:02
+veut dire qu'on est à quelque part dans cet espace là qu' a un point qui existe
+28:05
+pas. C'est ça la généralisation. Vous voyez
+28:09
+mon curcher là hein ? Les points que vous voyez là, c'est les données
+28:13
+d'entraînement. Mais
+28:18
+lorsqu'on déploie notre système, évidemment, il va voir des notre système
+28:22
+va être va voir des des points qui jamais vu, va voir des images qui jamais
+28:27
+vu. Comment généraliser les cas plus proche
+28:31
+voisin comme le le nom l'indique, l'idée est très simple. Par exemple,
+28:36
+vous voyez mon curseur peut-être là, disons disons qu'on on on pose la
+28:41
+question, on a un point qui situe là, on dit quelle est la classe, l'étiquette,
+28:48
+le type associé à ce pointlà ? Si je vous pose la question probablement que
+28:53
+vous allez faire la même la même chose que ces algos là. Ce que
+28:57
+vous allez faire c'est vous vous allez regarder autour. On curseur évidemment
+29:00
+se situe dans une zone où surtout les points sont ouverts.
+29:06
+Ça ferait du sens de dire que probablement qu' un point qui se situe
+29:09
+là et un point qui appartient à la classe verte.
+29:15
+Donc c'est c'est honnêtement il y a pas plus à dire tellement des cas plus
+29:19
+proches voisins. C'est ce que les cas plus proches voisins vont faire. On
+29:23
+avait un autre une autre représentation ici. Là c'est
+29:28
+la même la même histoire. Euh X c'est la requête qu'on fait. C'est le la nouvelle
+29:34
+question qu'on pose à notre système. Les flèches démontrent là les 1 2 3 4 5 cinq
+29:40
+plus trois voisin de euh de cette requête là.
+29:46
+Et euh donc qu'est-ce comment on fait pour pour en prendre une décision ? Ben
+29:51
+souvent ce qu'on va faire c'est qu'on va on va prendre la majorité. On va on va
+29:55
+compter le nombre de classes dans les les cas plus proches voisins qu'on a eu.
+30:00
+Puis on va retourner comme comme prédiction la classe majoritaire, celle
+30:04
+qui a le plus de dont le le nombre de de catégories la plus grande
+30:15
+pour implémenter ces méthodes là. cependant et c'est là que c'est
+30:20
+intéressant d'un point de vue géométrique puis mathématique,
+30:24
+la notion de proximité plus proche présuppose qu'on a une un moyen de
+30:33
+mesurer ce que ça veut dire d'être le plus proche.
+30:38
+Et ça c'est un c'est un un élément sur lequel vous pouvez varier puis obtenir
+30:44
+différentes déclinaisons de votre algorithme de cor plus proche voisin.
+30:49
+C'est la sélection le choix de la de la de la métrique de qui nous permet
+30:58
+de mesurer deux points.
+31:02
+C'est si c'est pas un concept auquel vous avez réfléchi jusqu'à ce pointci,
+31:10
+permettez-moi juste de vous rappeler que la distance eucléienne, celle qu'on avec
+31:18
+laquelle on travaille depuis l'école primaire dans le plan cartésien,
+31:23
+c'est une distance, une notion de distance parmi
+31:28
+tant d'autres. Les mathématiciens aiment généraliser
+31:33
+tout. Donc évidemment euh il existe une généralisation de la
+31:38
+notion de distance. On peut mesurer les choses de différentes manières et ce qui
+31:44
+fait métrique de distance
+31:50
+généralis. Donc par exemple, on peut généraliser la
+31:54
+distance eucléienne avec cette notion là qu'on appelle la distance de Mahal
+31:59
+Novis. Simplement, on va ajouter une matrice
+32:03
+ici euh dans ce calcul là. Qu'est-ce que c'est ce calcul là ? par exemple M et la
+32:09
+matrice d'identité quelqu'un cit la réponse à ça
+32:17
+la distance cléne normale évidemment si la si on met la matrice d'identité hein
+32:22
+le le c'est le ce ce product là finalement c'est la
+32:27
+distance eucésium donc on peut généraliser ces chosesl en choisissant
+32:30
+par exemple une matrice m qui doit être définie positive et obtenir différents
+32:38
+types de de métrique. Euh
+32:43
+les choix de la notion de distance vont aussi varier sur la selon la la la
+32:49
+nature des données. Euh ça peut paraître un peu abstrait
+32:53
+mais croyez-moi que en fait des applications utiles à ça.
+32:59
+Par exemple, on pourrait travailler dans un problème où
+33:03
+l'espace sujacent, c'est l'espace des distribution de probabilité.
+33:10
+C'est un peu funky comme concept là, mais je peux vous dire que on peut
+33:14
+parler aussi de distance entre distribution de probabilité.
+33:20
+Ça c'est tout un autre un autre monde là lequel on va pas vraiment dans lequel on
+33:24
+va pas vraiment se lancer mais on peut on peut par exemple utiliser euh
+33:30
+la théorie d'information pour pour pour quantifier cette notion de distance là
+33:34
+qui est plus abstrait sur des objets plus plus abstraits.
+33:38
+Il existe aussi tout un une sous-catégorie en fait l'apprentissage
+33:43
+machine qui est peut-être moins populaire ces temps-ci là mais qui avait
+33:48
+le le qui s'appelait le matric learning aussi vous intéresser à apprendre
+33:56
+c'est une simplification ici mais pour aussi poser un problème qui dit
+34:02
+apprenons la mente
+34:05
+de ça existe également dans la plupart des cas euh donc on
+34:12
+souvent avec des données continues, on veut utiliser la distance eucléienne
+34:16
+mais vous pouvez jouer avec ça. Puis euh quel serait
+34:21
+un autre exemple ? Ben par exemple si vous avez des données de séquence disons
+34:26
+de d'ADN où les données de séquence d'ADN vont
+34:30
+être dans un vocabulaire fini. On peut également mesurer la distance
+34:37
+entre des chaînes de caractères.
+34:42
+Il existe différentes définitions. Existe pas seulement une définition mais
+34:45
+différentes manières de mesurer la différence. Une de ces
+34:50
+mesures là est par exemple la celle qu'on appelle en anglais le edit
+34:54
+distance qui va nous permettre de de quantifier ces ces différences là.
+35:01
+Donc donc voilà les cas plus proches voisins. Est-ce qu'il y a des questions
+35:04
+sur euh sur ça ici ? Non. Autre élément je pense qui est
+35:10
+montré également sur la diapo qui qui vaut la peine, je vous ai dit
+35:14
+c'est une explication intuitive là. On prend par exemple si on peut prendre une
+35:18
+décision, on prend la majorité, la face la face majoritaire, mais on peut
+35:23
+également euh se doter d'une interprétation probabiliste de ces
+35:28
+méthodes. L'interprétation probabiliste, c'est la suivante. Ce qu'elle dit, c'est
+35:33
+que on va tenter de on va définir un modèle probabiliste
+35:39
+après nos données. Le modèle probabiliste est le suivant.
+35:43
+On va définir la probabilité que la classe associée à notre donnée d'entrée
+35:50
+X soit la classe C en construisant un modèle empirique.
+35:59
+Donc c'est le la sommation qui est de l'autre côté. Ce qu'elle fait ici hein,
+36:04
+ce que ce que les mats montrent ici, c'est le la somme sur la fonction
+36:08
+indicatrice. Le symbole qui là ici, c'est la fonction
+36:12
+qui est 0 ou 1 qui est 1 lorsque l'étiquette
+36:18
+associée à un point dans un entourage est C.
+36:22
+Et euh la lettre calligraphique N en bas signifie le voisinage, neighborhood. N
+36:30
+pour neighborhood. Donc ce que les maths montrent ici, c'est qu'on fait une somme
+36:35
+sur tous les points dans le voisinage et on ajoute on compte seulement ceux
+36:43
+qui ont l'étiquette donnée de class, on normalise par cas pour que ça nous donne
+36:48
+une quantité qui est entre 0 puis 1. Donc ça c'est un modèle empirique
+36:55
+d'une probabilité conditionnelle d'une
+36:58
+relation conditionnelle de type P de Y étant donné X qui est une relation qu'on
+37:06
+qui vraiment caractérise les problèmes de d'apprentissage supervisé autant en
+37:11
+classification qu'en régression. Le modèle mental que vous voulez avoir
+37:16
+dans la tête c'est le suivant. Étant donné x, quelle est la probabilité
+37:21
+d' y ? C'est une représentation probabiliste
+37:27
+et on en déduit une décision en prenant la classe majoritaire.
+37:36
+On a parlé du choix de métrique comme étant un choix important, mais
+37:41
+évidemment euh dans le titre même de la méthode des cas plus proches voisins, le
+37:46
+choix du de cas va avoir un effet important.
+37:52
+Une thermologie importante également que j'aurais dû mettre en gras dans les
+37:56
+diapos jusqu'à présent, c'est celle euh qu'on appelle euh la distinction entre
+38:02
+les paramètres et les hyperparamètres. K la métrique M, ce qu'on appelle des
+38:09
+hyperparamètres. paramètres
+38:14
+vous pouvez voir penser à ça comme étant des
+38:18
+boutons sur un tableau de barre qui vous permettent de de varier les propriétés
+38:23
+de votre algorithme les les bells and whistle de votre
+38:27
+algorithme. L'effet de cas est important et une
+38:33
+connexion directe avec les propriétés de généralisation.
+38:39
+Donc c'est ces trois graphes là, je sais pas si vous les voyez assez bien là,
+38:44
+mais euh ce qu'il démontre ici, puis peut-être que les différences sont
+38:48
+subtiles qu'on regarde de loin, mais par exemple, on a ici K est égal à 1. Et
+38:55
+qu'est-ce qu'on voit ? On voit qu'il y a beaucoup plus de morcellement, j'imagine
+38:59
+en français l'expression. Vous voyez plus de petites îles disparaître
+39:06
+à comparer à K est ég à 5. Vous voyez la frontière de K est ég à 5 est beaucoup
+39:10
+plus lisse, beaucoup plus continue que la frontière de K est ég à 1. En passant
+39:15
+qu'est-ce que c'est cette représentation là ? Euh
+39:20
+c'est une représentation qui est principalement conceptuelle parce que
+39:24
+c'est pas quelque chose qu'on va calculer explicitement.
+39:27
+C'est cette manière de représenter les données avec les différentes zones de
+39:34
+couleurs. D'ailleurs, les couleurs sont pas très bonnes sur le projecteur. On a
+39:37
+la zone rouge, la zone bleue, zone vert. C'est pas une représentation qu'on va
+39:42
+devoir calculer explicitement. C'est plus pour des fins conceptuelles ici. Et
+39:46
+et la ligne de démarcation entre les différentes zones, c'est une ligne de
+39:51
+démarcation qu'on appelle la la frontière de décision.
+39:56
+C'est le c'est c'est l'endroit dans l'espace où le modèle se met
+40:01
+soudainement à prédire quelque chose d'autre.
+40:06
+Donc la frontière de décision pour K est ég à 1. Une structure qui est beaucoup
+40:11
+plus discontinue, beaucoup moins lisse que celle de K et qui est égal à 5.
+40:17
+Et ce que ça veut dire concrètement au-delà des différences esthétiques,
+40:22
+c'est c'est un un c'est un tradeof, un dilemme
+40:32
+sur la généralisation versus la mémorisation.
+40:36
+Ce qui arrive avec K est ég à 1, c'est que on est beaucoup plus dans un un
+40:41
+régime de mémorisation et euh
+40:47
+on est dans un côté où est-ce qu'on va avoir beaucoup moins de biais mais on va
+40:51
+moins bien généraliser également. C'est un autre un autre axe dans lequel on on
+40:57
+va c'est le thème récurrent finalement du cours mais c'est le dilemme
+41:01
+euh variance et biais. Donc intuitivement, par exemple, si je
+41:06
+joue garoche, comme on dit en français ces
+41:09
+expressions là, euh lequel de ces choixlà aurait le plus
+41:15
+grand le plus grand biais ? Est-ce que vous pourriez deviner là ? Qu'est-ce
+41:20
+qu'on voudrait dire ? Ouais, c'est avec la casquette
+41:26
+K ég je crois que c'est écrit 5 mais ouais.
+41:30
+Ah oui, effectivement. Donc K est ég à 5 aurait le plus grand biais. Et euh votre
+41:35
+collègue ici, c'est celui qui aurait le plus de variance, disons.
+41:42
+Donc c'est un espèce de de tension là qui est récurrente, qui qui va revenir
+41:48
+dans peu importe les méthodes qu'on va utiliser. C'est un dilemme qu'on qu'on
+41:52
+on représente euh graphiquement. Ça c'est une une
+41:56
+représentation fois qu'on utilise euh amplement en pratique euh sur un
+42:02
+diagramme comme celui-ci. C'est un diagramme qui représente ce qu'on
+42:06
+appelle l'erreur d'entraînement versus l'erreur de test. C'est quoi ces deux
+42:11
+quantités là ? Ce qu'il faut comprendre, c'est lorsqu'on on apprend ces modèlesl
+42:16
+euh bon, on va nous donner des données évidemment, mais ces données là, on va
+42:22
+vouloir faire très attention à ce qu'on fait avec.
+42:28
+Pourquoi ? parce que on veut être capable de
+42:31
+d'évaluer à quel point notre modèle va bien fonctionner dans des conditions
+42:38
+qu'on aura pas vu. On va être capable de de de déterminer
+42:44
+ses capacités à faire face à des nouvelles prédictions
+42:49
+qui ont pas qui ont pas été vu. Donc c'est pour ça qu'on va toujours séparer
+42:54
+nos données en deux partitions habituellement. partition
+42:56
+d'entraînement, la partition de test et on va garder la partition de test
+43:00
+seulement pour tenter d'évaluer les les les capacités de prédiction de nos
+43:04
+modèles. Et c'est là qu'on va voir la différence au-delà des différences
+43:08
+esthétiques là de de biais et de variances euh dans dans ces deux dans
+43:13
+ces deux graphes là va toujours avoir une différence entre
+43:20
+l'erreur qui va être observée en entraînement le train puis l'erreur qui
+43:25
+va être observée en
+43:31
+en évaluation en test. L'erreur d'entraînement va toujours être beaucoup
+43:36
+plus optimiste, va être souvent beaucoup plus petite que celle de de test. Et
+43:44
+dans ce graphique là, ici, ce qu'on a, c'est une représentation de de l'erreur
+43:50
+sur l'axe des Y. Et sur l'axe des X, c'est le nombre de voisin
+43:57
+euh qu'on a choisi dans notre dans notre méthode. Donc, qu'est-ce qu'on observe
+44:02
+ici ? On observe que premièrement lorsque le nombre de voisins est très
+44:07
+petit en fait on peut réduire l'erreur d'entraînement à zéro complètement.
+44:14
+Pourquoi ? Ce qu'on a à faire, c'est de mémoriser les exemples.
+44:19
+Maintenant, si on commence à euh augmenter la taille du voisinage, on
+44:24
+voit que l'erreur d'entraînement se met à monter, mais l'erreur de test, elle
+44:30
+diminue. Vous voyez au début la relation. Mais ça c'est c'est ce qui
+44:34
+nous intéresse. Même si l'erreur d'entraînement augmente, c'est pas grave
+44:39
+parce que ce qui nous importe c'est comment notre modèle va va performer
+44:43
+dans la vraie vie. Et notre proxy à la vraie vie, c'est l'erreur de test.
+44:48
+L'erreur de test 6 diminue alors que l'erreur d'entraînement augmente.
+44:53
+Maintenant, ça veut pas dire que vous voulez augmenter la valeur de K jusqu'à
+44:57
+l'infini parce que vous comme vous voyez sur le graphique à un moment donné même
+45:01
+si l'erreur de test diminue lorsque le cas descend, il y a un point où
+45:07
+soudainement l'erreur de test également va souffrir.
+45:10
+Donc il y a vraiment une tension puis un choix qui doit être fait judicieux de
+45:14
+ces hyperparamètres là. et on va en parler éminemment sur les
+45:20
+bonnes pratiques pour effectuer c'est cette sélection là
+45:25
+desparamètres. Évidemment, la première étape de ça, ça
+45:29
+va être de s'assurer qu'on a une bonne division
+45:33
+entre un erant un ensemble d'entraînement puis un ensemble de
+45:36
+tests. Et l'ensemble de test ou de validation, c'est un ensemble, c'est un
+45:41
+ensemble de données sacrées. C'est vous voulez pas être touché ou le moins
+45:45
+possible parce qu'à chaque fois vous touchez à ces à ces données là, vous les
+45:49
+consultez, c'est comme si vous vous étiez en train
+45:53
+de tricher un petit peu. C'est en fait c'est la même chose que si par exemple
+45:58
+euh c'est pratiquement comme si je vous
+46:02
+donnais des examens des des années précédentes. J'entraînis avec ça être le
+46:06
+cas. Mais euh si soudainement je vous mets je
+46:12
+vous donne des questions dans l'examen sur lequel vous allez être évalué,
+46:18
+chaque fois vous allez mémoriser les questions puis il faut pas avoir je pas
+46:22
+être capable de de déterminer vraiment si vous avez compris la matière même
+46:28
+c'est la même donc on veut nos modèles triches
+46:33
+et Euh je dirais là que même si chat GPT peut
+46:41
+vous générer au cursor vous générer des codes
+46:46
+incroyables, toujours un très très grand risque
+46:52
+et euh j'en suis le premier coupable un très grand risque
+46:57
+que vous fassiez jouer un tour par ces modèles là
+47:01
+et vous trouvez dans une situation par exemple trouve un modèle à un accès
+47:05
+privilégié à des données qui aurait pas dû avoir accès.
+47:13
+Ce que j'essaie de vous dire aussi, c'est plus rapport à au problèm de
+47:16
+sélection des caractéristiques euh qui vont être utilisées dans dans dans nos
+47:22
+modèles préditifs. Mais euh la conclusion est la même.
+47:29
+s'il y a peut-être une chose que vous devez maîtriser à la fin de ce cours-ci
+47:32
+puis qui est un un skill incontournable utile même dans un monde où 95 % du
+47:41
+travail peut être automatisé par un par un LM, votre rôle c'est de vérifier ces
+47:46
+implémentations là et de pas vous faire jouer des tours par ces outils là
+47:54
+euh parce que c'est ça, on veut pas, on veut
+47:58
+pas être dans une situation de surapprentissage, on veut pas faire de
+48:01
+overfitting qu'on appelle en anglais et on veut pas être dans une situation
+48:06
+euh où on va juste mémoriser les données.
+48:11
+Euh je vais sûrement y revenir plus tard là, mais si ça si ça vous dit quelque
+48:14
+chose, je parle de mon expérience à moi là,
+48:19
+c'est très récent. Écoutez, je suis également
+48:24
+je suis également consultant euh pour une compagnie à Montréal. C'est c'est
+48:30
+une des choses intéressantes. Quand on est
+48:34
+professeur, on peut également faire ces ces activités là. Donc, je suis
+48:38
+également consultant dans dans dans une firme qui qui fait du euh des science
+48:44
+street et euh je parle récemment en tout cas d'un d'un projet dans lequel bon mon
+48:49
+rôle c'est celui de essentiellement de prof dans ma compagnie mais mais j'aime
+48:55
+j'aime coder puis ça me manque l'autom dernier projet avec l'équipe
+49:03
+je sais que je capable de faire fonctionner j'ai pas le
+49:07
+Je vais sortir curs je vi c leur solution puis ils vont voir l'équipe que
+49:15
+va en 20 minutes jusqu'à coup je passe de
+49:21
+erreur d'entraînement on va dire de 0.20 à 0.01 01 surmac guys
+49:31
+j'ai trouvé je je vais faire un push sur getap vous allez voir problème réglé
+49:37
+on est 3 mois en avance sur les deliverables du projet
+49:42
+donc voilà je je pousse le conne et là je commence à me poser la question mais
+49:50
+semble c'est trop beau pour être vrai ça évidemment
+49:56
+Curs écrit success 0.1
+50:04
+Tu te mets à regarder plus plus doucement tu sais dans dans les
+50:07
+caractéristiques. Tu regardes le code, il y aucune erreur évidemment de
+50:11
+syntaxe. Tout roule, tout fonctionne pipeline, les courbes.
+50:17
+Regardez, regardez, regardez. Finalement,
+50:20
+c'est une situation réelle. Je dis en se mettant à regarder dans le code. Oui,
+50:25
+une erreur d'entraînement était incroyable.
+50:29
+C'est parce que modèle avait trouvé un moyen de tricher.
+50:34
+Avait trouvé que certaines caractéristiques
+50:38
+euh qui était disponible à l'entraînement
+50:41
+nous aidé énormément à bien prédire. Mais ces caractéristiques là disponibles
+50:46
+à l'entraînement sont pas toujours des caractéristiques qu'on a
+50:50
+accès lors du déploiement. Donc en tout cas dans ma crise
+50:55
+existentielle, j'allais je me disais que j'allais vous vous communiquer également
+50:59
+cet exemple là parce que c'est quelque chose vous allez devoir faire face dans
+51:03
+votre emploi futur. Quel va être notre rôle aussi dans le futur maintenant que
+51:08
+ces outilsl sont là et le problème c'est que ces outilsl sont sont sneaky comme
+51:13
+on dit en anglais hein. Ils sont là pour nous plaire puis ils peuvent prendre des
+51:17
+raccourcis. Les outils vont devenir de mieux en
+51:20
+mieux. Ils vont prendre moins en moins de raccourcis dans l'avenir, mais le
+51:23
+risque est toujours là. Et quand vous mettez votre nom sur vous
+51:28
+signez un projet, même si vous êtes pas ingénieur là,
+51:32
+lorsque vous vous vendez une solution, lorsque vous écrivez un papier sur forme
+51:37
+de chercheur, ça demeure pas moins notre responsabilité de certifier que les
+51:42
+résultats qui sont là sont valides scientifiquement parlant.
+51:47
+et la validité scientifique ou la validité même commerciale
+51:52
+de produit dépend souvent de de de de relation
+51:58
+fondamentales comme ça celui de la généralisation de la
+52:02
+mémorisation al
+52:08
+fléo de la dimensionnalité curse of dimension ah oui ok
+52:13
+comprendre c'est que cursus c'est juste aller chercher vous donner que vous lui
+52:17
+avez jamais donné et commencé à créer un peu un modèle poussé.
+52:23
+Ouais. Ouais. J'ai fait du brainstorming avec curse. J'avais même j'avais donné
+52:27
+de la documentation c'est le système complexe. C'est beaucoup de souvent ce
+52:31
+qui fait le succès d'un projet de de science c'est la compréhension du
+52:35
+problème de business. Moi, je suis pas une personne de business, des fois ça
+52:38
+m'intéresse pas mais pourtant c'est là que la valeur est amenée lorsque
+52:43
+vraiment tu contraires le ton domaine. Dans ce dans ce cas-là, j'ai j'ai pris
+52:47
+la documentation très très paresseux. J'ai dit lis la documentation du
+52:51
+business problem. Voici la description de la base de
+52:55
+données de ce que j'ai disponible. trouve-moi euh
+53:03
+le brainstormer le top de les features qui pourrait être utiles pour ce
+53:07
+problème là. Et voilà, on était rendu comme ça en 30
+53:12
+minutes. Oui, j'ai eu un résultat très bon mais pas résultat valide.
+53:20
+Non, c'est pas que c'est sorti de la base de données, mais c'est que c'est
+53:22
+des c'est des données parfois que tuas pas accès au moment du déploement par
+53:27
+exemple. Disons que c'est un modèle qui utilise
+53:31
+des données historiques. Ben évidemment ton modèle peut pas avoir accès au futur
+53:37
+quand il roule au niveau du déploiement. Au niveau d'entraînement, ben c'est des
+53:42
+données historiques comme tu accès à tout, accès au futur puis au passé. Mais
+53:47
+la la ligne du temps dans le monde réel actuel
+53:51
+une ligne du temps qui nous permet pas de voir dans le futur.
+53:55
+C'est ça qui s'est passé dans ce cas particulier.
+53:58
+Euh des caractéristiques qui étaient à causal finalement.
+54:02
+Oui. Euh just précédent
+54:07
+ça optimum é= 20. Est-ce qu'il y a une différence ?
+54:12
+Ah ben c'est une bonne question. Est-ce que c'est 20 ? Je sais pas hein.
+54:16
+Euh on disait 20 dans écoutez un peu
+54:22
+comme si une différence entre 20 et 50. Moi, je dirais qu' entre 20 puis 50, il
+54:26
+y a pas une grosse différence. Puis je pourrais faire
+54:30
+une décision peut-être en pratique. Euh moi, j'irais peut-être plus je sais pas
+54:37
+quelque chose entre les deux. pas c'est c'est quand même lorsqu'on on utilise
+54:42
+ces graphes là pour déterminer déterminer les paramètres
+54:46
+paramètres c'est quand même une approximation de quelle serait la valeur
+54:51
+optimale hein donc on on va on va faire un g
+54:56
+quelque chose entre les deux mais certainement pas 80 certainement pas de
+55:02
+ou trois quelque chose entre les deux fléo de la dimensionnalité. Ces méthodes
+55:10
+non paramétriques là, il ont euh bon, ils sont vraiment chouettes à
+55:15
+implémenter parce que c'est facile à implémenter. Ceci étant dit, ceci étant
+55:18
+dit bien que dans votre TP, vous pouvez le faire à la main euh
+55:26
+déterminer les cas plus proches jouisants. Savez-vous comment on fait ça
+55:29
+? Pensez-y algorithmiquement parlant. OK ? Allons-y avec la manière la plus naïve
+55:34
+de déterminer les cas plus jou. Comment on fait ça ?
+55:38
+Oui, on calcule toutes les distances.
+55:40
+Yes. OK. OK. OK, c'est bon. Donc, on calcule
+55:44
+toutes les distance. Donc, qu'est-ce que ça veut dire ? Ça veut dire mettons que
+55:48
+je fais une requête, un nouveau point mon point sur toutes mes données
+55:54
+la distance à tous ces points là et puis là, je prends les cas plus proches. Donc
+55:59
+effectivement, c'est manière la plus plus naïve, une manière de le faire.
+56:04
+Puis pour des jeux de plus petit, de petites dimensions, ça fonctionne bien.
+56:12
+Le souci avec ça, c'est euh c'est lorsque la dimensionnalité des données
+56:17
+et la quantité des données augmente. Et en passant là, c'est deux termes
+56:21
+différents un peu. Faire attention à ça. Souvent quand on veut dire la quand on
+56:24
+parle de la dimensionnalité, ce qu'on veut dire c'est
+56:31
+la dimension de notre vecteur X. Si vous vous souvenez dans la notation, on avait
+56:35
+X et Y. X c'est l'entrée, Y c'est sorti. X
+56:40
+on le voit comme étant un vecteur et une dimension. Une image, c'est un vecteur
+56:46
+de grande dimension. La dimensionnalité des images est grande.
+56:51
+Ça c'est orthogonal à la taille du jeu de données.
+57:00
+Donc ici euh le fléo de la dimensionnalité a vraiment trait
+57:06
+particulièrement là à l'augmentation du nombre de dimensions. On on a présenté
+57:11
+les concepts ici en 2D, mais il y a des choses weird qui se
+57:16
+passent dans les espaces géométriques à grande
+57:20
+dimension. On peut visualiser dans notre tête ce
+57:24
+qui se passe en 2D, en 1D, 2D, 3D, 4D, ça commence à être weird à penser.
+57:30
+Imaginez, on peut pas imaginer un espace à 100 dimensions, à 10000 dimensions. On
+57:36
+a pas de manière graphique de représenter ça. Non seulement on a pas
+57:39
+de manière graphique de représenter, mais d'un point de vue mathématique,
+57:45
+la géométrie à haute dimension est weird. C'està dire
+57:49
+nos intuitions qu'on a en basse dimension font pas de sens en haute
+57:54
+dimension. Bon, juste un commentaire je dis ici, mais le le l'argument ici est
+58:00
+quand même assez plus simple, c'est que finalement lorsque la dimensionnalité
+58:06
+augmente euh l'estase devient de plus en plus
+58:10
+vide. Imaginez euh
+58:15
+vous voyez ça comme ici on on a un cube. Donc à chaque fois qu'on ajoute une
+58:19
+dimension, l'espace qui contient nos données
+58:25
+s'agrandit, rient de plus en plus vide.
+58:31
+Ça c'est un problème. C'est un problème d'un point de vue d'efficacité
+58:38
+d'un point de vue d'implémentation un challenge avec ça. Mais aussi
+58:43
+problème de généralisation qui vient avec ça.
+58:48
+Donc c'est un ce qu'on dit dans la diapo aussi c'est ça amène un problème de
+58:51
+manque de localité pas grandchose autour de toi
+58:57
+comme tu vas vivre en campagne. pas grand chose autour parce que la
+59:00
+dimensionnalité non, ça c'est un problème pour la généralisation parce
+59:04
+que évidemment si tuas pas de données,
+59:09
+il y a pas grand chose que tu peux faire hein à la base de tout tu sais tu des
+59:14
+données parce que tes données sont bonnes ou non
+59:19
+aussi euh c'est drôle aussi en pratique là dans
+59:23
+dans dans dans un job de consultant également
+59:27
+question numéro à chaque fois qu'on rencontre un client là, c'est-vous des
+59:30
+données ? Puis souvent les clients ils viennent nous voir puis disent "Oui, on
+59:33
+a des données là, tu creuses un peu plus."
+59:36
+Puis bon, finalement les données ce qu' ont c'est 4 C spreadsheets Excel euh qui
+59:43
+qui ont pris bien du temps à collecter manuellement.
+59:47
+Mais finalement, il y a parfois tu peux rien faire avec ça parce que il y a pas
+59:52
+suffisamment de quantité pour pour que nos modèles puissent puissent
+59:58
+aller capturer quoi que ce soit làdedans. OK. Donc le fléo de la
+1:00:03
+dimensionnalité, c'est ce qui ce qui accable les méthodes du type cas cas
+1:00:09
+plus proche voisin quix neigers et qui accable toute méthode qu'on dirait de
+1:00:14
+type non paramétrique. Ce qu'on veut dire par non paramétrique
+1:00:18
+ici c'est que c'est des méthodes qui vont dont la la complexité
+1:00:24
+va croître d'après la taille de nos jeux de données qui augmentent dans le temps.
+1:00:29
+Donc par exemple lorsque vous implementez un modèle de plus proche
+1:00:33
+voisin puis vous le déployez disons au moment du déploiement dépendamment
+1:00:39
+d'où vous faites le déploiement sur un serveur sur un un téléphone cellulant
+1:00:45
+si vous voulez faire les cas plus proche voisin vous devez livrer le jeu
+1:00:48
+d'entraînement avec le modèle parce que les données c'est le modèle
+1:00:54
+et ça c'est en contraste avec les méthodes qu'on dirait de titre
+1:00:57
+paramétrique où on utilise C'est donné lors de l'entraînement mais lors du
+1:01:02
+déploiement on peut on peut le mettre à poubelle. jamais mettre en poubelle mais
+1:01:06
+on n pas besoin de l'envoyer sur not téléphone cellulaire ou regarder sur le
+1:01:10
+serveur. GPT c'est un modèle évidemment
+1:01:15
+paramétrique l'ont entraîné sur l'entièreté de l'internet quasiment mais
+1:01:19
+lorsque tu poses une question à chat GPT de qu'est-ce que tu vas manger ce soir
+1:01:24
+euh ben on va pas aller consulter on va pas garder en mémoire l'handicapé
+1:01:30
+d'internet voilà le fil de la dimensionnalité en
+1:01:35
+anglais c'est le curse of dimensionality ouais c'est un problème de calcul ou
+1:01:41
+d'efficacité de l'algorme Euh,
+1:01:44
+il y a un aspect d'efficacité de calcul puis un aspect également de
+1:01:50
+sparity qui est mauvais pour la généralisation. Aussi, l'aspect de
+1:01:55
+calcul en fait, c'est ce que je voulais dire tout à l'heure. Donc, on a parlé de
+1:01:58
+la manière naïve de le faire en euh mais il y a des manières plus intelligentes
+1:02:04
+de le faire. Est-ce que euh est-ce que quelqu'un aurait une idée ?
+1:02:12
+concept vous avez peut-être vu si par exemple vous êtes en
+1:02:17
+en infographie en est-ce que vous savez vous connaissez
+1:02:22
+une structure de données une manière de rendre les choses plus efficaces pour
+1:02:25
+des données géométriques comme ça c'est qu'on pourrait faire des zones
+1:02:32
+avec au moins qu éléments dedans on cherche notre nouvel élément dans quelle
+1:02:38
+zone il est on fait les distances les éléments de cette zone. Ouais, ben je
+1:02:41
+pense que tu es en train de réinventer probablement une approche qui est celle
+1:02:46
+des des KD trees. Donc les KD trees sont souvent utilisé
+1:02:50
+pour euh pour implémenter euh des modèles en basse dimension. Ceci étant
+1:02:57
+dit puis là je me souviens plus trop la la complexité là mais on parle peut-être
+1:03:02
+de 34 qui est tre dimension tout ce qui est plus grande dimension habituellement
+1:03:07
+est fait avec des agos qui sont qui se rapprochent plus du hachage en français
+1:03:13
+haching donc des des agos qui sont plus près de ça qui sont probabilist
+1:03:18
+randomized donc proximite des méthodes qui sont donc qui vont de
+1:03:25
+manière approximative retourner les cas plus franch voisins
+1:03:28
+plutôt que les déterminer de manière de cette certitude.
+1:03:34
+Oui, je pense. Non, euh peut-être qu'on pourrait donner
+1:03:38
+des poids supérieurs à certaines caractéristiques. Moi, je pense exemple
+1:03:43
+imaginons qu'on veut trouver une personne que on commence à mettre
+1:03:46
+beaucoup de caractéristiques, par exemple la couleur des cheveux, la
+1:03:49
+couleur des yeux, euh la taille, la couleur des habits et cetera. Il y a
+1:03:52
+certaines caractéristiques qui pourraient être moins importantes euh au
+1:03:55
+niveau causal. Hm hm h
+1:03:57
+puis ça pourrait euh enfin si on mettait un poids plus
+1:04:01
+important sur des caractéristiques importantes, peut-être que on pourrait
+1:04:05
+trouver plus de voisins dans les dimensionnalités.
+1:04:08
+Ouais, ben c'est un bon point qui se rapporte finalement à la la réduction de
+1:04:12
+la dimensionnalité qui peut être utilisé en preprocessing. Euh puis effectivement
+1:04:19
+ça peut ça peut être utilisé de manière conjointe avec tout ça.
+1:04:26
+Donc on a parlé de classification plus haut puis on a parlé également de
+1:04:33
+du modèle empirique qui modélise la relation de P
+1:04:38
+de Y étant donné X. Euh
+1:04:47
+il y a une méthode qui s'apparente beaucoup au cas plus proche voisin mais
+1:04:51
+qui joue un rôle différent. Et c'est les méthodes qu'on dit celles
+1:04:57
+de euh les fenêtres de paren sont des méthodes qui sont aussi non
+1:05:03
+paramétriques qui vont garder les données
+1:05:05
+à l'entour mais qui vont jouer un rôle différent. On va avoir différents
+1:05:11
+trucs qu'on va pouvoir faire avec ces méthodes faire de la régression ou bien
+1:05:15
+de l'estimation de densité sont deux sousprèmes aussi qui nous intéressent en
+1:05:20
+apprentissage supervisé. Donc la régression, ça va être le cas où
+1:05:25
+y est une variable continue. L'estimation de densité, elle va tenter
+1:05:30
+de de déterminer souvent euh quelle va être P de X et Y
+1:05:40
+ou bien juste la la distribution intrinsèque de de données qui sont pas
+1:05:45
+nécessairement d'ordre de d'apprentissage supérieurusé.
+1:05:52
+Donc l'outil qu'on va utiliser ici, ça va être euh celui de la notion d'un
+1:05:57
+noyau. Le noyau, c'est un terme qui vous utilisez souvent,
+1:06:02
+un terme que vous allez voir dans d'autres contextes. Ici, il y a une
+1:06:05
+signification peut-être un peu plus particulière. Euh mais oui, le noyau en
+1:06:10
+anglais, on appelle ça un kernel. Alors, est-ce que quelqu'un ici aurait
+1:06:15
+une formation disons d'ingénieur et vous faites déjà fait du traitement de signal
+1:06:21
+par exemple avec des convolutions ? Quelqu'un ? Je fais une convolution de
+1:06:27
+signal. Oui, j'aime un peu. Euh
+1:06:34
+donc bon, peut-être que c'est pas l'analogie d'abord que je dois vous
+1:06:37
+emmener ici, mais ces méthodesl vont s'apparenter beaucoup à ce qu'on fait
+1:06:40
+par exemple dans le traitement de signal lorsqu'on a une convolution. voir ça
+1:06:44
+comme étant une convolution des des du jeux de données lui-même par un noyau
+1:06:48
+euh qu'on va choisir. Commençons juste par euh peut-être
+1:06:52
+allons-y avec ça ici puis ensuite un graphique. Donc l'estimation de densité
+1:06:57
+ici par exemple on s'intéresse à
+1:07:03
+estimer la densité intrinsèque d'un jeu de données. Ce que vous voyez ici sur
+1:07:08
+cette sur cette diapo là, évidemment, c'est pas des méthodes que vous pourriez
+1:07:11
+euh déployer pour les mêmes usages là. Mais
+1:07:17
+ce que c'est ce modèle là, c'est c'est un modèle génératif.
+1:07:21
+C'est vraiment h maintenant de parler de J
+1:07:28
+génératique c'est ça. On a un jeu de données D
+1:07:33
+et on veut apprendre la probabilité intrinsèque de ces données là. Donc une
+1:07:40
+manière de faire évidemment va pas vous permettre de de de compétitionner avec
+1:07:45
+chat GPT ou les modèles de diffusion pour pour les images. Mais c'est la
+1:07:49
+suivante, c'est une idée très simple. Ce que vous faites, c'est vous avez un jeu
+1:07:53
+de données avec N point. N majuscule, c'est la quantité de données que vous
+1:07:59
+avez. Et si je pose la question quelle est la
+1:08:06
+probabilité ? Je sais pas, on mettons que on ça serait pas réaliste parce que
+1:08:10
+c'est pas des méthodes qui fonctionneraient bien en haut dimension.
+1:08:15
+Disons que j'ai donné que j'ai téléchargé l'entièreté des des images
+1:08:21
+d'internet et puis que là la question que je pose
+1:08:25
+c'est je fais un dessin à la main. C'est un peu c'est un peu fou comme
+1:08:30
+comme exemple ou je donne en entrée une image
+1:08:35
+d'un chien qui conduit un auto. Ça c'est ma requête X. Quelle est la
+1:08:43
+probabilité que j'observe un chien derrière le
+1:08:48
+volant d'une voiture dans le monde ?
+1:08:54
+Pas si grave. OK. C'est ce que ça veut dire concrètement l'expression ici. Et
+1:09:00
+comment on réalise, comment on répond à cette requête là ? Ce qu'on ferait, ce
+1:09:05
+serait de calculer,
+1:09:10
+d'appliquer un noyau. K lambda, c'est une fonction, jeappelle un noyau.
+1:09:16
+Et vous voyez l'entrée du noyau, c'est pas juste X. X étant la requête
+1:09:22
+fictive qu'on fait mais c'est X moins
+1:09:29
+Xi. Xi ce sont les points d'entraînement.
+1:09:34
+Qu'est-ce que ça fait ça ? Ben finalement ce qu'on fait c'est qu'on on
+1:09:38
+va aller poser euh je vais vous montrer sur l'autre l'autre image plus facile de
+1:09:44
+voir visuellement. Regardez ce qu'on fait là littéralement
+1:09:51
+par exemple si on a un noyau gcien gen, ça cette forme là la cloche ce
+1:09:59
+qu'on fait c'est qu'on va le poser sur chacun des points dans notre donnée
+1:10:04
+d'entraînement X ici la croix des données d'entraînement vous voyez ce
+1:10:08
+qu'on modélise ici c'est la densité les points sont plus denses ici qui sont
+1:10:14
+là donc le pic de probabilité devrait être plus grand. Et ce qu'on fait c'est
+1:10:19
+qu'on on on fait la somme de ces petits noyaux là qu'on est allé déposer sur
+1:10:25
+chacun des points ce que les maths nous montrai en haut.
+1:10:29
+Donc lorsqu'on veut maintenant poser la question quelle est la probabilité que
+1:10:34
+j'observe quelque chose ici, ben ce qu'on va faire pour répondre à
+1:10:39
+ça, c'est qu'on va aller sommer, on va calculer la distance à chacun des
+1:10:42
+points. On va les les additionner ensemble. Ça va nous donner la cour
+1:10:47
+bleue ici. Cour bleu, c'est le modèle qui a été inféré à partir des données.
+1:10:55
+C'est un modèle euh empirique qui modélise la densité de
+1:11:01
+nos données. Donc le choix ici du noyau, la forme que
+1:11:07
+le noyau va avoir va nous donner différents différents résultats.
+1:11:14
+Et un des hyper paramètres importants dans les fenêtres de Paris va être la
+1:11:20
+largeur de bande, le bandwid lambda et finalement le la largeur de la cloche
+1:11:29
+ici dans le cas d'un noyau gcien qu'on va avoir.
+1:11:36
+L'effet du paramètre de largeur de bande évidemment va être de lisser plus ou
+1:11:41
+moins la densité qui va être estimé. Lorsque
+1:11:45
+la largeur de bande augmente, on voit que l'estimateur de densité est beaucoup
+1:11:51
+plus lisse et ben aussi, on va se mettre à perdre peut-être les caractéristiques
+1:11:57
+multimodales intrinsèques au la multimodalité, c'est la propriété
+1:12:02
+d'avoir capable de capturer différentes
+1:12:06
+euh bandes dans dans la densité. Donc pour une largeur de bande plus
+1:12:13
+petite, on est capable d'avoir plus de cette multimodalité là alors que leur de
+1:12:19
+bande augmente, on se met à perdre à perdre ce signal là.
+1:12:25
+Le dilemme intrinsèque peut toujours être le même celui de variance et la
+1:12:30
+généralisation de manière. Ouais. Le noyau c'est une fonction qui
+1:12:34
+va de notre espace de données juste dans R.
+1:12:39
+Donc le noyau, on va le noyau de densité parce qu' existe différents types de
+1:12:43
+noyaux mais on va on va le définir de la manière suivante.
+1:12:47
+Euh on a besoin pour un noyau de densité, on a besoin que l'intégrale de
+1:12:51
+K soit égale à 1. On a besoin de la propriété numéro 2 qui est une espèce de
+1:12:57
+propriété de la symétrie et c'est ce qu'on a besoin finalement pour faire
+1:13:02
+d'estimation de densité. Le noyau le plus courant qu'on utilise, c'est
+1:13:05
+celui-là. C'est le noyau gcien. Vous vous vous reconnaissez ici la forme de
+1:13:10
+la loi gcienne et euh voilà. Et donc ici le paramètre lambda, ça va être la
+1:13:16
+déviation standard la loi et vous pourriez utiliser d'autres
+1:13:20
+d'autres noyaux. Et dans la figure qui allait ici par exemple, c'était des
+1:13:25
+noyaux, le noyau uniforme qui est un noyau un
+1:13:30
+peu weird là mais espèce de rectangle là, c'est un noyau uniforme.
+1:13:38
+Donc voilà. Mais la plupart du cas là quand on fait les density estimator avec
+1:13:43
+les Windows les font. Ouais. Est-ce que la régression
+1:13:49
+paranoyuse c'est comme les les GP les gos ?
+1:13:52
+Il y a des connexions du CH mais c'est pas équivalent un autre mais c'est c'est
+1:13:58
+relié. C'est relié c'est relié. Les GP sont sont non péramétriques. Donc il
+1:14:03
+souffrent également du fléau de la dimensionnalité.
+1:14:08
+Donc ça c'est l'estimation de densité mais on peut utiliser ensuite cette
+1:14:12
+estimation l'estimateur de densité pour faire la régression. Là c'est là que je
+1:14:16
+trouve que peut-être la présentation est un petit peu mélangeante parce que
+1:14:21
+on va y retourner donc faites en pas. régression la game un petit peu
+1:14:26
+différent euh on n'est pas intéressé à modéliser P de
+1:14:33
+Yx ou bien ou bien de faire la classification mais
+1:14:39
+ce qu'on nous intéresse vraiment ici c'est de modéliser l'espérance
+1:14:43
+conditionnelle de Y étant donné X et le jeu de donné
+1:14:48
+en passant la notation ici de X et D c'est notation qui qui qui est calqué
+1:14:55
+sur celle de de Kevin Murphy.
+1:15:00
+Kevin Murphy, c'est quelqu'un qui euh qui a toujours mis de l'avant la
+1:15:05
+perspective bienne euh de de Lia puis des statistiques. Et
+1:15:10
+souvent dans cette tradition plus bzienne là, on a l'habitude d'écrire
+1:15:15
+d de cette manière-là. Est-ce que vous savez, est-ce que vous voyez la
+1:15:20
+subtilité de ce que ça implique d'écrire p de Y et D ?
+1:15:26
+Hein ? Y c'est une variable aléatoire. X c'est une variable aléatoire. Quand on
+1:15:30
+écrit ça, ce qu'on veut dire c'est que D est aussi une variable aléatoire.
+1:15:38
+Ça peut être un peu bizarre mais c'est valide d'un point de vue
+1:15:42
+vue mathématique ça ensuite une utilité plus plus loin qu'on se met à plonger
+1:15:47
+dans ces méthodes baissi là. Euh tu peux voir dant la révélatoire.
+1:15:53
+Bon euh retournons à nos moutons ici. L'espérance de Y étant donné X et D.
+1:15:59
+Donc supposons que par exemple la la relation de p et de y étant donné X qui
+1:16:05
+est celle sousjacente à l'espérance conditionnelle. Supposons qu'on utilise
+1:16:11
+une méthode de fenêtre de parzen pour euh pour estimer cette densité là hein
+1:16:17
+parce que p de y est en ligne X, c'est une densité une densité conditionnelle
+1:16:23
+mais les mêmes outils s'appliquent. Les mêmes choses qu'on a vu dans la
+1:16:26
+diapo précédente PX s'applique également P y est X.
+1:16:31
+Donc supposons qu'on fait ça. OK, on ici dans la les math en haut, on fait juste
+1:16:36
+écrire l'espérance. Je l'intégrale espérance de Y est ét x l'intégrale de y
+1:16:42
+multiplié par p de Y est en X. Et ce qu'on fait dans euh l'autre
+1:16:47
+égalité, c'est on réécrit cette espérance euh c
+1:16:53
+cette densité conditionnelle là avec euh forme sous forme de ratio. Et
+1:17:01
+maintenant, plutôt que d'avoir un p de Y étant donné X, on a conjointe sur X et
+1:17:07
+Y. Bon, les mats qui font là. OK, permettez-moi juste de sauter à meilleur
+1:17:12
+ligne. Ce qu'on a fait, c'est juste d'appliquer les outils qu'on
+1:17:15
+connaissait. On le fait sur X Y. Avant, on l'avait
+1:17:19
+sur X. On a juste fait un peu de massaging
+1:17:23
+de l'espérance pour avoir la forme suivante. OK. Et je vous dire ici
+1:17:27
+maintenant c'est l'estimateur de Narson,
+1:17:33
+c'est le suivant pour estimer l'espérance. conditionnel de y. Ce qu'on
+1:17:40
+fait dans cette méthode là, c'est on va aller faire la somme
+1:17:47
+des des de la sortie. Donc, vous avez un
+1:17:51
+ensemble d'entraînement X Y, mais cette fois-ci y va être continu. Qu'est-ce que
+1:17:57
+ça voudrait dire ? Par exemple, un problème d'ailleurs de de régression.
+1:18:00
+Qu'est-ce qu'est-ce qui peut être un problème de régression ? Je vous en
+1:18:02
+parler. Par exemple, euh moi je m'intéresse beaucoup aux applications
+1:18:07
+en système de ventilation de chauffage qui est
+1:18:13
+très intéressant. Ça paraît vraiment plate à parler mais
+1:18:16
+c'est des systèmes très intéressants. Beaucoup d'argent à faire, beaucoup de
+1:18:19
+recherche à faire également là-dedans. Mais parlons par exemple du confort
+1:18:23
+thermique. Le confort thermique euh c'est c'est des propriétés qui sont
+1:18:30
+souvent qui sont difficiles à à capturer avec des lois physiques, mais qui sont
+1:18:35
+très importantes dans dans la conception de système
+1:18:39
+intelligent de chauffage. C'est la manière dont on se sent
+1:18:44
+dans les conditions d'un building selon l'humidité, selon la température, selon
+1:18:50
+la pression, selon plein de paramètres, selon notre âge, selon notre condition
+1:18:56
+physique. Donc on pourrait par exemple poser le
+1:18:59
+problème de prédiction du confort thermique comme étant
+1:19:03
+un problème de régression. Si le confort thermique par exemple, on le
+1:19:07
+représentait sous forme d'indice de confort entre 0 et 1 disons
+1:19:13
+euh problème de régression sont très sont
+1:19:18
+très courants. Est-ce que quelqu'un aurait d'autre un autre un autre idée de
+1:19:21
+problème de régression ? Peut-être que dans votre dans votre recherche même
+1:19:24
+vous en vous en faites face juste pour le fan. Oui.
+1:19:27
+Euh peut-être juste estimer les prix de maison sur le quartier.
+1:19:34
+Estimer les prix de son quartier. Oui, absolument ça peut être une bonne idée.
+1:19:38
+dynamic pricing création certainement estimer les prix
+1:19:44
+euh de l'électricité prè régression euh quelqu'un d'autre
+1:19:50
+idée pour le fun première régression déterminer
+1:20:00
+ouais la température
+1:20:06
+on sait une question en tout cas donc le
+1:20:10
+problème régression voilà euh pour répondre à votre question ici maintenant
+1:20:14
+ce qu'on fait avec l'estimateur Watson fait une sommation sur les données
+1:20:19
+stériques qu'on observé la température par exemple y ici mais ce qui est
+1:20:24
+important c'est qu'on fait c'est une espèce de moyenne qu'on fait ici une
+1:20:28
+espèce de moyenne pondérée et la pondération spéciale
+1:20:33
+la pondération w est calculé la manière suivante c'est là que nos noyau rentre
+1:20:38
+en jeu. La dérivation provient du calcul qui était mais ce que je vais mettre en
+1:20:43
+lumière ici c'est la pondération arbitraire c'est un ratio entre la
+1:20:49
+valeur du noyau au point xi normalisé par la somme de
+1:20:58
+toutes les évaluations des noyaux sur tout l'ensemble au complet. Oui.
+1:21:03
+Euh est-ce que dans le dénominateur euh c'est pas P de X ?
+1:21:10
+Pourquoi c'est P de X Y dans le dénominateur ?
+1:21:17
+Euh pourquoi travailler avec P de X Y ? On
+1:21:22
+peut travailler premièrement avec P de de Mais c'est pas la marginale àant là
+1:21:28
+le numérateur P X Y sachant B. Ouais. en dessous, ça devrait pas être P de X euh
+1:21:34
+la marginale ça change D. Euh ouais, ce qui manque ici sur
+1:21:40
+l'intégral, c'est de spécifier sur quel axe on on est en train de marginaliser.
+1:21:44
+Donc tu as raison avec ça, faudrait que ça soit corrigé. Mais ce qu'on on a fait
+1:21:47
+ici simplement là, c'est de de de de tourner notre problème de la
+1:21:52
+représentation conditionnelle sous forme de représentation conjointe avec le le
+1:21:57
+théorème des infants. Ce qu'on voit ici, c'est le théorème des inf qui est
+1:22:00
+appliqué. On va obtenir la la formule. OK, c'est déjà
+1:22:07
+euh donc cette méthode là va avoir le même
+1:22:12
+souci que ceux d'avant. C'est des méthodes non paramétriques, simple à
+1:22:16
+implémenter, très très simple à implémenter, mais euh à chaque fois vous
+1:22:20
+voulez répondre à une requête parce que ça c'est c'est un problème de
+1:22:23
+prédiction. X ici, c'est ça va être un X que vous avez jamais vu. Évidemment,
+1:22:27
+vous avez pas vu non plus le Y qui vient avec. Donc pour répondre à cette
+1:22:31
+voquette là, ben vous devez faire la somme sur tous les points
+1:22:33
+d'entraînement. Non seulement ça, mais aussi quand vous calculez vos euh vos
+1:22:38
+poids, vous pouvez aussi avoir vous avez une somme imbrique. OK. La coupe est
+1:22:42
+assez dispendieux à faire mais euh voilà. Oui. Est-ce que vous pouvez
+1:22:47
+donner par exemple dans la prélection de température, qu'est-ce que ça serait Y X
+1:22:52
+et D ? Y XD. Donc par exemple, la température
+1:22:57
+du confort thermique, ça pourrait être euh un homme l'âge euh ça pourrait être
+1:23:06
+les conditions même du building. Est-ce que c'est on est dans Roger Gaudri qui
+1:23:10
+est un vieux building mal chauffé avec un système ça on peut aller vraiment
+1:23:14
+loin ça dépend vraiment du problème. c'est X, ça serait X. Par exemple, le
+1:23:20
+compteur thermique, il existe différents indices dans certains qui sont
+1:23:23
+continues, certains qui sont discrets. Euh, ça dépend de la définition mais ça
+1:23:27
+pourrait être un indice de confort qui continue par exemple.
+1:23:30
+Ça serait Y. Ça serait Y. C'est ça. L'indice de
+1:23:32
+confort tout. D, c'est l'ensemble des pair X et Y.
+1:23:37
+Quand on fait de l'apprentissage supérieurisé, c'est l'ensemble, c'est
+1:23:39
+des paires X Y. Ouais.
+1:23:43
+Oui. Y c'est l'histoire
+1:23:46
+Y c'est l'observation spécifique qui a été donc l'exemple je vous donne le
+1:23:52
+confort thermique ça a été un projet qu'on a fait en 2023 c'est un vrai jeu
+1:23:55
+de données c'est c'est pas inventé. Euh il existe un un une espèce
+1:24:00
+d'organisation très importante dans le domaine du H qui s'appelle HR. HV avait
+1:24:05
+de avait fait une étude à grand déploiement où il y avait mesuré le
+1:24:10
+confort thermique sur des individus réel et et donc Y ici c'était
+1:24:17
+la la mesure qu' avait fait sur la personne directement. Je sais pas
+1:24:19
+exactement leur procédure qu' avait fait ce qu'il a fait des probablement qui
+1:24:23
+peut-être peut-être qu' avait même imposé des capteurs sur sur la peau des
+1:24:26
+gens mais bon c'est l'observation qui a été fait en sortie de notre modèle
+1:24:38
+il existe toute une sorte de une classe de méthode. Moi, je me mon domaine
+1:24:43
+d'expertise est en apprentissage par renforcement. C'est un domaine adjacent
+1:24:47
+à à la commande optimale euh puis qui utilise beaucoup de méthodes aussi qui
+1:24:54
+sont qui sont à à mi-chemin entre la recherche opérationnelle programmation
+1:24:58
+dynamique. Ça pour dire qu' en en apprentissage renforcement, on
+1:25:02
+s'intéresse à prendre des décisions. Donc on veut
+1:25:06
+on veut trouver des décisions dans le temps qui optimisent une différents
+1:25:11
+objectifs. Ces méthodesl par exemple peuvent être
+1:25:15
+utilisées en robotique. Et euh en robotique euh souvent
+1:25:22
+l'apprentissage supervisé et la régression peuvent être utilisé en
+1:25:27
+préentraînement de ces systèmes là. Donc vous pourriez par exemple, c'est
+1:25:32
+quelque chose qui est fait vraiment de nos jours,
+1:25:35
+vous pouvez faire la téléopération d'un robot, lui montrer quoi faire puis faire
+1:25:40
+de du imitation learning. un problème de imitation learning. Souvent ça va être
+1:25:44
+posé comme étant un problème de régression mais la relation entre X et Y
+1:25:48
+est différente ici. C'est dire on veut passer d'observation à action.
+1:25:55
+Donc je suis dans un état X. Quel serait en fait ? Voici un exemple qui qui est
+1:26:01
+qui un exemple très très concret de de supervis learning à très grande échelle.
+1:26:08
+Euh est-ce que vous avez déjà été dans un Tesla qui se conduit tout seul ? Self
+1:26:13
+driving Tesla. Tesla font du imitation learning. Il collecte tout toutes plein
+1:26:19
+de vidéos sur vos sur les voitures Tesla dans le monde puis apprennent ensuite un
+1:26:24
+mapping entre vidéo entrée observation et commande
+1:26:32
+steering du volant qu'on peut voir comme étant aussi une
+1:26:37
+commande continue. Donc ça c'est fait forme
+1:26:41
+forme d'apprentissage supervisé. Habituellement en passant, je dois
+1:26:46
+m'arrêter après 50 minutes. Là, je suis juste
+1:26:50
+un peu sur une lancée. J'ai oublié d'arrêter mais habituellement, j'aime ça
+1:26:54
+prendre un break. On va juste se rendre jusqu'à
+1:26:59
+à la deuxième partie puis on va conclure. OK. Donc ça c'était le détour
+1:27:05
+dans le modèle non paramétrique. Mais moi honnêtement, j'aime beaucoup mieux
+1:27:09
+vous parler de la l'aspect d'optimisation.
+1:27:12
+Je trouve que c'est un langage qui est plus facile pour moi à vous communiquer.
+1:27:17
+La terminologie du moins historique est un peu euh
+1:27:24
+disons est un peu est un peu bizarre parce que je sais pas que c'est des
+1:27:27
+termes qui sont qui ont qui veulent dire grand-chose
+1:27:32
+mais bon croyez-moi que les les maths là ils font du sens là. Euh le le cadre
+1:27:38
+théorique historique et parlé de l'apprentissage supérieur de manière
+1:27:43
+formelle nous provient en grande partie d'un
+1:27:48
+scientifique qui s'appelle euh Vapnick dans les années 80. En fait Vapnick même
+1:27:55
+je crois qu'il avait commencé ses recherches dans l'Union soviétique au
+1:27:58
+cours des années 60 70. fa longtemps mais ça a été connu dans l'Ouest là au
+1:28:04
+cours des années 80 et il avait développé son cadre théorique pour
+1:28:07
+parler de l'apprentissage supervisé. Ce cas supervisé là, c'est celui euh de
+1:28:15
+de de du principe de minimisation du risque
+1:28:21
+empirique. Cette expression là risque un petit peu
+1:28:27
+bizarre mais on va la garder. OK. Euh jetons juste un coup d'œil un
+1:28:33
+peu au mat. R c'est le risque. R cal graphique c'est le risque.
+1:28:39
+Ce qui est important de voir par exemple c'est que le risque c'est un espérance.
+1:28:45
+L'espérance de L. L est ce qu'on appelle une fonction de perte.
+1:28:52
+Donc ce qui est vraiment important ici à voir là, c'est que le problème
+1:28:57
+d'apprentissage supervisé,
+1:29:01
+ces notionsl inclusives qu'on a discuté jusqu'à présent de d'apprendre
+1:29:08
+une procédure à partir de données qui va être capable de bien généraliser.
+1:29:14
+Euh c'est une idée qui peut être ramené à ce cadre théorique là, c'est-à-dire
+1:29:20
+celui de trouver une fonction f
+1:29:27
+qui minimise l'espérance d'une fonction. Donc F ici c'est une procédure
+1:29:38
+pratiquement parlant là c'est quelque chose que ultimement vous allez
+1:29:41
+implémenter dans votre ordinateur mais d'un point de vue mathématique
+1:29:48
+abstrait le problème peut être posé comme ça. Vous seriez en train de
+1:29:53
+chercher dans l'espace de toutes les fonctions possibles.
+1:29:58
+la fonction qui minimise la perte euh
+1:30:05
+de l'espérance. Et en écrivant l'espérance comme ça,
+1:30:10
+ce que ça suppose c'est qu'on a une on a une loi sur X et
+1:30:17
+Y. Dans
+1:30:21
+la manière dont on parle normalement en anglais parfois on est un petit peu plus
+1:30:25
+un petit peu plus relaxe sur les termes. Puis souvent en anglais, on va parler de
+1:30:29
+distribution. Donc on dirait ici en anglais le le joint distribution, la
+1:30:33
+distribution euh conjointe de X Y P de X Y finalement. L'espérance ici c'est
+1:30:41
+l'espérance sous un P de X et Y. Qu'est-ce que c'est
+1:30:45
+PX et Y ? On voit ça comme étant euh
+1:30:52
+la nature d'une manière, la distribution intrinsèque des données.
+1:31:02
+Donc l'espérance est vraiment est vraiment ça
+1:31:08
+OK. Qu'est-ce qui rend le problème d'apprentissage difficile ? Ce qui rend
+1:31:13
+le le problème d'apprentissage difficile premièrement, c'est que ce P là, on
+1:31:18
+connaît pas. Bon là, on a parlé déjà aujourd'hui qu'on pourrait peut-être
+1:31:20
+utiliser le nécessateur de densité. C'est pas une mauvaise pas une mauvaise
+1:31:24
+réponse. Cependant, ça va être euh
+1:31:34
+ça va être la méthode qu'on va on va appliquer ici.
+1:31:51
+tenter ça va être de résoudre ce problème d'optimisation là.
+1:31:57
+Maintenant, c'est c'est des belle math mais pratiquement parlant, c'est pas
+1:32:02
+quelque chose qu'on peut vraiment résoudre facilement.
+1:32:06
+Je vais revenir dans un instant pourquoi c'est le cas là. Mais euh bon,
+1:32:11
+qu'est-ce que ça voudrait dire concrètement ? par exemple,
+1:32:15
+qu'est-ce que pourrait être L si on fait de la
+1:32:20
+la régression ? Un choix très commun lorsque on fait de la régression,
+1:32:26
+c'estutiliser la fonction de perte qu'on appelle la
+1:32:31
+fonction de perte L2. Finalement, c'est juste l'erreur au carré
+1:32:37
+entre le Y i qu'on observé
+1:32:47
+et la prédiction que modèle F va avoir fait.
+1:32:52
+sur sur cette donnée d'entrée XI. Là,
+1:32:58
+c'est juste un exemple parmi tant d'autres de fonction de perte.
+1:33:03
+Et euh donc le problème de il manque un
+1:33:13
+on peut parler de régression dans ce cas théorique là, mais on peut parler aussi
+1:33:15
+de classification. Pas de souci avec ça. Ça va juste qu'on va prendre une
+1:33:19
+fonction de perpe différente. On va y arriver dans un instant. La fonction de
+1:33:23
+perpe de facto en classification, ça va être la fonction de per d'entropie
+1:33:30
+entropie croisée cross entropy. On va revenir plus tard mais donc ces
+1:33:37
+sousprèmes làent juste un choix différent de fonction de ter.
+1:33:42
+Euh bon, un autre souci maintenant, c'est que min f, ça s'implémente pas
+1:33:47
+comme ça. L'espace des fonctions,
+1:33:52
+combien combien qui a de fonction dans le monde ? C'est un espace qui qui est
+1:33:56
+infini, continue. On peut pas chercher directement dans l'espace des fonctions,
+1:34:00
+du moins pas d'agrément et pas euh sans faire de
+1:34:07
+de de supposition. Donc la la seconde étape qu'on va faire
+1:34:11
+aussi, c'est de chercher dans un espace plus petit de dimension fini. On va se
+1:34:19
+mettre plutôt à chercher dans l'espace des paramètres plutôt que
+1:34:25
+dans l'espace des fonctions. Plutôt, on va se mettre à paramétriser
+1:34:32
+avec un vecteur de paramètre th et on va chercher dans un espace de paramètres.
+1:34:39
+Ce qui c espace de paramètres là va induire un espace de fonction f qui va
+1:34:44
+être rendre les choses plus facile. Ça c'est un aspect.
+1:34:48
+Euh et dans le langage de Vapnic et du cadre théorique de l'amisation du risque
+1:34:54
+artérique euh VNI va parler de hypothesis
+1:35:01
+hypothesis class les classes d'hypothèse.
+1:35:05
+Encore là, c'est une terminologie un peu weir mais mais bon parfois on va parler
+1:35:10
+de F comme étant une hypothèse. Parfois vous allez même voir la lettre H plutôt
+1:35:13
+que F pour ça. OK. Le challenge principal, je vous dirais
+1:35:18
+ce qui est distinct vraiment puis qui est représentatif de notre domaine,
+1:35:23
+c'est le suivant. Une espérance lorsque on a des données continues,
+1:35:29
+espérance premièrement c'est un intégral puis
+1:35:34
+puis l'intégrale elle même à moins d'avoir des des lois très simples, on
+1:35:38
+peut jamais calculer exactement. Donc juste pour évaluer l'espérance
+1:35:46
+d'un candidat potentiel qui minimise ça c'est un problème difficile en soit
+1:35:54
+calcul espérance c'est difficile mais encore plus fondamentalement
+1:36:02
+on connaît pas la loi de la nature px
+1:36:07
+y ça nous est pas donné Donc une possibilité, ça serait de
+1:36:13
+l'estimer peut-être empiriquement, ensuite d'estimer l'espérance et
+1:36:20
+minimiser euh l'estimation qu'on va avoir fait.
+1:36:25
+Mais il y a quelque chose d'encore plus
+1:36:29
+magique peut-être qu'on peut faire et c'est le suivant.
+1:36:36
+L'espérance, on peut
+1:36:41
+on peut l'estimer avec euh
+1:36:45
+attendez un petit peu là, je pense juste au mon terme en anglais, le
+1:36:50
+avec le la moyenne empirique.
+1:36:55
+Donc c'est ce qu'on a ici, la moyenne empirique.
+1:37:01
+La moyenne empirique, c'est c'est c'est simplement la on va
+1:37:05
+tirer un échantillon
+1:37:09
+de P de X et Y. Ça c'est notre jeu de données. Parfois, on pourrait même
+1:37:15
+écrire là D til D.
+1:37:20
+Le petit wiggly line, ça veut dire tirer de D til D P de X Y.
+1:37:27
+Euh donc si on fait la supposition qu'on a un ensemble de données qui était tiré
+1:37:32
+de ça, ensuite on peut calculer la formule suivante qui est la moyenne
+1:37:37
+empirique. Et la moyenne empirique et là la propriété qu'elle va nous donner un
+1:37:43
+estimateur non biaisé euh de la vraie espérance et dans la limite du
+1:37:50
+nombre d'échantillons qui va à l'infini.
+1:37:55
+Ces moyenne empirique là va converger à la vraie espérance.
+1:37:59
+Pratiquement parlant, ce que ça veut dire simplement c'est échantillonne le
+1:38:03
+plus le plus que tu peux, calcule la formule que là puis ça donne une
+1:38:09
+approximation pas mal, pas pire de l'espérance. Donc en pratique, on
+1:38:15
+travaille toujours avec le risque empirique a chapeau. Cependant, le
+1:38:21
+problème qu'on veut résoudre, c'est le problème conceptuel de la
+1:38:25
+misation du vrai risque. Mais le vrai risque, on l'observe jamais directement,
+1:38:31
+exactement. Et ça conclement parlant, ça revient à
+1:38:35
+nos courbe qu'on a vu en demi-cours. L'erreur de test, elle est toujours là
+1:38:40
+comme étant un outil nous permettant de d'approximer quel est ce vrai risque
+1:38:48
+là. Donc on va revenir plus tard mais d'un
+1:38:54
+point de vue d'optimisation pratique. Maintenant ce qu'on va faire plutôt
+1:38:57
+c'est on va minimiser ce risque empirique là et on va poser un problème
+1:39:03
+d'optimisation euh de dimension finie
+1:39:09
+sur le risque empirique. Là peut-être c'est un peu abstrait mais
+1:39:17
+vous allez voir ça va venir concret dans dans très bientôt là.
+1:39:22
+Donc plutôt ce qu'on va faire c'est min thêta disons dans un espace de
+1:39:26
+paramètres thêta voyez ça comme un vecteur de coefficient disons de
+1:39:33
+dimensionnalité K. Qu'est-ce que pour par exemple juste
+1:39:40
+pour avoir un de grandeur ? Cite 1 2 pour un modèle de langage de
+1:39:51
+nos jours open source disons juste pour le fun qu'est-ce qui pourrait être cas
+1:39:59
+un petit modèle de langage de nos jours comme lama
+1:40:05
+7 milliards euh
+1:40:10
+un modèle open source comme Deep Seek en fait c'est on n pas capable de rouler
+1:40:14
+sur même les équipements qu'on a mis là là en tout cas le le vrai psy là on est
+1:40:20
+plus dans les l'ordre de grandeur de centaines de milliards de paramètres
+1:40:27
+mais ça veut pas dire que qu'on a besoin de travailler dans espaces aussi gros
+1:40:31
+que ça souvent dans les cours de statistique on parle de régression où
+1:40:34
+est-ce que va être une dimension c'est le même framework c'est le même
+1:40:41
+dit on voit ici comme étant comme étant simplement un vecteur. Un
+1:40:48
+vecteur contient des valeurs. Ces valeursl vont
+1:40:53
+déterminer euh
+1:40:57
+ce qui va être calculé par notre modèle F. Donc ici, on avait R chapeau
+1:41:02
+de F. L'écrire comme ça. On peut l'écrire de
+1:41:06
+différentes manières là. Puis ça ben c'est
+1:41:10
+concrètement parlant c'est m étape
+1:41:31
+encore une fois ici la régression souvent
+1:41:35
+c'est l'erreur au carré Euh en passant, est-ce que la régression
+1:41:41
+ça veut juste dire que Y c'est un scalaire en sortie ? Non, on peut faire
+1:41:47
+la régression multidimensionnelle, c'est pas un problème non plus.
+1:41:51
+Donc là, c'est difficile à dire sur le tableau, mais souvent on va on va
+1:41:56
+utiliser des lettres en caractère gras quand on veut avoir des vecteurs. Donc X
+1:42:01
+souvent va être un vecteur. Régression Y pourrait aussi être un vecteur.
+1:42:07
+Donc on peut prédire plus qu'un affaire à fois. Dans ce caslà, quelle serait la
+1:42:12
+fonction de perte si on fait de régression multidimensionnelle ?
+1:42:23
+la formule du début du cours qui Ouais. Puis la fonction du début du
+1:42:27
+cours c'était c'est la norme la norme L2. Donc euh
+1:42:33
+on l'écrirait comme ça. On écrirait
+1:42:50
+on va prendre le carré ici. Ça dérange rien sur d'optimisation.
+1:42:56
+C'est la norme L2 la formule du début. OK.
+1:43:08
+Euh ça on peut en parler
+1:43:13
+fait la classification on va y revenir mais je vais juste vous
+1:43:17
+montrer la la fonction de perte habituelle qu'on va utiliser. C'est la
+1:43:20
+suivante l'acronyme qu'on va voir dans
+1:43:27
+le livre de Murphy. Euh puis j'ai vraiment la difficulté à à
+1:43:32
+me souvenir de l'acronyme en français là, mais l'acronyme en anglais, ça
+1:43:36
+serait le NL, le negative
+1:43:41
+log likelihood. Euh pour la le problème de classification
+1:43:49
+va nous donner l'expression suivante qu'on va aller minimiser plutôt le
+1:43:53
+risque empirique pour un problème de classification.
+1:43:56
+Ça va être le suivant. On va plutôt prendre le log
+1:44:03
+y étant donné la prédiction de notre modèle.
+1:44:09
+Donc d'où nous d'où nous provient ces expressions là ? Est-ce que c'est des
+1:44:12
+choix qui ont été faits de manière arbitraire ? Oui et non. Je pense que
+1:44:16
+d'un point de vue pratiqu pratique, si vous aviez à réinventer ces concepts là,
+1:44:24
+probablement pour la régression, vous et moi, on on retrouverait l'idée d'avoir
+1:44:30
+une fonction de perte quadratique. C'est quelque chose d'assez simple, hein. On
+1:44:34
+veut pénaliser les déviations entre la prédiction et et et ce qu'on ce
+1:44:41
+qu'on a observé. Et en disant la perte quadratique, ben
+1:44:46
+on a on a différents avantages. Premièrement, ça dérange pas si la
+1:44:51
+différence est positive négative. Ça va ça va toujours être positif. Et on a
+1:44:56
+toujours aussi la propriété que si l'erreur est complètement zéro, on
+1:45:00
+prenne le le carré au nom, ça va toujours être zéro. Mais il une notion
+1:45:05
+plus profonde qui nous permet d'obtenir ces fonctions de là. Donc de d'expliquer
+1:45:11
+d'où elles viennent. Cette notion plus profonde là, c'est celle du principe du
+1:45:16
+maximum de la vraissemblance que vous avez peut-être vu si vous avez pris des
+1:45:19
+cours de de statistique et de probabilité auparavant, mais ce qu'on va
+1:45:24
+réutiliser pour des fins plus pratiques pour faire l'apprentissage machine.
+1:45:29
+Donc le principe de maximum de la vraie semblance et des estimateurs qu'on va
+1:45:36
+dériver, on va parfois aussi les les appeler les estimateurs de type aimle
+1:45:45
+et maximum likelihood estimators. Donc qu'est-ce que un qu'est-ce qu'un
+1:45:52
+estimateur du maximum de la vraie semblance ? pass ça va être en en
+1:45:55
+contraste avec les estimateurs de type MAP sont les estimateurs
+1:46:01
+euh maximum à postériorine qui sont plus de de type basi euh mais ouais c'est ces
+1:46:08
+estimateurs là vont nous donner une une réponse à bien
+1:46:14
+ces ces fonctions de là. Je vais vous donner juste un petit avant-goût de de
+1:46:18
+où on va s'en aller à la prochaine à la prochaine séance parce que j'arrive
+1:46:23
+déjà au bout de ces ces ces diapos là. Euh
+1:46:28
+si vous prenez par exemple si vous faites la supposition
+1:46:34
+et ça c'est quelque chose que j'adore dans le livre de Murphy, c'est la la
+1:46:39
+présentation vraiment unifiée puis clean de
+1:46:43
+tous ces modèles. Supposons
+1:46:52
+on est en apprentissage supervisé. Ce qui nous intéresse peu importe qu'on
+1:46:56
+fait de la classification de la régression
+1:46:59
+quelque chose qui ressemble à ça. P de Y étant donné X. Et c'est là qu'on
+1:47:05
+a on fait face à un choix de modélisation.
+1:47:10
+On peut faire une supposition puis dire moi je pense que
+1:47:16
+les données que j'ai serait bien représenté par exemple
+1:47:21
+par une distribution gcienne. Donc si je fais la supposition que
+1:47:29
+P de Y étant donné X peut être représenté par une gcienne et que
+1:47:32
+j'applique le principe de du maximum de la vraie semblance auquel on va on va
+1:47:37
+réviser à la prochaine prochaine fois. appliquez le mle à cette expression là
+1:47:42
+supposant une gcienne, vous obtenez que le minimiseur
+1:47:48
+de de ce de ce cette expression là est la fonction de perte L2.
+1:47:55
+Donc il y a une adéquation donc le choix de fonction de perte qui est vraiment
+1:48:00
+une perspective ancrée dans l'optimisation
+1:48:03
+et le choix de modélisation probabiliste qui est beaucoup plus un choix de
+1:48:08
+modélisation d'ordre statistique ainsi de suite.
+1:48:16
+la fonction de perte pour le la fonction de perte du du code de la classification
+1:48:22
+qu'on qu'on voit ici en ce moment le cross ent
+1:48:26
+également en faisant supposition qu'on a une distribution catégorique qui est
+1:48:31
+finalement la famille
+1:48:35
+multinomière en appliquant principe de maximum de
+1:48:38
+ressemblance capable d'obtenir cette expression donc c'est
+1:48:44
+ce qui est intéressant c'est passer d'un côté
+1:48:47
+au au vocabulaire d'optimisation du principe d'aménisation du risque
+1:48:51
+empirique et le vocabulaire beaucoup plus probabiliste qu'on jongle toujours
+1:48:55
+avec ces deux perspectives là en apprentissage par apprentissage
+1:49:00
+supervisé apprentissage machine c'est c'est des langages qu'on doit
+1:49:06
+maîtriser. Voilà on va se revoir lundi prochain
+1:49:11
+pour 2h. Je pense que l'enregistrement a fonctionné. On voit pas vraiment sur le
+1:49:16
+le tableau tellement parce que la caméra est pas est pas en haut mais ça devrait
+1:49:22
+être pas mal quand même. Je vais le mettre tout de suite en ligne et je vais
+1:49:25
+changer le lien pour que vous puissiez avoir accès avec les bonnes permissions
+1:49:31
+également. OK. Bonne fin de semaine.
