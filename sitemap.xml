@@ -14,10 +14,13 @@
     <loc>http://localhost:3001/ch2-linear-regression</loc>
   </url>
   <url>
-    <loc>http://localhost:3001/ch3-generalization</loc>
+    <loc>http://localhost:3001/ch3-classification</loc>
   </url>
   <url>
-    <loc>http://localhost:3001/ch4-probabilistic</loc>
+    <loc>http://localhost:3001/ch4-generalization</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3001/ch5-probabilistic</loc>
   </url>
   <url>
     <loc>http://localhost:3001/tp0-knn</loc>
