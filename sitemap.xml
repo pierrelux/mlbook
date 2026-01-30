@@ -28,4 +28,7 @@
   <url>
     <loc>http://localhost:3002/tp1-learning-problem</loc>
   </url>
+  <url>
+    <loc>http://localhost:3002/tp2-logistic-regression</loc>
+  </url>
 </urlset>
