@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="http://localhost:3002/sitemap_style.xsl" ?>
+<?xml-stylesheet type="text/xsl" href="http://localhost:3001/sitemap_style.xsl" ?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://localhost:3002</loc>
+    <loc>http://localhost:3001</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/knn</loc>
+    <loc>http://localhost:3001/knn</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/ch1-learning-problem</loc>
+    <loc>http://localhost:3001/ch1-learning-problem</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/ch2-linear-regression</loc>
+    <loc>http://localhost:3001/ch2-linear-regression</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/ch3-classification</loc>
+    <loc>http://localhost:3001/ch3-classification</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/ch4-generalization</loc>
+    <loc>http://localhost:3001/ch4-generalization</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/ch5-probabilistic</loc>
+    <loc>http://localhost:3001/ch5-probabilistic</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/tp0-knn</loc>
+    <loc>http://localhost:3001/tp0-knn</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/tp1-learning-problem</loc>
+    <loc>http://localhost:3001/tp1-learning-problem</loc>
   </url>
   <url>
-    <loc>http://localhost:3002/tp2-logistic-regression</loc>
+    <loc>http://localhost:3001/tp2-logistic-regression</loc>
   </url>
 </urlset>
