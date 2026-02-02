@@ -23,6 +23,9 @@
     <loc>http://localhost:3001/ch5-probabilistic</loc>
   </url>
   <url>
+    <loc>http://localhost:3001/ch6-probabilistic-models</loc>
+  </url>
+  <url>
     <loc>http://localhost:3001/tp0-knn</loc>
   </url>
   <url>
