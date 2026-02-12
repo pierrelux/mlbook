@@ -8,7 +8,7 @@ math: mathjax
 <!-- _class: lead -->
 
 # Modèles probabilistes
-## Théorie de l'information, Naive Bayes et GMM
+## Naïf bayésien, analyse discriminante, MMG et k-moyennes
 
 *Pierre-Luc Bacon*
 IFT6390 – Fondements de l'apprentissage machine
@@ -278,19 +278,7 @@ $$\boxed{\text{Minimiser LVN} \iff \text{Minimiser } D_{\text{KL}}(p_{\mathcal{D
 
 Le maximum de vraisemblance cherche, parmi toutes les distributions de la famille $\{p_{\boldsymbol{\theta}}\}$, celle qui est la **plus proche** de $p_{\mathcal{D}}$ au sens de la divergence KL.
 
-```
-        Espace des distributions
-        
-     ●  ← distribution empirique p_D
-     |
-     |  ← distance KL minimale
-     ↓
-     ●  ← EMV: p_θ* le plus proche
-    / \
-   /   \  ← famille paramétrique {p_θ}
-```
-
-L'EMV projette les données sur notre famille de modèles.
+![w:700](_static/kl_geometric_interpretation.png)
 
 ---
 
@@ -314,7 +302,7 @@ Le choix du modèle probabiliste détermine la perte optimale.
 <!-- _class: lead -->
 
 # Classifieur naïf bayésien
-## Approche générative pour la classification
+## Classification générative avec indépendance conditionnelle
 
 ---
 
@@ -331,28 +319,68 @@ Le choix du modèle probabiliste détermine la perte optimale.
 
 ---
 
+## Frontière de décision linéaire
+
+La régression logistique prédit $\hat{y} = 1$ lorsque $p(y = 1 \mid \mathbf{x}) > \tfrac{1}{2}$, soit :
+
+$$\sigma(\mathbf{w}^\top \mathbf{x} + b) > \tfrac{1}{2} \iff \mathbf{w}^\top \mathbf{x} + b > 0$$
+
+Or $\mathbf{w}^\top \mathbf{x} + b = \log \frac{p(y=1 \mid \mathbf{x})}{p(y=0 \mid \mathbf{x})}$ est le log du rapport des probabilités a posteriori. La **frontière de décision** est l'ensemble des $\mathbf{x}$ où ce rapport vaut zéro, c'est-à-dire où les deux classes sont équiprobables. C'est un hyperplan perpendiculaire à $\mathbf{w}$.
+
+Les modèles génératifs que nous allons voir (le classifieur naïf bayésien et l'analyse discriminante linéaire) mènent aussi à cette forme.
+
+---
+
+## Frontière linéaire et probabilités a posteriori
+
+![w:900](_static/linear_decision_boundary.png)
+
+À gauche : l'hyperplan $\mathbf{w}^\top \mathbf{x} + b = 0$ sépare les deux classes; $\mathbf{w}$ est perpendiculaire à cette frontière. À droite : $p(y = 1 \mid \mathbf{x})$ varie en sigmoïde le long de la direction $\mathbf{w}$.
+
+---
+
 ## L'hypothèse d'indépendance conditionnelle
 
-Le classifieur **naïf bayésien** suppose que les caractéristiques sont **conditionnellement indépendantes** étant donné la classe :
+En général, la vraisemblance de classe se décompose par la **règle de chaîne** :
+
+$$p(\mathbf{x} \mid y = c) = \prod_{d=1}^D p(x_d \mid x_1, \ldots, x_{d-1}, y = c) = p(x_1 \mid y = c)\, p(x_2 \mid x_1, y = c) \cdots p(x_D \mid x_1, \ldots, x_{D-1}, y = c)$$
+
+Le classifieur **naïf bayésien** suppose l'**indépendance conditionnelle** :
 
 $$p(\mathbf{x} \mid y = c) = \prod_{d=1}^D p(x_d \mid y = c)$$
 
-**Exemple** : Classification de courriels (pourriel/légitime)
-- Sachant qu'un courriel est un pourriel, la présence de « gratuit » n'influence pas la probabilité de « urgent »
+| | Paramètres par classe | $D = 20$, $K = 2$ |
+|---|---|---|
+| Sans indépendance | $K^D - 1$ | $\approx 10^6$ |
+| Avec indépendance | $D(K - 1)$ | $20$ |
 
-Cette hypothèse réduit drastiquement le nombre de paramètres :
-- Sans indépendance : $O(K^D)$ paramètres (explose!)
-- Avec indépendance : $O(KD)$ paramètres
+---
+
+## Effet de l'indépendance conditionnelle
+
+![w:900](_static/naive_bayes_independence.png)
+
+À gauche : le modèle général peut capturer les corrélations entre $x_1$ et $x_2$ (contours inclinés). À droite : l'hypothèse d'indépendance force $p(x_1, x_2 \mid y) = p(x_1 \mid y)\, p(x_2 \mid y)$, ce qui élimine toute corrélation (contours alignés avec les axes).
+
+---
+
+## Modèles graphiques probabilistes
+
+Tous les modèles de ce chapitre se représentent comme des **graphes orientés** où les nœuds sont des variables (gris = observée, blanc = latente) et les flèches indiquent les dépendances :
+
+![w:950](_static/pgm_models.png)
+
+La structure du graphe détermine comment la distribution jointe se factorise, et donc comment estimer les paramètres.
 
 ---
 
 ## Le modèle complet
 
-**A priori sur les classes** : $p(y = c) = \pi_c$ avec $\sum_c \pi_c = 1$
+Par le **théorème de Bayes**, la probabilité a posteriori d'une classe est :
 
-**Vraisemblance par caractéristique** : $p(x_d \mid y = c; \boldsymbol{\theta}_{dc})$
+$$p(y = c \mid \mathbf{x}) = \frac{p(\mathbf{x} \mid y = c)\, p(y = c)}{\sum_{c'} p(\mathbf{x} \mid y = c')\, p(y = c')}$$
 
-**Probabilité a posteriori** :
+En substituant l'hypothèse d'indépendance avec $p(y = c) = \pi_c$ :
 
 $$p(y = c \mid \mathbf{x}) = \frac{\pi_c \prod_{d=1}^D p(x_d \mid y = c)}{\sum_{c'} \pi_{c'} \prod_{d=1}^D p(x_d \mid y = c')}$$
 
@@ -378,18 +406,78 @@ C'est une application de l'astuce log-sum-exp!
 
 ## Estimation par maximum de vraisemblance
 
-La log-vraisemblance se factorise, permettant une estimation séparée :
+La log-vraisemblance du modèle naïf bayésien est:
 
-**A priori de classe** (fréquence empirique) :
+$$\ell(\boldsymbol{\theta}) = \sum_{n=1}^N \left[ \log \pi_{y_n} + \sum_{d=1}^D \log p(x_{nd} \mid y_n) \right]$$
+
+Grâce à l'indépendance conditionnelle, cette expression se décompose en termes séparés pour $\pi_c$ et pour chaque $p(x_d \mid y = c)$, ce qui permet de les estimer indépendamment.
+
+**A priori de classe** : simplement la fréquence empirique :
 $$\hat{\pi}_c = \frac{N_c}{N}$$
 
-**Caractéristiques binaires** (présence/absence) :
-$$\hat{\theta}_{dc} = \frac{N_{dc}}{N_c}$$
+---
 
-**Caractéristiques continues** (gaussiennes) :
-$$\hat{\mu}_{dc} = \frac{1}{N_c} \sum_{n: y_n = c} x_{nd}, \quad \hat{\sigma}^2_{dc} = \frac{1}{N_c} \sum_{n: y_n = c} (x_{nd} - \hat{\mu}_{dc})^2$$
+## Naïf bayésien avec caractéristiques binaires
 
-Pas d'optimisation itérative : formules fermées!
+Il reste à choisir la forme de $p(x_d \mid y = c)$. Pour des caractéristiques binaires (présence/absence), on utilise le modèle de Bernoulli :
+
+$$p(x_d = 1 \mid y = c) = \theta_{dc} \qquad \Rightarrow \qquad \hat{\theta}_{dc} = \frac{\text{nb. d'exemples de classe } c \text{ où } x_d = 1}{N_c}$$
+
+En classification de courriels, chaque $x_d$ indique la présence d'un mot dans le message. On estime la probabilité que le mot $d$ apparaisse dans un pourriel vs un courriel légitime, simplement en comptant les occurrences dans chaque classe.
+
+---
+
+## Naïf bayésien avec caractéristiques continues
+
+Pour des caractéristiques continues, on modélise chaque dimension par une gaussienne univariée :
+
+$$p(x_d \mid y = c) = \mathcal{N}(x_d \mid \mu_{dc},\, \sigma^2_{dc})$$
+$$\hat{\mu}_{dc} = \frac{1}{N_c} \sum_{n: y_n = c} x_{nd}, \qquad \hat{\sigma}^2_{dc} = \frac{1}{N_c} \sum_{n: y_n = c} (x_{nd} - \hat{\mu}_{dc})^2$$
+
+Par exemple, pour distinguer des espèces de fleurs à partir de mesures de pétales, on estime la moyenne et la variance de chaque mesure dans chaque espèce.
+
+---
+
+## De naïf bayésien à l'analyse discriminante
+
+Le naïf bayésien gaussien suppose $\boldsymbol{\Sigma}_c$ diagonale. Si on lève cette hypothèse avec $p(\mathbf{x} \mid y = c) = \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_c, \boldsymbol{\Sigma}_c)$, le log du rapport a posteriori devient :
+
+$$\log \frac{p(y=1 \mid \mathbf{x})}{p(y=0 \mid \mathbf{x})} = \underbrace{-\tfrac{1}{2}\mathbf{x}^\top(\boldsymbol{\Sigma}_1^{-1} - \boldsymbol{\Sigma}_0^{-1})\mathbf{x}}_{\text{terme quadratique}} + \mathbf{w}^\top \mathbf{x} + b$$
+
+Rappel : la frontière de décision est l'ensemble des $\mathbf{x}$ où ce rapport vaut zéro (les deux classes sont équiprobables).
+
+- **ADQ** (*QDA*), $\boldsymbol{\Sigma}_c$ libre : le terme quadratique subsiste → frontière quadratique
+- **ADL** (*LDA*), $\boldsymbol{\Sigma}_c = \boldsymbol{\Sigma}$ : $\boldsymbol{\Sigma}_1^{-1} - \boldsymbol{\Sigma}_0^{-1} = \mathbf{0}$, le terme quadratique disparaît → frontière linéaire
+
+---
+
+## Récapitulatif : prédiction
+
+Pour classer une nouvelle observation $\mathbf{x}$ avec un modèle génératif entraîné :
+
+1. Pour chaque classe $c$, calculer la vraisemblance $p(\mathbf{x} \mid y = c)$
+2. Multiplier par l'a priori $\pi_c$
+3. Prédire la classe qui maximise : $\hat{y} = \arg\max_c \; \pi_c \, p(\mathbf{x} \mid y = c)$
+
+Ce qui change d'un modèle à l'autre, c'est **l'étape 1** :
+
+| Modèle | On calcule... |
+|--------|---------------|
+| Naïf bayésien | le produit $\prod_d p(x_d \mid y = c)$ (chaque caractéristique séparément) |
+| ADL (*LDA*) | la densité $\mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_c, \boldsymbol{\Sigma})$ (covariance partagée) |
+| ADQ (*QDA*) | la densité $\mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_c, \boldsymbol{\Sigma}_c)$ (covariance par classe) |
+
+---
+
+## Récapitulatif : estimation
+
+Tous les paramètres s'estiment par des **formules fermées** :
+
+| Modèle | Paramètres estimés |
+|--------|--------------------|
+| Naïf bayésien | $\hat{\pi}_c = N_c/N$, puis fréquences (binaire) ou $\hat{\mu}_{dc}, \hat{\sigma}^2_{dc}$ (continu) par classe |
+| ADL (*LDA*) | $\hat{\pi}_c$, $\hat{\boldsymbol{\mu}}_c$ par classe, $\hat{\boldsymbol{\Sigma}}$ combinée sur toutes les classes |
+| ADQ (*QDA*) | $\hat{\pi}_c$, $\hat{\boldsymbol{\mu}}_c$, $\hat{\boldsymbol{\Sigma}}_c$ par classe |
 
 ---
 
@@ -435,23 +523,26 @@ Pourtant, Naive Bayes fonctionne souvent bien. Pourquoi?
 
 <!-- _class: lead -->
 
-# Modèles de mélange gaussien
+# Modèles de mélange gaussien (MMG)
 ## Partitionnement probabiliste et algorithme EM
 
 ---
 
 <!-- footer: "📖 Chapitre 6 : Modèles probabilistes génératifs" -->
 
-## Du supervisé au non supervisé
+## Pourquoi le partitionnement?
 
-| Apprentissage | Étiquettes | Objectif |
-|---------------|------------|----------|
-| **Supervisé** | Connues | Prédire $y$ à partir de $\mathbf{x}$ |
-| **Non supervisé** | **Inconnues** | Découvrir une structure dans $\mathbf{x}$ |
+Jusqu'ici, nous avons supposé que les étiquettes de classe sont connues. En pratique, elles sont souvent absentes : un biologiste mesure des fleurs sans connaître l'espèce, un commerce enregistre des transactions sans profil client, un généticien séquence des tumeurs sans sous-type défini.
 
-Le **partitionnement** (*clustering*) cherche à regrouper les données en groupes homogènes.
+Le partitionnement (*clustering*) regroupe automatiquement les observations en groupes homogènes, sans supervision.
 
-Les **modèles de mélange gaussien** (GMM) offrent une approche probabiliste qui généralise l'analyse discriminante au cas non supervisé.
+---
+
+## Le partitionnement en pratique
+
+![w:950](_static/clustering_motivation.png)
+
+Le jeu de données Iris : 150 fleurs décrites par la longueur et la largeur du pétale. À gauche, les données brutes sans étiquettes. À droite, un modèle de mélange gaussien découvre trois groupes correspondant aux espèces.
 
 ---
 
@@ -461,11 +552,7 @@ Un GMM suppose que les données proviennent d'un mélange de $K$ gaussiennes :
 
 $$p(\mathbf{x} \mid \boldsymbol{\theta}) = \sum_{k=1}^K \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
 
-| Paramètre | Signification | Contrainte |
-|-----------|---------------|------------|
-| $\pi_k$ | Poids du composant $k$ | $\sum_k \pi_k = 1$, $\pi_k \geq 0$ |
-| $\boldsymbol{\mu}_k$ | Moyenne du composant $k$ | $\in \mathbb{R}^D$ |
-| $\boldsymbol{\Sigma}_k$ | Covariance du composant $k$ | Semi-définie positive |
+![w:900](_static/gmm_formulation.png)
 
 ---
 
@@ -475,11 +562,7 @@ On peut interpréter le GMM avec une variable latente $z \in \{1, \ldots, K\}$ :
 
 $$p(z = k) = \pi_k, \quad p(\mathbf{x} \mid z = k) = \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
 
-**Processus de génération** :
-1. Tirer un composant $z \sim \text{Catégorielle}(\boldsymbol{\pi})$
-2. Tirer une observation $\mathbf{x} \sim \mathcal{N}(\boldsymbol{\mu}_z, \boldsymbol{\Sigma}_z)$
-
-Ce processus permet de **générer de nouvelles données** synthétiques.
+![w:950](_static/gmm_generative_process.png)
 
 ---
 
@@ -501,20 +584,43 @@ C'est un **partitionnement souple** : chaque point « appartient » partiellemen
 
 ---
 
-## Lien avec k-moyennes
+<!-- _class: lead -->
 
-K-moyennes est un cas limite de GMM avec :
-- Covariances sphériques identiques : $\boldsymbol{\Sigma}_k = \sigma^2 \mathbf{I}$
-- Variance tendant vers zéro : $\sigma^2 \to 0$
+# L'algorithme des k-moyennes
+## Partitionnement dur par centroïdes
 
-| Aspect | K-moyennes | GMM |
-|--------|------------|-----|
-| Assignation | **Dure** (0 ou 1) | **Souple** ($\in [0,1]$) |
-| Forme des groupes | Sphères | Ellipses |
-| Poids des groupes | Égaux | Variables |
-| Incertitude | Non quantifiée | Quantifiée |
+---
 
-GMM généralise k-moyennes en capturant plus de structure.
+## L'algorithme des k-moyennes
+
+Un **centroïde** $\boldsymbol{\mu}_k$ est la moyenne des observations assignées au groupe $k$ :
+
+$$\boldsymbol{\mu}_k = \frac{1}{|C_k|} \sum_{\mathbf{x}_n \in C_k} \mathbf{x}_n$$
+
+![w:850](_static/kmeans_centroids.png)
+
+---
+
+## Les étapes des k-moyennes
+
+1. Initialiser $K$ centroïdes $\boldsymbol{\mu}_1, \ldots, \boldsymbol{\mu}_K$
+2. **Assignation** : $z_n = \arg\min_k \|\mathbf{x}_n - \boldsymbol{\mu}_k\|^2$
+3. **Mise à jour** : $\boldsymbol{\mu}_k = \frac{1}{N_k} \sum_{n: z_n = k} \mathbf{x}_n$
+4. Répéter 2–3 jusqu'à convergence
+
+Chaque point appartient à exactement un groupe : c'est un partitionnement dur.
+
+---
+
+## Du partitionnement dur au partitionnement souple
+
+Les k-moyennes sont un cas limite du MMG avec covariances sphériques identiques $\boldsymbol{\Sigma}_k = \sigma^2 \mathbf{I}$ et $\sigma^2 \to 0$.
+
+Le MMG les généralise sur trois axes :
+
+- Chaque point peut appartenir **partiellement** à plusieurs groupes (assignation souple)
+- Les groupes ont des formes **elliptiques** ($\boldsymbol{\Sigma}_k$ quelconque)
+- Les groupes peuvent avoir des **poids différents** ($\pi_k$ variables)
 
 ---
 
@@ -524,11 +630,15 @@ La log-vraisemblance du GMM est :
 
 $$\log p(\mathbf{X} \mid \boldsymbol{\theta}) = \sum_{n=1}^N \log \left( \sum_{k=1}^K \pi_k \, \mathcal{N}(\mathbf{x}_n \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k) \right)$$
 
-Le **logarithme d'une somme** rend l'optimisation difficile. Pas de solution analytique!
+Le $\log$ d'une somme empêche de décomposer $\ell$ en une moyenne empirique sur les observations, contrairement à la MRE supervisée. On ne peut pas isoler la contribution de chaque composant.
 
-**Le problème de la poule et l'œuf** :
-- Si on connaissait les assignations $z_n$, on pourrait estimer les paramètres
-- Si on connaissait les paramètres, on pourrait calculer les assignations
+On pourrait utiliser la descente de gradient, mais les paramètres ne sont pas libres dans $\mathbb{R}^n$ :
+
+- $\boldsymbol{\pi} \in \Delta_K$ : les poids vivent sur le **simplexe** ($\pi_k \geq 0$, $\sum_k \pi_k = 1$)
+- $\boldsymbol{\Sigma}_k \succ 0$ : chaque covariance doit rester **définie positive**
+- La surface est **non convexe** : plusieurs optima locaux
+
+L'algorithme EM contourne ces difficultés : si on connaissait les assignations $z_n$, on pourrait estimer chaque paramètre par des formules fermées; et réciproquement.
 
 ---
 
@@ -569,20 +679,18 @@ $$\boldsymbol{\Sigma}_k^{(t+1)} = \frac{1}{N_k^{(t)}} \sum_{n=1}^N r_{nk}^{(t)} 
 
 ---
 
-## Pseudocode de l'algorithme EM
+## Résumé de l'algorithme EM
 
-```
-Entrée: Données X, nombre de composants K
-1. Initialiser les paramètres θ = (π, μ, Σ)
-2. Répéter jusqu'à convergence:
-   a. Étape E: calculer les responsabilités r_nk
-   b. Étape M: mettre à jour π, μ, Σ
-   c. Calculer la log-vraisemblance
-3. Vérifier la convergence (ΔLL < ε)
-Sortie: Paramètres θ et responsabilités r
-```
+**Entrée** : données $\mathbf{X}$, nombre de composants $K$
 
-EM garantit que la log-vraisemblance **augmente** (ou reste stable) à chaque itération.
+1. Initialiser $\boldsymbol{\theta}^{(0)} = (\boldsymbol{\pi}, \boldsymbol{\mu}, \boldsymbol{\Sigma})$
+2. Répéter jusqu'à convergence de $\ell(\boldsymbol{\theta})$ :
+
+   **E** : $\quad r_{nk} \leftarrow \dfrac{\pi_k \, \mathcal{N}(\mathbf{x}_n \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_j \pi_j \, \mathcal{N}(\mathbf{x}_n \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}$
+
+   **M** : $\quad \pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k \leftarrow$ formules fermées (slide précédent)
+
+La log-vraisemblance augmente (ou reste stable) à chaque itération.
 
 ---
 
@@ -599,41 +707,136 @@ EM garantit que la log-vraisemblance **augmente** (ou reste stable) à chaque it
 
 ---
 
+<!-- _class: lead -->
+
+# Le modèle de Bradley-Terry
+## Variables latentes et comparaisons par paires
+
+---
+
+<!-- footer: "📖 Chapitre 3 : Classification" -->
+
+## Préférences et comparaisons par paires
+
+Dans de nombreuses situations, nous n'observons pas de mesures absolues, mais des **comparaisons relatives** : qui gagne aux échecs, quelle réponse est préférée (RLHF), quel résultat de recherche est cliqué.
+
+Le défi : convertir ces jugements en **scores numériques**. On cherche un score $s_k$ par objet tel que la différence $s_i - s_j$ prédise le résultat.
+
+---
+
+## Le modèle de Bradley-Terry
+
+Chaque objet $k$ possède un score latent $s_k$. La probabilité que $i$ soit préféré à $j$ :
+
+$$\boxed{P(i \succ j) = \sigma(s_i - s_j) = \frac{1}{1 + e^{-(s_i - s_j)}}}$$
+
+- Si $s_i \gg s_j$ → $P(i \succ j) \approx 1$
+- Si $s_i = s_j$ → $P(i \succ j) = 0{,}5$ (pile ou face)
+- Si $s_i \ll s_j$ → $P(i \succ j) \approx 0$
+
+Les scores sont **latents** : on ne les observe pas, seulement qui gagne.
+
+---
+
+## Lien avec la régression logistique
+
+Pour $K$ objets, on construit un vecteur $\mathbf{x}_{ij} \in \mathbb{R}^K$ par comparaison :
+
+$$x_{ij,k} = \begin{cases} +1 & \text{si } k = i \\ -1 & \text{si } k = j \\ 0 & \text{sinon} \end{cases} \qquad \Rightarrow \qquad \mathbf{s}^\top \mathbf{x}_{ij} = s_i - s_j$$
+
+Le modèle prédit $P(y = 1 \mid \mathbf{x}_{ij}) = \sigma(\mathbf{s}^\top \mathbf{x}_{ij})$ : c'est une **régression logistique** sans ordonnée à l'origine, dont les coefficients sont directement les scores.
+
+---
+
+## Exemple : 4 joueurs, 5 matchs
+
+$$\mathbf{X} = \begin{pmatrix} 1 & 0 & -1 & 0 \\ 0 & 1 & 0 & -1 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 1 & -1 \\ 0 & 1 & -1 & 0 \end{pmatrix}, \quad \mathbf{y} = \begin{pmatrix} 1 \\ 1 \\ 0 \\ 1 \\ 1 \end{pmatrix}$$
+
+Chaque ligne encode un match : $+1$ pour le premier joueur, $-1$ pour le second. L'étiquette $y = 1$ indique que le premier joueur a gagné.
+
+Le produit $\mathbf{X}\mathbf{s}$ donne les différences de scores : $\mathbf{X}\mathbf{s} = (s_0 - s_2,\; s_1 - s_3,\; s_0 - s_1,\; s_2 - s_3,\; s_1 - s_2)^\top$.
+
+---
+
+## Deux perspectives, un même modèle
+
+| | Discriminative (rég. logistique) | Générative (Thurstone) |
+|---|---|---|
+| **Modélise** | $P(y \mid \mathbf{x}_{ij})$ directement | Les performances latentes $Z_i, Z_j$ |
+| **Formule** | $\sigma(\mathbf{s}^\top \mathbf{x}_{ij})$ | $P(Z_i > Z_j)$ après marginalisation |
+| **Estimation** | Maximiser la log-vraisemblance conditionnelle | Marginaliser, puis maximiser |
+| **Avantage** | Algorithme simple (rég. logistique) | Interprétation du processus de génération |
+
+Les deux perspectives donnent **exactement la même formule** $P(i \succ j) = \sigma(s_i - s_j)$. Le choix de perspective influence l'interprétation, pas le résultat.
+
+---
+
+<!-- footer: "📖 Chapitre 6 : Modèles probabilistes génératifs" -->
+
+## Perspective à variables latentes
+
+L.L. Thurstone (1927) : chaque objet a un score moyen $s_i$, mais sa **performance** à chaque comparaison est bruitée :
+
+$$Z_i = s_i + \epsilon_i, \quad \epsilon_i \sim \text{Gumbel}(0,1)$$
+
+Le joueur $i$ bat $j$ quand $Z_i > Z_j$. Les performances $Z_i, Z_j$ sont les **variables latentes** : on n'observe que le résultat.
+
+---
+
+## De la Gumbel à la sigmoïde
+
+Les performances $Z_i, Z_j$ sont inobservées. Pour obtenir $P(i \succ j)$ en fonction des seuls paramètres $s_i, s_j$, on **intègre sur toutes les valeurs possibles** des performances (c'est la marginalisation) :
+
+$$P(i \succ j) = \int\!\!\int \mathbb{1}[z_i > z_j] \, p(z_i \mid s_i) \, p(z_j \mid s_j) \, dz_i \, dz_j$$
+
+La condition $Z_i > Z_j$ se réécrit $\epsilon_j - \epsilon_i < s_i - s_j$. Or la différence de deux Gumbel indépendantes suit une distribution logistique, dont la fonction de répartition est la sigmoïde :
+
+$$P(\epsilon_j - \epsilon_i < t) = \sigma(t) \qquad \Rightarrow \qquad P(i \succ j) = \sigma(s_i - s_j)$$
+
+---
+
+## Estimation et prédiction avec Bradley-Terry
+
+**Estimation** (à partir de comparaisons observées) :
+
+1. Construire la matrice $\mathbf{X}$ : une ligne par comparaison, $+1$ pour l'objet $i$, $-1$ pour l'objet $j$
+2. Appliquer la régression logistique sans ordonnée à l'origine sur $(\mathbf{X}, \mathbf{y})$
+3. Les coefficients estimés $\hat{\boldsymbol{\theta}}$ sont directement les scores $\hat{s}_1, \ldots, \hat{s}_K$
+
+**Prédiction** (pour une nouvelle comparaison $i$ vs $j$) :
+
+$$\hat{P}(i \succ j) = \sigma(\hat{s}_i - \hat{s}_j)$$
+
+Le classement global s'obtient en triant les objets par score décroissant. En RLHF, ce même principe est appliqué avec un réseau de neurones $r_\phi(\text{réponse})$ à la place du vecteur de scores.
+
+---
+
+## Le parallèle avec les MMG
+
+| Aspect | MMG | Bradley-Terry |
+|--------|-----|---------------|
+| Variable latente | $z \in \{1, \ldots, K\}$ (discrète) | Performances $Z_i, Z_j \in \mathbb{R}$ (continues) |
+| Observation | $\mathbf{x} \in \mathbb{R}^D$ | $y \in \{0, 1\}$ (qui gagne) |
+| Marginalisation | $\sum_k$ (somme) | $\iint$ (intégrale) |
+| Résultat | Densité de mélange | Sigmoïde de la différence |
+
+La même idée, marginaliser des variables latentes pour obtenir la vraisemblance, apparaît dans des contextes très différents.
+
+---
+
 <!-- footer: "" -->
 
-## Résumé : Stabilité numérique
-
-| Technique | Application |
-|-----------|-------------|
-| Soustraire le max | Softmax, responsabilités GMM |
-| Travailler en log | Produits de probabilités |
-| Log-sum-exp | Normalisation, log-vraisemblance |
-
-$$\text{logsumexp}(\mathbf{a}) = a_{\max} + \log \sum_{c} e^{a_c - a_{\max}}$$
-
----
-
-## Résumé : Théorie de l'information
-
-| Concept | Formule | Interprétation |
-|---------|---------|----------------|
-| Entropie | $\mathbb{H}(p) = -\sum_y p(y) \log p(y)$ | Incertitude intrinsèque |
-| Entropie croisée | $\mathbb{H}_{\text{ce}}(p, q) = -\sum_y p(y) \log q(y)$ | Surprise avec modèle $q$ |
-| Divergence KL | $D_{\text{KL}}(p \| q) = \mathbb{H}_{\text{ce}}(p, q) - \mathbb{H}(p)$ | Distance aux données |
-
-**EMV = minimiser la divergence KL** entre le modèle et la distribution empirique.
-
----
-
-## Résumé : Modèles génératifs
+## Résumé : Modèles vus dans ce cours
 
 | Modèle | Hypothèse clé | Usage |
 |--------|---------------|-------|
-| **Naive Bayes** | Indépendance conditionnelle | Classification (texte, spam) |
-| **LDA/QDA** | Gaussien par classe | Classification supervisée |
-| **GMM** | Mélange de gaussiennes | Partitionnement non supervisé |
+| Naïf bayésien | Indépendance conditionnelle | Classification (texte, pourriels) |
+| ADL / ADQ | Gaussien par classe | Classification supervisée |
+| K-moyennes | Centroïdes, assignation dure | Partitionnement non supervisé |
+| MMG | Mélange de gaussiennes | Partitionnement souple |
+| Bradley-Terry | Scores latents, sigmoïde | Comparaisons par paires |
 
-L'algorithme **EM** estime les paramètres des GMM par alternance E/M.
+L'algorithme EM estime les paramètres des MMG par alternance E/M.
 
 ---
 

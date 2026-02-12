@@ -43,6 +43,9 @@ project:
         - file: exercises/tp0_knn.ipynb
         - file: exercises/tp1_learning_problem.ipynb
         - file: exercises/tp2_logistic_regression.ipynb
+        - file: exercises/tp3_probabilistic_models.ipynb
+        - file: exercises/tp4_discriminant_analysis.ipynb
+        - file: exercises/tp5_mixture_of_experts.ipynb
         - file: exercises/projet_energie.ipynb
     # - title: "Présentations"
     #   children:

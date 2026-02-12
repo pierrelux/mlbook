@@ -143,15 +143,23 @@ La suite de ce chapitre présente trois modèles génératifs: le classifieur na
 
 Le classifieur naïf bayésien (*Naive Bayes*) est un modèle génératif simple mais efficace. Son nom vient d'une hypothèse qui simplifie considérablement le modèle: les caractéristiques sont **conditionnellement indépendantes** étant donné la classe.
 
-Que signifie cette hypothèse? Considérons un problème de classification de courriels (pourriel ou non) avec des caractéristiques binaires indiquant la présence de certains mots. L'hypothèse d'indépendance conditionnelle suppose que, sachant qu'un courriel est un pourriel, la présence du mot «gratuit» n'influence pas la probabilité de présence du mot «urgent». Chaque mot apparaît indépendamment selon sa propre probabilité conditionnelle à la classe.
+Pour comprendre l'impact de cette hypothèse, considérons d'abord le cas général. Par la règle de chaîne, la vraisemblance conditionnelle de classe se décompose en:
 
-Formellement, pour une observation $\mathbf{x} = (x_1, \ldots, x_D)$ avec $D$ caractéristiques:
+$$
+p(\mathbf{x} \mid y = c) = p(x_1 \mid y = c)\, p(x_2 \mid x_1, y = c) \cdots p(x_D \mid x_1, \ldots, x_{D-1}, y = c)
+$$
+
+Chaque facteur dépend de toutes les caractéristiques précédentes. Si chaque caractéristique prend $K$ valeurs, le dernier facteur à lui seul nécessite de spécifier une distribution conditionnelle pour chacune des $K^{D-1}$ combinaisons possibles des caractéristiques précédentes. Au total, la distribution conjointe $p(\mathbf{x} \mid y = c)$ requiert $K^D - 1$ paramètres par classe — un nombre qui explose exponentiellement avec la dimension.
+
+L'hypothèse d'indépendance conditionnelle élimine toutes ces dépendances. Sachant la classe, chaque caractéristique est supposée indépendante des autres:
 
 $$
 p(\mathbf{x} \mid y = c) = \prod_{d=1}^D p(x_d \mid y = c)
 $$
 
-Cette factorisation réduit drastiquement le nombre de paramètres. Sans elle, modéliser $p(\mathbf{x} \mid y)$ pour des caractéristiques discrètes à $K$ valeurs nécessiterait $O(K^D)$ paramètres — un nombre qui explose avec la dimension. Avec l'hypothèse d'indépendance, nous n'avons besoin que de $O(KD)$ paramètres.
+Cette factorisation réduit drastiquement le nombre de paramètres: nous n'avons plus que $D(K - 1)$ paramètres par classe. Par exemple, avec $D = 20$ caractéristiques binaires ($K = 2$), le modèle général nécessiterait $2^{20} - 1 \approx 10^6$ paramètres par classe, alors que le naïf bayésien n'en utilise que 20.
+
+Concrètement, considérons un problème de classification de courriels (pourriel ou non) avec des caractéristiques binaires indiquant la présence de certains mots. L'hypothèse d'indépendance conditionnelle suppose que, sachant qu'un courriel est un pourriel, la présence du mot «gratuit» n'influence pas la probabilité de présence du mot «urgent». Chaque mot apparaît indépendamment selon sa propre probabilité conditionnelle à la classe.
 
 ```{margin} Pourquoi «naïf»?
 Le terme «naïf» ne signifie pas que le modèle est stupide ou simpliste. Il indique que l'hypothèse d'indépendance conditionnelle est rarement vraie en pratique. Dans notre exemple de courriels, les mots «gratuit» et «offre» apparaissent souvent ensemble dans les pourriels — ils ne sont pas vraiment indépendants. Pourtant, le classifieur fonctionne bien malgré cette violation de l'hypothèse. Cette robustesse fait du naïf bayésien un outil pratique, pas une méthode à éviter.
@@ -159,12 +167,18 @@ Le terme «naïf» ne signifie pas que le modèle est stupide ou simpliste. Il i
 
 ### Modèle complet et classification
 
+Pour tout modèle génératif, le théorème de Bayes donne la probabilité a posteriori d'une classe:
+
+$$
+p(y = c \mid \mathbf{x}) = \frac{p(\mathbf{x} \mid y = c)\, p(y = c)}{\sum_{c'} p(\mathbf{x} \mid y = c')\, p(y = c')}
+$$
+
 Le modèle naïf bayésien spécifie:
 
 1. Un a priori sur les classes: $p(y = c) = \pi_c$ avec $\sum_c \pi_c = 1$
 2. Pour chaque caractéristique $d$ et chaque classe $c$, une distribution $p(x_d \mid y = c; \boldsymbol{\theta}_{dc})$
 
-La probabilité a posteriori d'une classe devient:
+En substituant l'hypothèse d'indépendance conditionnelle dans le théorème de Bayes, la probabilité a posteriori devient:
 
 $$
 p(y = c \mid \mathbf{x}) = \frac{\pi_c \prod_{d=1}^D p(x_d \mid y = c)}{\sum_{c'} \pi_{c'} \prod_{d=1}^D p(x_d \mid y = c')}
@@ -479,9 +493,9 @@ Quand l'hypothèse gaussienne est correcte, LDA peut être plus efficace avec pe
 
 ### De la classification au partitionnement
 
-Les modèles précédents supposent que nous connaissons les classes des exemples d'entraînement. Que faire quand nous n'avons pas d'étiquettes, mais voulons découvrir une structure de groupes dans les données?
+Les modèles précédents supposent que nous connaissons les classes des exemples d'entraînement. En pratique, les étiquettes sont souvent absentes. Un commerce cherche à identifier des profils de clientèle à partir de données de transactions; un généticien veut découvrir des sous-types de maladies à partir de profils d'expression génétique; un système de sécurité doit repérer des comportements atypiques sans exemples préalables d'attaques.
 
-Le **partitionnement** (*clustering*) répond à cette question. Parmi les méthodes de partitionnement, les **modèles de mélange gaussien** (GMM, *Gaussian Mixture Models*) offrent une approche probabiliste qui généralise l'analyse discriminante gaussienne au cas non supervisé.
+Le partitionnement (*clustering*) regroupe automatiquement les observations en groupes homogènes, sans supervision. Parmi les méthodes de partitionnement, les modèles de mélange gaussien (GMM, *Gaussian Mixture Models*) offrent une approche probabiliste qui généralise l'analyse discriminante gaussienne au cas non supervisé. Cette connexion entre classification supervisée et partitionnement non supervisé est un atout des modèles génératifs: le même cadre probabiliste s'applique aux deux situations.
 
 ### Formulation
 
