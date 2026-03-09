@@ -38,6 +38,7 @@ project:
         - file: ch4_generalization.md
         - file: ch5_probabilistic.md
         - file: ch6_probabilistic_models.md
+        - file: ch7_neural_networks.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb

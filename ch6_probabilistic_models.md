@@ -844,13 +844,18 @@ Ces formules sont des versions pondérées des estimateurs classiques. Au lieu d
 
 ### Pseudocode
 
-```
+```{code-block} text
+:caption: Algorithme EM pour un GMM
+:name: algo-em-gmm
+
 Entrée: Données X, nombre de composants K
+
 1. Initialiser les paramètres θ = (π, μ, Σ)
 2. Répéter jusqu'à convergence:
-   a. Étape E: calculer les responsabilités r_nk
-   b. Étape M: mettre à jour π, μ, Σ
+   a. Étape E : calculer les responsabilités r_nk
+   b. Étape M : mettre à jour π, μ, Σ
 3. Calculer la log-vraisemblance et vérifier la convergence
+
 Sortie: Paramètres θ et responsabilités r
 ```
 
@@ -979,6 +984,16 @@ $$
 $$
 
 La somme sur les composants $k$ se trouve à l'intérieur du logarithme. Si nous connaissions l'assignation $z_n$ de chaque point, le log passerait directement sur chaque gaussienne et le problème serait séparable. Comme les $z_n$ sont inconnus, il nous faut un moyen de « pousser » le logarithme à travers cette somme. L'idée est de construire un objectif auxiliaire, une borne inférieure de $\log p(\mathbf{X} \mid \boldsymbol{\theta})$, que l'on peut optimiser même sans connaître les $z_n$.
+
+```{margin} Si les $z_n$ étaient connus
+Avec les assignations $\mathbf{Z} = (z_1, \ldots, z_N)$, la vraisemblance **complète** (données + latentes) s'écrit
+$\displaystyle p(\mathbf{X}, \mathbf{Z} \mid \boldsymbol{\theta}) = \prod_{n=1}^N \pi_{z_n} \, \mathcal{N}(\mathbf{x}_n \mid \boldsymbol{\mu}_{z_n}, \boldsymbol{\Sigma}_{z_n})$.
+En prenant le logarithme, la somme sort du log et agit terme à terme:
+$$
+\log p(\mathbf{X}, \mathbf{Z} \mid \boldsymbol{\theta}) = \sum_{n=1}^N \left[ \log \pi_{z_n} + \log \mathcal{N}(\mathbf{x}_n \mid \boldsymbol{\mu}_{z_n}, \boldsymbol{\Sigma}_{z_n}) \right].
+$$
+Chaque terme ne fait intervenir qu'**un seul** composant $k = z_n$. On peut alors regrouper les points par composant et obtenir des formules fermées pour $\pi_k$, $\boldsymbol{\mu}_k$, $\boldsymbol{\Sigma}_k$ (moyennes et covariances des points avec $z_n = k$). C'est exactement ce que fait l'étape M de l'algorithme EM, mais avec des responsabilités pondérées au lieu d'assignations dures.
+```
 
 ### Construire une borne inférieure
 
