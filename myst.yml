@@ -30,14 +30,18 @@ project:
   toc:
     - file: drafts/intro.md
     - file: drafts/knn.md
-    - title: "Partie I: Fondements"
+    - title: "Partie I : Apprentissage supervisé et généralisation"
       children:
         - file: ch1_learning_problem.md
         - file: ch2_linear_regression.md
         - file: ch3_classification.md
         - file: ch4_generalization.md
+    - title: "Partie II : Le cadre probabiliste"
+      children:
         - file: ch5_probabilistic.md
         - file: ch6_probabilistic_models.md
+    - title: "Partie III : Réseaux de neurones"
+      children:
         - file: ch7_neural_networks.md
     - title: "Travaux Pratiques"
       children:
