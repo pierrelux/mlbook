@@ -47,6 +47,9 @@
     <loc>http://localhost:3001/tp5-mixture-of-experts</loc>
   </url>
   <url>
+    <loc>http://localhost:3001/tp6-vjp</loc>
+  </url>
+  <url>
     <loc>http://localhost:3001/projet-energie</loc>
   </url>
 </urlset>
