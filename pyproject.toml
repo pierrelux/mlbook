@@ -17,6 +17,7 @@ dependencies = [
     "sphinx-proof",
     "sphinxcontrib-mermaid",
     "sphinxcontrib-bibtex",
+    "jax>=0.9.1",
 ]
 
 [build-system]

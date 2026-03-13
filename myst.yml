@@ -47,6 +47,7 @@ project:
         - file: exercises/tp3_probabilistic_models.ipynb
         - file: exercises/tp4_discriminant_analysis.ipynb
         - file: exercises/tp5_mixture_of_experts.ipynb
+        - file: exercises/tp6_vjp.ipynb
         - file: exercises/projet_energie.ipynb
     # - title: "Présentations"
     #   children:

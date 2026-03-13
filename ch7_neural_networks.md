@@ -1493,67 +1493,13 @@ graph LR
 
 La bande démarre vide et grandit à chaque opération (flèches pleines, gauche à droite). Une fois $f$ calculée, la passe arrière initialise $\bar{v}_3 = 1$ puis remonte la liste à rebours (flèches pointillées, droite à gauche).
 
-Le tableau ci-dessous détaille le contenu de chaque entrée et les formules de VJP associées.
+Le tableau ci-dessous détaille le contenu de chaque entrée et les formules de VJP associées. La barre $\bar{v}$ désigne l'adjoint $\partial f / \partial v$; la passe arrière parcourt les étapes 3 → 2 → 1.
 
-```{code-cell} ipython3
-:tags: [hide-input]
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch
-import numpy as np
-
-%config InlineBackend.figure_format = 'retina'
-
-fig, ax = plt.subplots(figsize=(11, 3.2))
-ax.set_xlim(0, 11)
-ax.set_ylim(0, 3.5)
-ax.axis('off')
-
-columns = ['Étape', 'Opération', 'Entrées', 'Sortie', 'VJP locale']
-col_x   = [0.3, 1.6, 3.5, 5.5, 6.8]
-col_w   = [1.1, 1.7, 1.8, 1.1, 4.0]
-row_h   = 0.60
-rows = [
-    ['1', 'sin',  'x',       'v₁', r'$\bar{x}$ += cos(x) · $\bar{v}_1$'],
-    ['2', 'add',  'x, y',    'v₂', r'$\bar{x}$ += $\bar{v}_2$, $\bar{y}$ += $\bar{v}_2$'],
-    ['3', 'mul',  'v₁, v₂',  'v₃', r'$\bar{v}_1$ += v₂ · $\bar{v}_3$,  $\bar{v}_2$ += v₁ · $\bar{v}_3$'],
-]
-
-header_color = '#4472c4'
-row_colors   = ['#eef3fb', '#dde6f5']
-
-# En-têtes
-for j, (col, cx, cw) in enumerate(zip(columns, col_x, col_w)):
-    rect = FancyBboxPatch((cx, 2.8), cw - 0.05, row_h - 0.05,
-                          boxstyle='round,pad=0.04', linewidth=0,
-                          facecolor=header_color)
-    ax.add_patch(rect)
-    ax.text(cx + (cw - 0.05)/2, 2.8 + (row_h - 0.05)/2, col,
-            ha='center', va='center', fontsize=9.5, color='white', fontweight='bold')
-
-# Lignes
-for i, row in enumerate(rows):
-    bg = row_colors[i % 2]
-    y0 = 2.8 - (i + 1) * row_h
-    for j, (cell, cx, cw) in enumerate(zip(row, col_x, col_w)):
-        rect = FancyBboxPatch((cx, y0), cw - 0.05, row_h - 0.05,
-                              boxstyle='round,pad=0.04', linewidth=0.5,
-                              edgecolor='#aaaaaa', facecolor=bg)
-        ax.add_patch(rect)
-        ax.text(cx + (cw - 0.05)/2, y0 + (row_h - 0.05)/2, cell,
-                ha='center', va='center', fontsize=9,
-                usetex=False)
-
-ax.text(5.5, 3.35, r'Tape pour $f(x,y) = \sin(x)\cdot(x+y)$',
-        ha='center', va='center', fontsize=11, fontweight='bold')
-ax.text(5.5, 0.18,
-        r'La barre $\bar{v}$ désigne $\partial f/\partial v$ (adjoint). '
-        r'La passe arrière parcourt les étapes 3 → 2 → 1.',
-        ha='center', va='center', fontsize=8.5, color='#444444')
-
-plt.tight_layout()
-```
+| Étape | Opération | Entrées | Sortie | VJP locale |
+|:-----:|:---------:|:-------:|:------:|:-----------|
+| 1 | sin | $x$ | $v_1$ | $\bar{x}\ {+}{=}\ \cos(x) \cdot \bar{v}_1$ |
+| 2 | add | $x, y$ | $v_2$ | $\bar{x}\ {+}{=}\ \bar{v}_2$, $\quad \bar{y}\ {+}{=}\ \bar{v}_2$ |
+| 3 | mul | $v_1, v_2$ | $v_3$ | $\bar{v}_1\ {+}{=}\ v_2 \cdot \bar{v}_3$, $\quad \bar{v}_2\ {+}{=}\ v_1 \cdot \bar{v}_3$ |
 
 Chaque ligne de la bande correspond à une opération élémentaire. La passe arrière part de l'adjoint $\bar{v}_3 = 1$ (gradient de $f$ par rapport à lui-même) et remonte: l'étape 3 envoie des gradients à $v_1$ et $v_2$, puis les étapes 2 et 1 envoient leurs gradients à $x$ et $y$.
 
@@ -1591,71 +1537,19 @@ graph TD
     style v2 fill:#f5f5f5,stroke:#888
 ```
 
-La passe arrière initialise `v3.grad = 1.0`, puis parcourt les arêtes à rebours: chaque fermeture accumule les adjoints dans les noeuds parents. Quand les deux fermetures de $v_1$ et $v_2$ ont été appelées, `x.grad` contient la somme des deux contributions.
+La passe arrière initialise $\bar{v}_3 = 1$, puis parcourt les arêtes à rebours: chaque fermeture accumule les adjoints dans les noeuds parents. Quand les deux fermetures de $v_1$ et $v_2$ ont été appelées, `x.grad` contient la somme des deux contributions.
 
-```{code-cell} ipython3
-:tags: [hide-input]
+Le tableau ci-dessous montre la correspondance entre l'exécution Python et la bande construite automatiquement. Chaque ligne de code qui effectue une opération tracée ajoute une entrée sur la bande, avec la règle VJP correspondante.
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+| Ligne Python | Bande: opération enregistrée | VJP locale |
+|:-------------|:-----------------------------|:-----------|
+| `x = Var(0.5)` | *(entrée, pas d'opération)* | — |
+| `y = Var(1.2)` | *(entrée, pas d'opération)* | — |
+| `v1 = sin(x)` | `(sin, x → v₁)` | $\bar{x}\ {+}{=}\ \cos(x) \cdot \bar{v}_1$ |
+| `v2 = x + y` | `(add, x, y → v₂)` | $\bar{x}\ {+}{=}\ \bar{v}_2$, $\quad \bar{y}\ {+}{=}\ \bar{v}_2$ |
+| `v3 = v1 * v2` | `(mul, v₁, v₂ → v₃)` | $\bar{v}_1\ {+}{=}\ v_2 \cdot \bar{v}_3$, $\quad \bar{v}_2\ {+}{=}\ v_1 \cdot \bar{v}_3$ |
 
-%config InlineBackend.figure_format = 'retina'
-
-fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
-fig.patch.set_facecolor('#fafafa')
-
-# ---- Panneau gauche: exécution du code ----
-ax = axes[0]
-ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis('off')
-ax.set_facecolor('#fafafa')
-ax.text(5, 9.5, 'Exécution Python', ha='center', fontsize=11, fontweight='bold')
-
-code_lines = [
-    (1, r'x = Tracer(0.5)',       '#dae8fc'),
-    (2, r'y = Tracer(1.2)',       '#dae8fc'),
-    (3, r'v1 = sin(x)',           '#fff2cc'),
-    (4, r'v2 = x + y',            '#fff2cc'),
-    (5, r'v3 = v1 * v2',          '#fff2cc'),
-]
-for i, (num, line, color) in enumerate(code_lines):
-    y_pos = 8.2 - i * 1.3
-    rect = plt.Rectangle((0.5, y_pos - 0.4), 9, 0.85,
-                          facecolor=color, edgecolor='#888', linewidth=0.8)
-    ax.add_patch(rect)
-    ax.text(1.0, y_pos + 0.02, f'{num}.', fontsize=9, color='#555', va='center')
-    ax.text(2.0, y_pos + 0.02, line, fontsize=9.5, va='center', family='monospace')
-
-ax.annotate('', xy=(5, 1.5), xytext=(5, 2.5),
-            arrowprops=dict(arrowstyle='->', color='#444', lw=1.5))
-ax.text(5, 1.2, 'Construit la bande\nautomatiquement', ha='center', fontsize=9, color='#444')
-
-# ---- Panneau droit: état de la bande ----
-ax2 = axes[1]
-ax2.set_xlim(0, 10); ax2.set_ylim(0, 10); ax2.axis('off')
-ax2.set_facecolor('#fafafa')
-ax2.text(5, 9.5, 'Bande (construite ligne par ligne)', ha='center', fontsize=11, fontweight='bold')
-
-tape_entries = [
-    (r'après ligne 3: (sin, x → v₁)',  r'fermeture: $\bar{x}$ += cos(x)·$\bar{v}_1$'),
-    (r'après ligne 4: (add, x,y → v₂)',r'fermeture: $\bar{x}$ += $\bar{v}_2$, $\bar{y}$ += $\bar{v}_2$'),
-    (r'après ligne 5: (mul, v₁,v₂ → v₃)',r'fermeture: $\bar{v}_1$ += v₂·$\bar{v}_3$, $\bar{v}_2$ += v₁·$\bar{v}_3$'),
-]
-colors2 = ['#fff2cc', '#ffe6cc', '#e2efda']
-for i, (title, detail) in enumerate(tape_entries):
-    y_pos = 7.8 - i * 2.3
-    rect = plt.Rectangle((0.3, y_pos - 0.9), 9.4, 1.75,
-                          facecolor=colors2[i], edgecolor='#888', linewidth=0.8)
-    ax2.add_patch(rect)
-    ax2.text(0.7, y_pos + 0.5, title,   fontsize=9,   va='center', fontweight='bold')
-    ax2.text(0.7, y_pos - 0.2, detail,  fontsize=8.5, va='center', color='#333')
-
-ax2.text(5, 0.8,
-    'Passe arrière: parcourir la bande\nde bas en haut, appeler chaque fermeture',
-    ha='center', fontsize=9, color='#444',
-    bbox=dict(facecolor='#f8cecc', edgecolor='#b85450', boxstyle='round,pad=0.3'))
-
-plt.tight_layout()
-```
+La passe arrière parcourt la bande de bas en haut (étapes 3 → 2 → 1), en appelant chaque règle VJP.
 
 L'exécution Python se déroule normalement, ligne par ligne. Python ne sait pas qu'il trace un graphe: il appelle simplement les méthodes `__add__`, `__mul__`, `sin` sur les objets traceurs, et ces méthodes enregistrent discrètement les opérations. Quand l'exécution est terminée, la bande est complète, et la passe arrière peut s'exécuter.
 
@@ -1694,78 +1588,103 @@ grad_jnp = jax.grad(f_jnp)(1.0)   # fonctionne: retourne cos(1)*1 + sin(1) ≈ 1
 
 *Cette sous-section est optionnelle pour IFT3395. Elle montre comment implémenter un moteur de différentiation automatique en mode arrière en une soixantaine de lignes de Python pur.*
 
-Nous allons construire une classe `Value` qui encapsule un nombre flottant et enregistre les opérations, exactement comme un traceur. Cette implémentation s'inspire de la bibliothèque autograd {cite}`maclaurin2015autograd` et de micrograd (Karpathy).
+La section précédente a identifié trois mécanismes: les règles VJP locales, la bande d'enregistrement, et la passe arrière. Nous allons maintenant les assembler en une implémentation fonctionnelle, structurée comme le seraient JAX ou autograd en version simplifiée {cite}`maclaurin2015autograd`. L'architecture se décompose en trois parties:
+
+1. **Une bibliothèque de règles VJP.** Pour chaque opération primitive, une fonction qui prend les résidus (valeurs de la passe avant nécessaires au calcul du gradient) et le cotangent amont $\bar{v}$, et retourne les cotangents pour chaque entrée. Ces fonctions sont les mêmes que celles du tableau de la section précédente.
+2. **Un traceur avec bande.** Un objet `Var` qui encapsule un flottant et enregistre chaque opération sur une bande globale. C'est l'analogue simplifié des traceurs de JAX.
+3. **Une fonction `grad`.** Un opérateur d'ordre supérieur, analogue à `jax.grad`, qui trace la fonction puis parcourt la bande à rebours en appelant les règles VJP.
 
 ```{code-cell} ipython3
 import math
 
-class Value:
-    """Scalaire différentiable: encapsule un flottant et construit la bande."""
+# ---- 1. Bibliothèque de règles VJP ----
+# Signature commune: vjp(résidus, cotangent_sortie) → cotangents_entrées
 
-    def __init__(self, data, _backward=lambda: None, _prev=()):
-        self.data      = float(data)
-        self.grad      = 0.0          # adjoint accumulé (∂f/∂self)
-        self._backward = _backward    # fermeture VJP locale
-        self._prev     = set(_prev)   # prédécesseurs dans le graphe
+def add_vjp(res, g):
+    return (g, g)                        # ∂(a+b)/∂a = 1, ∂(a+b)/∂b = 1
 
-    # ---- opérations élémentaires ----
+def mul_vjp(res, g):
+    a, b = res
+    return (b * g, a * g)                # ∂(a·b)/∂a = b, ∂(a·b)/∂b = a
+
+def sin_vjp(res, g):
+    (a,) = res
+    return (math.cos(a) * g,)            # ∂sin(a)/∂a = cos(a)
+
+def relu_vjp(res, g):
+    (a,) = res
+    return (float(a > 0) * g,)           # ∂relu(a)/∂a = 𝟙(a > 0)
+
+
+# ---- 2. Traceur et bande ----
+
+_tape = []      # bande globale: [(vjp_fn, résidus, ids_entrées, id_sortie)]
+_n_vars = 0     # compteur d'identifiants
+
+class Var:
+    """Traceur scalaire: encapsule un flottant et un identifiant unique."""
+
+    def __init__(self, data):
+        global _n_vars
+        self.data = float(data)
+        self.id = _n_vars
+        _n_vars += 1
+
+    def _record(self, vjp_fn, res, inputs, out_data):
+        """Enregistre une opération sur la bande et retourne un nouveau Var."""
+        out = Var(out_data)
+        _tape.append((vjp_fn, res, [v.id for v in inputs], out.id))
+        return out
 
     def __add__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data + other.data, _prev=(self, other))
-        def _backward():
-            self.grad  += out.grad    # ∂add/∂self  = 1
-            other.grad += out.grad    # ∂add/∂other = 1
-        out._backward = _backward
-        return out
+        other = other if isinstance(other, Var) else Var(other)
+        return self._record(add_vjp, (self.data, other.data),
+                            [self, other], self.data + other.data)
 
     def __radd__(self, other): return self.__add__(other)
 
     def __mul__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data * other.data, _prev=(self, other))
-        def _backward():
-            self.grad  += other.data * out.grad   # ∂mul/∂self  = other
-            other.grad += self.data  * out.grad   # ∂mul/∂other = self
-        out._backward = _backward
-        return out
+        other = other if isinstance(other, Var) else Var(other)
+        return self._record(mul_vjp, (self.data, other.data),
+                            [self, other], self.data * other.data)
 
     def __rmul__(self, other): return self.__mul__(other)
 
     def sin(self):
-        out = Value(math.sin(self.data), _prev=(self,))
-        def _backward():
-            self.grad += math.cos(self.data) * out.grad   # ∂sin/∂self = cos
-        out._backward = _backward
-        return out
+        return self._record(sin_vjp, (self.data,),
+                            [self], math.sin(self.data))
 
     def relu(self):
-        out = Value(max(0.0, self.data), _prev=(self,))
-        def _backward():
-            self.grad += (out.data > 0) * out.grad   # ∂relu/∂self = 1 si >0
-        out._backward = _backward
-        return out
+        return self._record(relu_vjp, (self.data,),
+                            [self], max(0.0, self.data))
 
-    # ---- passe arrière ----
 
-    def backward(self):
-        # 1. Tri topologique (DFS depuis self)
-        topo, visited = [], set()
-        def build(v):
-            if v not in visited:
-                visited.add(v)
-                for child in v._prev:
-                    build(child)
-                topo.append(v)
-        build(self)
-        # 2. Accumulation des adjoints en ordre inverse
-        self.grad = 1.0
-        for v in reversed(topo):
-            v._backward()
+# ---- 3. Fonction grad (analogue à jax.grad) ----
 
-    def __repr__(self):
-        return f'Value(data={self.data:.4f}, grad={self.grad:.4f})'
+def grad(f):
+    """Retourne une fonction qui calcule le gradient de f."""
+    def grad_fn(*args):
+        global _tape, _n_vars
+        _tape, _n_vars = [], 0               # réinitialiser la bande
+
+        # Passe avant: tracer l'exécution
+        traced = [Var(a) for a in args]
+        result = f(*traced)
+
+        # Passe arrière: propager les cotangents
+        adjoints = [0.0] * _n_vars
+        adjoints[result.id] = 1.0            # ∂f/∂f = 1
+
+        for vjp_fn, res, in_ids, out_id in reversed(_tape):
+            cotangents = vjp_fn(res, adjoints[out_id])
+            for idx, ct in zip(in_ids, cotangents):
+                adjoints[idx] += ct          # accumulation (fan-out)
+
+        return tuple(adjoints[v.id] for v in traced)
+    return grad_fn
 ```
+
+La séparation en trois parties n'est pas un choix esthétique: c'est la structure réelle des bibliothèques d'AD. Dans JAX, les règles VJP sont enregistrées via `jax.custom_vjp`, la bande est construite par le traceur interne, et `jax.grad` orchestre la passe arrière. Notre implémentation reproduit cette architecture en miniature.
 
 Vérifions sur $f(x, y) = \sin(x) \cdot (x + y)$:
 
@@ -1775,31 +1694,31 @@ import math
 # --- Valeurs de test ---
 x0, y0 = 0.5, 1.2
 
-# --- Avec Value ---
-x = Value(x0)
-y = Value(y0)
-f = x.sin() * (x + y)
-f.backward()
+# --- Avec notre moteur d'AD ---
+def f(x, y):
+    return x.sin() * (x + y)
 
-print(f'f({x0}, {y0}) = {f.data:.6f}')
-print(f'∂f/∂x (Value)    = {x.grad:.6f}')
-print(f'∂f/∂y (Value)    = {y.grad:.6f}')
+df_dx, df_dy = grad(f)(x0, y0)
+
+print(f'f({x0}, {y0})          = {math.sin(x0) * (x0 + y0):.6f}')
+print(f'∂f/∂x (AD)           = {df_dx:.6f}')
+print(f'∂f/∂y (AD)           = {df_dy:.6f}')
 
 # --- Vérification analytique ---
 df_dx_exact = math.cos(x0) * (x0 + y0) + math.sin(x0)
 df_dy_exact = math.sin(x0)
-print(f'∂f/∂x (exact)    = {df_dx_exact:.6f}')
-print(f'∂f/∂y (exact)    = {df_dy_exact:.6f}')
+print(f'∂f/∂x (exact)        = {df_dx_exact:.6f}')
+print(f'∂f/∂y (exact)        = {df_dy_exact:.6f}')
 
 # --- Vérification par différences finies ---
 eps = 1e-5
 df_dx_num = (math.sin(x0+eps)*(x0+eps+y0) - math.sin(x0-eps)*(x0-eps+y0)) / (2*eps)
 df_dy_num = (math.sin(x0)*(x0+y0+eps)     - math.sin(x0)*(x0+y0-eps))     / (2*eps)
-print(f'∂f/∂x (diff. fin.) = {df_dx_num:.6f}')
-print(f'∂f/∂y (diff. fin.) = {df_dy_num:.6f}')
+print(f'∂f/∂x (diff. fin.)  = {df_dx_num:.6f}')
+print(f'∂f/∂y (diff. fin.)  = {df_dy_num:.6f}')
 ```
 
-Les trois méthodes sont en accord. Notez en particulier que $\partial f / \partial x$ inclut deux termes, correspondant aux deux chemins dans le graphe.
+Les trois méthodes sont en accord. Remarquez que `grad` est une fonction d'ordre supérieur qui retourne une nouvelle fonction, exactement comme `jax.grad`. L'accumulation des adjoints (ligne `adjoints[idx] += ct`) gère automatiquement le cas où une variable contribue à plusieurs branches du calcul — c'est la somme des deux chemins pour $x$.
 
 ### La programmation différentiable
 
