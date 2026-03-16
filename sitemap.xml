@@ -29,6 +29,12 @@
     <loc>http://localhost:3001/ch7-neural-networks</loc>
   </url>
   <url>
+    <loc>http://localhost:3001/ch8-rnn</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3001/ch9-transformers</loc>
+  </url>
+  <url>
     <loc>http://localhost:3001/tp0-knn</loc>
   </url>
   <url>
