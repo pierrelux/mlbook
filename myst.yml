@@ -43,6 +43,8 @@ project:
     - title: "Partie III : Réseaux de neurones"
       children:
         - file: ch7_neural_networks.md
+        - file: ch8_rnn.md
+        - file: ch9_transformers.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb

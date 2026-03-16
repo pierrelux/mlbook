@@ -11,7 +11,7 @@ kernelspec:
 
 À la fin de ce chapitre, vous serez en mesure de:
 - Relier les réseaux de neurones au cadre du maximum de vraisemblance vu aux chapitres précédents
-- Expliquer pourquoi le problème XOR motive les architectures multicouches
+- Expliquer pourquoi le perceptron simple ne peut pas résoudre certains problèmes (comme XOR) et pourquoi cela motive les architectures multicouches
 - Expliquer comment les réseaux de neurones apprennent leurs propres caractéristiques, contrairement aux modèles à expansion fixe
 - Définir l'architecture d'un perceptron multicouche (MLP) et le rôle des fonctions d'activation
 - Dériver l'algorithme de rétropropagation à partir de la règle de la chaîne
@@ -19,11 +19,12 @@ kernelspec:
 - Expliquer le paradigme de la programmation différentiable
 - Décrire les algorithmes d'optimisation courants (SGD, momentum, Adam) et leurs différences
 - Appliquer les techniques de régularisation (décroissance des poids, dropout) pour réduire le surapprentissage
+- Identifier l'architecture d'un MLP pour la régression et la classification, et la relier aux modèles linéaires des chapitres 2 et 3
 ```
 
 Aux chapitres 2 et 3, nous avons construit des modèles linéaires pour la régression et la classification. Au chapitre 4, nous avons vu comment enrichir ces modèles en transformant les entrées par une fonction $\boldsymbol{\phi}$ fixée à l'avance. Ce chapitre franchit une étape supplémentaire: au lieu de choisir $\boldsymbol{\phi}$ manuellement, nous allons l'apprendre à partir des données. Cette idée conduit aux réseaux de neurones.
 
-Dans ce chapitre, nous commençons par un exemple concret (le problème XOR) qui illustre en quatre points pourquoi les modèles linéaires atteignent une limite fondamentale. Nous rappelons ensuite le cadre probabiliste qui unifie régression et classification, puis nous présentons l'anatomie d'un réseau (couches, activations, architecture). La section sur la rétropropagation est plus technique: elle dérive l'algorithme de calcul des gradients pas à pas. Vous pouvez survoler les détails en première lecture et retenir le mécanisme général. Nous couvrons ensuite les algorithmes d'optimisation utilisés en pratique (SGD, momentum, Adam), la différentiation automatique, les techniques de stabilisation de l'entraînement, et la régularisation. La section d'implémentation clôt le chapitre avec un MLP complet en NumPy.
+Dans ce chapitre, nous rappelons d'abord le cadre probabiliste qui unifie régression et classification, puis nous montrons comment le perceptron simple atteint une limite structurelle (illustrée par le problème XOR). Nous présentons ensuite l'anatomie d'un réseau multicouche (couches, activations, architecture). La section sur la différentiation automatique est plus technique: elle développe la règle de la chaîne, les produits jacobien-vecteur, et l'algorithme de rétropropagation, puis montre comment les bibliothèques modernes implémentent ces idées. Vous pouvez survoler les détails en première lecture et retenir le mécanisme général. Nous couvrons ensuite les algorithmes d'optimisation (SGD, momentum, Adam), les techniques de stabilisation de l'entraînement, et la régularisation. La section d'implémentation propose un MLP complet en NumPy, et le chapitre se termine par une mise en perspective montrant comment les MLP sont utilisés en pratique pour la régression et la classification, et quelles sont leurs limites face aux données structurées.
 
 ## Le cadre unifié: prédire les paramètres d'une distribution
 
@@ -203,15 +204,7 @@ La convergence est plus délicate qu'avec la descente de gradient sur une foncti
 
 Toutes ces variantes (perceptron, régression logistique, moindres carrés) partagent la même contrainte: leur frontière de décision est un hyperplan. Quelle que soit la façon dont on choisit ou entraîne les poids $\boldsymbol{\theta}$, on ne peut séparer que des classes linéairement séparables.
 
-C'est précisément ce que Minsky et Papert ont formalisé en 1969 {cite}`minsky1969perceptrons`, en montrant que certaines fonctions booléennes (notamment XOR) sont impossibles à apprendre pour un perceptron simple. Leur analyse a eu un impact considérable sur le domaine, contribuant à un ralentissement de la recherche sur les réseaux de neurones pendant plusieurs années. Ce que leur livre contenait également, sans que cela soit toujours mis en avant, c'est la solution: empiler deux couches de perceptrons suffit à résoudre XOR. C'est ce que nous allons explorer maintenant.
-
-## Le problème XOR: pourquoi les modèles linéaires ne suffisent pas
-
-Avant de définir formellement les réseaux de neurones, partons d'un exemple concret qui illustre la limite des modèles linéaires et motive directement l'idée d'empiler plusieurs couches.
-
-### Une fonction simple que la régression logistique ne peut pas apprendre
-
-La fonction XOR (ou exclusif) prend deux entrées binaires et retourne 1 si exactement l'une d'elles vaut 1:
+C'est précisément ce que Minsky et Papert ont formalisé en 1969 {cite}`minsky1969perceptrons`, en montrant que certaines fonctions booléennes sont impossibles à apprendre pour un perceptron simple. L'exemple canonique est la fonction XOR (ou exclusif):
 
 | $x_1$ | $x_2$ | $y = x_1 \oplus x_2$ |
 |:-----:|:-----:|:--------------------:|
@@ -220,200 +213,9 @@ La fonction XOR (ou exclusif) prend deux entrées binaires et retourne 1 si exac
 | 1     | 0     | 1                    |
 | 1     | 1     | 0                    |
 
-Un modèle linéaire pour la classification binaire prédit $\hat{y} = \sigma(\theta_1 x_1 + \theta_2 x_2 + b)$. La frontière de décision $\theta_1 x_1 + \theta_2 x_2 + b = 0$ est une droite dans le plan $(x_1, x_2)$.
+Les points de classe 0 sont disposés en diagonale, $(0,0)$ et $(1,1)$, et ceux de classe 1 sur l'autre, $(0,1)$ et $(1,0)$. Aucune droite ne peut séparer ces deux groupes. Mais Minsky et Papert montraient aussi la solution: empiler deux couches de perceptrons suffit, car la première couche peut transformer l'espace de sorte que les classes deviennent linéairement séparables. Nous verrons dans la section d'implémentation qu'un petit MLP résout XOR sans difficulté.
 
-Le problème est géométrique: les deux points de la classe 0, $(0,0)$ et $(1,1)$, sont disposés en diagonale, et les deux points de la classe 1, $(0,1)$ et $(1,0)$, sont sur l'autre diagonale. Aucune droite ne peut séparer ces deux groupes. La figure ci-dessous le rend évident.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-%config InlineBackend.figure_format = 'retina'
-
-# Points XOR
-X = np.array([[0,0],[0,1],[1,0],[1,1]], dtype=float)
-y = np.array([0, 1, 1, 0])
-
-markers = ['s', 'o']
-colors  = ['#4878CF', '#D65F5F']
-labels  = ['Classe 0', 'Classe 1']
-
-fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-# --- Panneau gauche: espace original ---
-ax = axes[0]
-for cls in [0, 1]:
-    mask = y == cls
-    ax.scatter(X[mask, 0], X[mask, 1],
-               marker=markers[cls], color=colors[cls],
-               s=180, zorder=5, label=labels[cls], edgecolors='k', linewidths=1.2)
-# Tentative de droite séparatrice (impossible)
-xline = np.linspace(-0.3, 1.3, 100)
-ax.plot(xline, -xline + 1, 'k--', lw=1.5, alpha=0.5, label='Meilleure droite')
-ax.plot(xline, -xline + 0.5, 'k:', lw=1.5, alpha=0.3)
-ax.set_xlim(-0.4, 1.4)
-ax.set_ylim(-0.4, 1.4)
-ax.set_xlabel(r'$x_1$')
-ax.set_ylabel(r'$x_2$')
-ax.set_title('Espace original: XOR non séparable')
-ax.legend(fontsize=9)
-ax.grid(True, alpha=0.3)
-ax.set_aspect('equal')
-ax.text(0.5, 1.1, 'Aucune droite ne sépare\nles deux classes',
-        ha='center', fontsize=8.5, color='#555555',
-        bbox=dict(boxstyle='round,pad=0.3', fc='#fffbe6', ec='#ccbb00', alpha=0.9))
-
-# --- Panneau droit: espace transformé ---
-# h1 = ReLU(x1 + x2 - 0.5),  h2 = ReLU(x1 + x2 - 1.5)
-W1 = np.array([[1., 1.], [1., 1.]])
-b1 = np.array([-0.5, -1.5])
-H = np.maximum(0, X @ W1.T + b1)   # shape (4, 2)
-
-ax = axes[1]
-for cls in [0, 1]:
-    mask = y == cls
-    ax.scatter(H[mask, 0], H[mask, 1],
-               marker=markers[cls], color=colors[cls],
-               s=180, zorder=5, label=labels[cls], edgecolors='k', linewidths=1.2)
-# Frontière séparatrice dans l'espace transformé: w2=[1,-3], b=-0.4 → h1 - 3*h2 = 0.4
-hline = np.linspace(-0.1, 1.8, 100)
-ax.plot(hline, (hline - 0.4) / 3, 'g-', lw=2, label='Séparateur linéaire')
-ax.set_xlim(-0.15, 1.8)
-ax.set_ylim(-0.2, 0.8)
-ax.set_xlabel(r'$h_1 = \mathrm{ReLU}(x_1+x_2-0{,}5)$')
-ax.set_ylabel(r'$h_2 = \mathrm{ReLU}(x_1+x_2-1{,}5)$')
-ax.set_title('Espace transformé: XOR devient séparable')
-ax.legend(fontsize=9)
-ax.grid(True, alpha=0.3)
-ax.set_aspect('equal')
-ax.annotate('$(0,0)$ et $(0{,}5, 0)$\ncollapsent: $(1,0)=(0,1)$',
-            xy=(0.5, 0.0), xytext=(0.8, 0.35),
-            fontsize=7.5, color='#555555',
-            arrowprops=dict(arrowstyle='->', color='gray', lw=1),
-            bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='gray', alpha=0.8))
-
-plt.tight_layout()
-```
-
-À gauche, aucune droite ne peut séparer les classes: le problème est géométriquement impossible pour un modèle linéaire. À droite, après une transformation par deux neurones ReLU, les quatre points se retrouvent dans un espace où une droite les sépare.
-
-### La solution: transformer l'espace d'entrée
-
-Nous avons vu à la section précédente qu'un perceptron (ou n'importe quel modèle linéaire) ne peut pas apprendre XOR. L'idée est alors de transformer les entrées dans un espace où les classes deviennent séparables linéairement, puis d'appliquer un classifieur linéaire dans cet espace transformé.
-
-Pour XOR, voici une telle transformation construite à la main. Définissons deux neurones ReLU:
-
-$$
-h_1 = \text{ReLU}(x_1 + x_2 - 0{,}5), \qquad h_2 = \text{ReLU}(x_1 + x_2 - 1{,}5)
-$$
-
-Calculons les valeurs pour chaque point:
-
-| $(x_1, x_2)$ | $x_1+x_2$ | $h_1$ | $h_2$ | $y$ |
-|:------------:|:---------:|:-----:|:-----:|:---:|
-| $(0,0)$      | $0$       | $0$   | $0$   | $0$ |
-| $(0,1)$      | $1$       | $0{,}5$ | $0$ | $1$ |
-| $(1,0)$      | $1$       | $0{,}5$ | $0$ | $1$ |
-| $(1,1)$      | $2$       | $1{,}5$ | $0{,}5$ | $0$ |
-
-Dans l'espace $(h_1, h_2)$, les points de classe 1 se trouvent en $(0{,}5, 0)$, et les points de classe 0 en $(0, 0)$ et $(1{,}5, 0{,}5)$. Une droite $h_1 - 3h_2 = 0{,}4$ les sépare.
-
-Le classifieur complet est donc:
-
-$$
-\hat{y} = \sigma\!\left(\underbrace{h_1 - 3h_2 - 0{,}4}_{\text{couche de sortie}}\right), \quad \text{où} \quad
-\begin{pmatrix} h_1 \\ h_2 \end{pmatrix} = \text{ReLU}\!\left(\begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix}\mathbf{x} + \begin{pmatrix} -0{,}5 \\ -1{,}5 \end{pmatrix}\right)
-$$
-
-C'est exactement la structure d'un réseau à une couche cachée: une transformation non linéaire $\mathbf{x} \mapsto \mathbf{h}$ suivie d'un classifieur linéaire $\mathbf{h} \mapsto \hat{y}$.
-
-### Ce que l'exemple révèle
-
-Trois points méritent d'être notés:
-
-**La couche cachée crée des caractéristiques.** Les activations $h_1$ et $h_2$ ne sont pas des entrées fournies à l'avance, elles sont calculées par le réseau. $h_1$ détecte si au moins une entrée est active; $h_2$ détecte si les deux sont actives. Ensemble, elles encodent l'information nécessaire pour XOR.
-
-**La non-linéarité est indispensable.** Si les fonctions ReLU étaient remplacées par des transformations linéaires, la composition des deux couches se réduirait à une seule transformation linéaire (exercice 1), et le problème XOR resterait insoluble.
-
-**Les paramètres ont été choisis à la main ici.** En pratique, pour des données complexes, nous ne savons pas quelle transformation construire. C'est là qu'intervient l'apprentissage: l'algorithme d'optimisation ajuste $W_1$, $\mathbf{b}_1$, $\mathbf{w}_2$, $b_2$ pour que le réseau découvre lui-même la bonne représentation.
-
-La figure ci-dessous montre la frontière de décision apprise par un MLP entraîné sur XOR. Le réseau n'a pas besoin qu'on lui indique la transformation à faire: il la découvre à partir des quatre exemples.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-%config InlineBackend.figure_format = 'retina'
-
-np.random.seed(7)
-
-def relu(x):
-    return np.maximum(0, x)
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-np.clip(x, -50, 50)))
-
-# --- Entraînement d'un petit MLP sur XOR ---
-X_xor = np.array([[0,0],[0,1],[1,0],[1,1]], dtype=float)
-y_xor = np.array([[0],[1],[1],[0]], dtype=float)
-
-H = 8   # neurones cachés
-W1 = np.random.randn(2, H) * 0.5
-b1 = np.zeros(H)
-W2 = np.random.randn(H, 1) * 0.5
-b2 = np.zeros(1)
-
-lr = 0.5
-for _ in range(8000):
-    # Passe avant
-    a1 = X_xor @ W1 + b1
-    z1 = relu(a1)
-    a2 = z1 @ W2 + b2
-    p  = sigmoid(a2)
-    # Perte entropie croisée
-    # Passe arrière
-    dp  = p - y_xor                      # (4,1)
-    dW2 = z1.T @ dp / 4
-    db2 = dp.mean(axis=0)
-    dz1 = dp @ W2.T
-    da1 = dz1 * (a1 > 0).astype(float)
-    dW1 = X_xor.T @ da1 / 4
-    db1 = da1.mean(axis=0)
-    W1 -= lr * dW1;  b1 -= lr * db1
-    W2 -= lr * dW2;  b2 -= lr * db2
-
-# --- Grille de décision ---
-xx, yy = np.meshgrid(np.linspace(-0.3, 1.3, 300),
-                     np.linspace(-0.3, 1.3, 300))
-Xg = np.column_stack([xx.ravel(), yy.ravel()])
-zz = sigmoid(relu(Xg @ W1 + b1) @ W2 + b2).reshape(xx.shape)
-
-fig, ax = plt.subplots(figsize=(5, 4.5))
-cf = ax.contourf(xx, yy, zz, levels=50, cmap='RdBu_r', alpha=0.7, vmin=0, vmax=1)
-ax.contour(xx, yy, zz, levels=[0.5], colors='k', linewidths=2)
-plt.colorbar(cf, ax=ax, label=r'$p(y=1 \mid \mathbf{x})$')
-
-markers = ['s', 'o'];  colors_pt = ['#4878CF', '#D65F5F']
-for cls in [0, 1]:
-    mask = y_xor.ravel() == cls
-    ax.scatter(X_xor[mask, 0], X_xor[mask, 1],
-               marker=markers[cls], color=colors_pt[cls],
-               s=200, zorder=5, edgecolors='k', linewidths=1.5,
-               label=f'Classe {cls}')
-
-ax.set_xlim(-0.3, 1.3);  ax.set_ylim(-0.3, 1.3)
-ax.set_xlabel(r'$x_1$');  ax.set_ylabel(r'$x_2$')
-ax.set_title('Frontière de décision apprise par un MLP sur XOR')
-ax.legend(fontsize=9)
-ax.grid(True, alpha=0.2)
-plt.tight_layout()
-```
-
-La frontière de décision est clairement non linéaire: le réseau a appris à isoler les deux régions où $y=1$ (en haut à gauche et en bas à droite). Un modèle linéaire produirait une seule droite, incapable de réaliser cette séparation.
-
-**Point de contrôle.** Si vous comprenez pourquoi aucune droite ne peut séparer les classes dans le panneau gauche de la première figure, et comment la couche cachée résout ce problème dans le panneau droit, vous avez saisi la motivation centrale des réseaux multicouches. La suite du chapitre formalisera et généralisera cette idée.
+Leur analyse a contribué à un ralentissement de la recherche sur les réseaux de neurones pendant plusieurs années, jusqu'à ce que les avancées en optimisation et en calcul redonnent vie au domaine. La section suivante formalise l'architecture multicouche qui résout cette limitation.
 
 ## Anatomie d'un réseau de neurones
 
@@ -495,7 +297,7 @@ $$
 
 Ses avantages sont sa simplicité de calcul et l'absence de saturation pour les valeurs positives. Sa dérivée vaut 1 pour $a > 0$ et 0 pour $a < 0$. Un inconvénient est que les neurones dont la pré-activation est toujours négative ont un gradient nul et cessent d'apprendre: c'est le problème des « neurones morts ».
 
-Plusieurs variantes de ReLU existent pour atténuer ce problème. La **Leaky ReLU** utilise une petite pente $\alpha \approx 0{,}01$ pour les valeurs négatives: $\text{LeakyReLU}(a) = \max(\alpha a, a)$. La **GELU** (*Gaussian Error Linear Unit*), définie par $\text{GELU}(a) = a \cdot \Phi(a)$ où $\Phi$ est la fonction de répartition normale, est utilisée dans les architectures modernes comme les transformers.
+Plusieurs variantes de ReLU existent pour atténuer ce problème. La **Leaky ReLU** utilise une petite pente $\alpha \approx 0{,}01$ pour les valeurs négatives: $\text{LeakyReLU}(a) = \max(\alpha a, a)$. La **GELU** (*Gaussian Error Linear Unit*), définie par $\text{GELU}(a) = a \cdot \Phi(a)$ où $\Phi$ est la fonction de répartition normale, est utilisée dans les architectures modernes comme les transformeurs.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -556,7 +358,7 @@ ax.set_ylim(-0.1, 1.1)
 plt.tight_layout()
 ```
 
-La dérivée de la sigmoïde est bornée par 0,25: à chaque couche, le gradient est multiplié par un facteur d'au plus 0,25. Ce phénomène de **saturation** est la cause principale du gradient qui disparaît dans les réseaux profonds (section "Instabilité du gradient en profondeur").
+La dérivée de la sigmoïde est bornée par 0,25: à chaque couche, le gradient est multiplié par un facteur d'au plus 0,25. Ce phénomène de **saturation** est la cause principale de la dissolution du gradient dans les réseaux profonds (section "Instabilité du gradient en profondeur").
 
 ### Le perceptron multicouche
 
@@ -742,9 +544,11 @@ Les deux architectures approximent raisonnablement bien la même fonction cible.
 
 À ce stade, vous avez vu la structure d'un réseau de neurones: des couches qui alternent transformations linéaires et non-linéarités, avec une couche de sortie adaptée au problème (régression ou classification). La question suivante est: comment apprendre les paramètres?
 
-## Rétropropagation
+## Différentiation automatique
 
-Cette section est plus technique que les précédentes. Nous y dérivons l'algorithme de rétropropagation pas à pas, en utilisant la règle de la chaîne et les produits jacobien-vecteur. Si les détails des jacobiennes semblent abstraits au premier abord, concentrez-vous sur l'exemple travaillé (section "Exemple: MLP avec une couche cachée") qui rend ces idées concrètes. Vous pouvez aussi sauter directement à la section sur la différentiation automatique et revenir ici plus tard: en pratique, les bibliothèques modernes calculent les gradients automatiquement.
+Pour optimiser les paramètres d'un réseau, nous avons besoin du gradient de la perte par rapport à chaque paramètre. Dans un réseau à $L$ couches, la perte dépend des paramètres de la couche $\ell$ à travers toutes les couches suivantes $\ell+1, \ldots, L$: le calcul du gradient exige d'appliquer la règle de la chaîne à travers tout le graphe de calcul.
+
+Cette section présente la différentiation automatique (AD), le cadre général qui formalise ce calcul. Nous commençons par situer l'AD parmi les approches de calcul de dérivées, puis nous développons la règle de la chaîne sous forme de produits jacobien-vecteur (JVP et VJP), avec un exemple concret sur un MLP. Nous montrons ensuite comment les bibliothèques modernes (JAX, PyTorch) implémentent ce principe sur des programmes arbitraires, via les graphes de calcul et le traçage d'opérations. L'algorithme de rétropropagation (*backpropagation*) n'est rien d'autre que l'AD en mode arrière appliquée au graphe d'un réseau de neurones.
 
 ````{admonition} Rappel: jacobiennes, hessiennes et conventions d'agencement
 :class: note dropdown
@@ -785,15 +589,24 @@ Ces deux conventions sont cohérentes en interne, mais les formules de la règle
 Ces dimensions se composent cohéremment: le produit $\mathbf{J}_\mathcal{L} \cdot \mathbf{J}_g \cdot \mathbf{J}_f \in \mathbb{R}^{1 \times n}$ donne bien un vecteur ligne, dont la transposée est le gradient par rapport à l'entrée $\mathbf{z}$.
 ````
 
-### Le problème du gradient
+### Différentiation numérique, symbolique et automatique
 
-Nous savons depuis le chapitre 3 que la descente de gradient (et ses variantes stochastiques) est l'outil d'optimisation standard pour les modèles paramétriques. Pour un réseau de neurones avec paramètres $\boldsymbol{\theta} = \{(W_\ell, \mathbf{b}_\ell)\}_{\ell=1}^L$, nous devons calculer le gradient de la perte par rapport à chaque paramètre:
+Pour calculer la dérivée d'un programme, trois approches existent:
+
+La **différentiation numérique** approxime la dérivée par différences finies:
 
 $$
-\nabla_{W_\ell} \mathcal{L}, \quad \nabla_{\mathbf{b}_\ell} \mathcal{L} \quad \text{pour } \ell = 1, \ldots, L
+\frac{\partial f}{\partial x_i} \approx \frac{f(\mathbf{x} + \epsilon \mathbf{e}_i) - f(\mathbf{x} - \epsilon \mathbf{e}_i)}{2\epsilon}
 $$
 
-Le défi est que la perte dépend des paramètres de la couche $\ell$ à travers toutes les couches suivantes $\ell+1, \ldots, L$. La rétropropagation (*backpropagation*) résout ce problème en appliquant systématiquement la règle de la chaîne.
+Cette méthode est simple à implémenter mais souffre de deux problèmes: elle requiert $O(n)$ évaluations de $f$ pour un gradient en dimension $n$, et elle est sujette aux erreurs d'arrondi (le choix de $\epsilon$ est délicat). Elle reste utile pour *vérifier* des implémentations de gradient.
+
+La **différentiation symbolique** applique les règles de dérivation formellement, comme on le ferait à la main. Elle produit des expressions exactes, mais ces expressions peuvent croître exponentiellement en taille pour des programmes complexes. De plus, elle requiert que le programme soit représenté sous forme symbolique, ce qui exclut les structures de contrôle (boucles, conditions).
+
+La **différentiation automatique** (AD) est une troisième voie. Elle évalue la dérivée exacte d'un programme numérique en le décomposant en opérations élémentaires et en appliquant la règle de la chaîne à chaque étape. Contrairement à la différentiation numérique, elle est exacte (aux erreurs de virgule flottante près). Contrairement à la différentiation symbolique, elle opère sur des valeurs numériques, pas sur des expressions, et gère naturellement les boucles et les conditions.
+
+La rétropropagation n'est rien d'autre que la différentiation automatique en mode arrière, appliquée au programme qui calcule la perte d'un réseau de neurones.
+
 
 ### La règle de la chaîne pour les compositions
 
@@ -996,7 +809,7 @@ où $\odot$ désigne le produit élément par élément. Chaque ligne utilise un
 
 **Point de contrôle:** Si vous pouvez suivre cet exemple du début à la fin, vous avez compris le mécanisme de la rétropropagation. L'algorithme général ci-dessous ne fait que formaliser cette procédure pour un nombre arbitraire de couches. Si certaines étapes restent floues, l'exercice 3 vous permettra de refaire ce calcul vous-même avec des valeurs numériques.
 
-### L'algorithme général
+### L'algorithme de rétropropagation
 
 Pour un réseau à $K$ couches, la rétropropagation suit cet algorithme:
 
@@ -1024,308 +837,10 @@ Pour un réseau à $K$ couches, la rétropropagation suit cet algorithme:
 
 Le vecteur $\mathbf{u}_k$ est l'adjoint: il accumule la sensibilité de la perte aux activations de la couche $k$. À chaque étape, deux produits sont calculés: un pour obtenir le gradient des paramètres de la couche courante, et un pour propager l'adjoint vers la couche précédente.
 
-## Optimisation
 
-La rétropropagation produit les gradients $\nabla_{\boldsymbol{\theta}} \mathcal{L}$. Il reste à décider comment utiliser ces gradients pour mettre à jour les paramètres. Cette section présente les algorithmes d'optimisation les plus utilisés en pratique, de la descente de gradient stochastique jusqu'à Adam.
+La rétropropagation applique le mode arrière à un réseau en chaîne. Mais les programmes réels ont des structures plus riches: des variables utilisées plusieurs fois, des branchements, des boucles. Nous allons maintenant montrer comment l'AD généralise ces idées à des graphes de calcul arbitraires. C'est ce qui permet à des bibliothèques comme JAX ou PyTorch de différentier n'importe quelle fonction Python: on écrit `import jax.numpy as jnp` au lieu de `import numpy as np`, et la bibliothèque trace les opérations et construit le graphe de calcul automatiquement.
 
-### Descente de gradient stochastique par mini-lots
-
-Nous avons vu la descente de gradient au chapitre 3. Pour un réseau de neurones entraîné sur $N$ exemples, calculer le gradient exact sur tout le jeu de données à chaque itération est coûteux. La **descente de gradient stochastique par mini-lots** (*minibatch SGD*) estime le gradient sur un sous-ensemble aléatoire de $B$ exemples:
-
-$$
-\hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L} = \frac{1}{B} \sum_{i \in \mathcal{B}} \nabla_{\boldsymbol{\theta}} \ell(\mathbf{x}_i, y_i; \boldsymbol{\theta})
-$$
-
-où $\mathcal{B}$ est un mini-lot de taille $B$ tiré aléatoirement. Cette estimation est non biaisée: $\mathbb{E}[\hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L}] = \nabla_{\boldsymbol{\theta}} \mathcal{L}$. La mise à jour des paramètres est:
-
-$$
-\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}_t)
-$$
-
-où $\eta > 0$ est le **taux d'apprentissage**. Une **époque** correspond à un passage complet sur le jeu de données, soit $N/B$ mises à jour. Les données sont brassées aléatoirement à chaque époque pour éviter les biais d'ordre.
-
-```{prf:algorithm} Descente de gradient stochastique par mini-lots
-:label: minibatch-sgd
-
-**Entrée**: Jeu de données $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, taille de lot $B$, taux $\eta$, nombre d'époques $T$
-
-**Sortie**: Paramètres $\boldsymbol{\theta}$
-
-1. Initialiser $\boldsymbol{\theta}$ (Glorot ou He selon l'activation)
-2. Pour $t = 1, \ldots, T$:
-   - Brasser $\mathcal{D}$ aléatoirement
-   - Pour chaque mini-lot $\mathcal{B} \subset \mathcal{D}$ de taille $B$:
-     - Calculer $\hat{\mathbf{g}} = \frac{1}{B}\sum_{i \in \mathcal{B}} \nabla_{\boldsymbol{\theta}} \ell_i(\boldsymbol{\theta})$ (rétropropagation)
-     - $\boldsymbol{\theta} \leftarrow \boldsymbol{\theta} - \eta \hat{\mathbf{g}}$
-3. Retourner $\boldsymbol{\theta}$
-```
-
-En pratique, $B$ est souvent entre 32 et 512. Un $B$ petit introduit plus de bruit dans l'estimation du gradient (haute variance), ce qui peut aider à échapper aux minima locaux mais ralentit la convergence. Un $B$ grand donne une estimation plus précise mais réduit l'effet régularisateur du bruit stochastique.
-
-### Momentum
-
-Un problème de SGD est l'**oscillation**: sur une surface de perte avec des directions de courbures très différentes (une vallée étroite et allongée, par exemple), le gradient pointe perpendiculairement aux parois et le pas fait zigzaguer d'une paroi à l'autre, progressant lentement dans la direction de la vallée.
-
-L'idée du **momentum** {cite}`polyak1964some` est d'accumuler une vitesse dans les directions stables et d'amortir les oscillations. On maintient un vecteur de vitesse $\mathbf{m}_t$ qui est une moyenne pondérée exponentiellement des gradients passés:
-
-$$
-\mathbf{m}_{t+1} = \beta \mathbf{m}_t + \hat{\mathbf{g}}_t, \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \mathbf{m}_{t+1}
-$$
-
-Le paramètre $\beta \in [0, 1)$ (typiquement $0{,}9$) contrôle la "mémoire": avec $\beta = 0{,}9$, la mise à jour actuelle contribue à 10% de la vitesse, et les gradients des 10 derniers pas ont encore une influence notable. On peut vérifier que $\mathbf{m}_t = \sum_{k=0}^{t} \beta^k \hat{\mathbf{g}}_{t-k}$, ce qui montre que $\mathbf{m}_t$ est bien une moyenne pondérée des gradients passés, avec des poids décroissant géométriquement.
-
-La variante **Nesterov** {cite}`nesterov1983method` calcule le gradient à la position anticipée $\boldsymbol{\theta}_t + \beta \mathbf{m}_t$ plutôt qu'à la position courante:
-
-$$
-\hat{\mathbf{g}}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}_t + \beta \mathbf{m}_t), \qquad \mathbf{m}_{t+1} = \beta \mathbf{m}_t + \hat{\mathbf{g}}_t, \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \mathbf{m}_{t+1}
-$$
-
-Cette "anticipation" améliore la convergence en théorie et souvent en pratique.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-%config InlineBackend.figure_format = 'retina'
-
-def grad_f(t): return np.array([2*t[0], 20*t[1]])
-
-theta0 = np.array([-0.9, 0.85])
-eta    = 0.08
-beta   = 0.5
-n_steps = 40
-
-# SGD
-traj_sgd = [theta0.copy()]
-t = theta0.copy()
-for _ in range(n_steps):
-    t = t - eta * grad_f(t)
-    traj_sgd.append(t.copy())
-traj_sgd = np.array(traj_sgd)
-
-# SGD + Momentum
-traj_mom = [theta0.copy()]
-t = theta0.copy(); m = np.zeros(2)
-for _ in range(n_steps):
-    m = beta * m + grad_f(t)
-    t = t - eta * m
-    traj_mom.append(t.copy())
-traj_mom = np.array(traj_mom)
-
-t1 = np.linspace(-1.1, 1.1, 300)
-t2 = np.linspace(-1.0, 1.0, 300)
-T1, T2 = np.meshgrid(t1, t2)
-Z = T1**2 + 10*T2**2
-
-fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
-plt.suptitle(r'SGD vs momentum sur $f(\theta) = \theta_1^2 + 10\theta_2^2$', fontsize=11)
-
-trajs  = [traj_sgd, traj_mom]
-titles = ['SGD (zigzags)', r'SGD + Momentum ($\beta=0{,}5$)']
-colors = ['#1f77b4', '#d62728']
-
-for ax, traj, title, color in zip(axes, trajs, titles, colors):
-    ax.contourf(T1, T2, Z, levels=20, cmap='Greys', alpha=0.5)
-    ax.contour( T1, T2, Z, levels=20, colors='gray', linewidths=0.4, alpha=0.6)
-    # Trajectoire complète avec dégradé d'opacité (début → fin)
-    n = len(traj) - 1
-    for i in range(n):
-        alpha = 0.25 + 0.75 * (i / n)
-        ax.plot(traj[i:i+2, 0], traj[i:i+2, 1], '-', color=color, lw=2, alpha=alpha)
-    ax.plot(*traj[0],  'ko', ms=8,  zorder=5, label='Départ')
-    ax.plot(*traj[-1], 'o',  ms=7,  color=color, zorder=6, label='Arrivée')
-    ax.plot(0, 0, 'r*', ms=12, zorder=5, label='Minimum')
-    ax.set_xlabel(r'$\theta_1$')
-    ax.set_title(title, fontsize=10)
-    ax.legend(fontsize=8, loc='upper right')
-    ax.set_xlim(-1.1, 1.1); ax.set_ylim(-1.0, 1.0)
-    ax.grid(True, alpha=0.2)
-
-axes[0].set_ylabel(r'$\theta_2$')
-plt.tight_layout()
-```
-
-Sur cette surface allongée, SGD zigzague entre les parois de la vallée et progresse lentement vers le minimum. Le momentum ($\beta=0{,}5$) accumule de la vitesse dans la direction $\theta_1$ (la direction de la vallée) et amortit les oscillations dans la direction $\theta_2$ (perpendiculaire aux parois).
-
-### Taux d'apprentissage adaptatifs: RMSProp
-
-SGD et momentum utilisent le même taux d'apprentissage $\eta$ pour tous les paramètres. Cela peut être sous-optimal quand les gradients ont des magnitudes très différentes selon les dimensions: un $\eta$ adapté aux grandes dimensions sera trop grand pour les petites, et vice versa.
-
-**RMSProp** {cite}`tieleman2012rmsprop` maintient une estimation de la variance du gradient par dimension $j$, et divise le gradient par la racine de cette variance:
-
-$$
-s_{t+1,j} = \beta s_{t,j} + (1-\beta) g_{t,j}^2, \qquad \theta_{t+1,j} = \theta_{t,j} - \frac{\eta}{\sqrt{s_{t+1,j} + \epsilon}} g_{t,j}
-$$
-
-où $g_{t,j} = [\hat{\mathbf{g}}_t]_j$ est la $j$-ème composante du gradient, $\beta \approx 0{,}9$ et $\epsilon \approx 10^{-8}$ évite la division par zéro. La quantité $s_{t,j}$ est une moyenne pondérée exponentiellement des carrés des gradients passés: elle estime $\mathbb{E}[g_j^2]$. Diviser par $\sqrt{s_{t,j}}$ normalise effectivement le gradient par son écart-type empirique, ce qui donne un taux d'apprentissage effectif de magnitude similaire pour toutes les dimensions.
-
-### Adam
-
-**Adam** (*Adaptive Moment Estimation*) {cite}`kingma2014adam` combine le momentum (premier moment du gradient) et RMSProp (deuxième moment du gradient):
-
-$$
-\mathbf{m}_{t+1} = \beta_1 \mathbf{m}_t + (1-\beta_1) \hat{\mathbf{g}}_t \qquad \text{(premier moment)}
-$$
-
-$$
-\mathbf{s}_{t+1} = \beta_2 \mathbf{s}_t + (1-\beta_2) \hat{\mathbf{g}}_t^2 \qquad \text{(deuxième moment, élément par élément)}
-$$
-
-Au début de l'entraînement, $\mathbf{m}_t$ et $\mathbf{s}_t$ sont initialisés à zéro. Pendant les premières itérations, ils sous-estiment les moments réels (biais vers zéro). Adam corrige ce biais:
-
-$$
-\hat{\mathbf{m}}_{t+1} = \frac{\mathbf{m}_{t+1}}{1 - \beta_1^{t+1}}, \qquad \hat{\mathbf{s}}_{t+1} = \frac{\mathbf{s}_{t+1}}{1 - \beta_2^{t+1}}
-$$
-
-La mise à jour finale est:
-
-$$
-\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \frac{\hat{\mathbf{m}}_{t+1}}{\sqrt{\hat{\mathbf{s}}_{t+1}} + \epsilon}
-$$
-
-Les valeurs par défaut sont $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$, $\epsilon = 10^{-8}$, $\eta = 10^{-3}$.
-
-```{prf:algorithm} Adam
-:label: ch7-adam
-
-**Entrée**: Taux $\eta$, paramètres $\beta_1, \beta_2, \epsilon$, nombre d'itérations $T$
-
-**Initialiser**: $\boldsymbol{\theta}_0$, $\mathbf{m}_0 = \mathbf{0}$, $\mathbf{s}_0 = \mathbf{0}$
-
-1. Pour $t = 0, 1, \ldots, T-1$:
-   - Calculer $\hat{\mathbf{g}}_t = \nabla_{\boldsymbol{\theta}} \hat{\mathcal{L}}(\boldsymbol{\theta}_t)$ sur un mini-lot
-   - $\mathbf{m}_{t+1} \leftarrow \beta_1 \mathbf{m}_t + (1-\beta_1)\hat{\mathbf{g}}_t$
-   - $\mathbf{s}_{t+1} \leftarrow \beta_2 \mathbf{s}_t + (1-\beta_2)\hat{\mathbf{g}}_t^2$
-   - $\hat{\mathbf{m}} \leftarrow \mathbf{m}_{t+1} / (1 - \beta_1^{t+1})$
-   - $\hat{\mathbf{s}} \leftarrow \mathbf{s}_{t+1} / (1 - \beta_2^{t+1})$
-   - $\boldsymbol{\theta}_{t+1} \leftarrow \boldsymbol{\theta}_t - \eta\, \hat{\mathbf{m}} / (\sqrt{\hat{\mathbf{s}}} + \epsilon)$
-2. Retourner $\boldsymbol{\theta}_T$
-```
-
-Adam est actuellement l'optimiseur le plus utilisé pour les réseaux de neurones. Il converge généralement plus vite que SGD ou momentum grâce à la normalisation adaptative, et il est moins sensible au choix du taux d'apprentissage initial.
-
-La figure ci-dessous compare les courbes de convergence des trois algorithmes sur un MLP entraîné à classer deux spirales enchevêtrées.
-
-```{code-cell} python
-:tags: [hide-input]
-
-import numpy as np
-import matplotlib.pyplot as plt
-%config InlineBackend.figure_format = 'retina'
-
-np.random.seed(0)
-
-# --- Génération de données: spirales ---
-def make_spirals(n=200, noise=0.15):
-    t = np.linspace(0, 4*np.pi, n)
-    x1 = np.column_stack([t*np.cos(t), t*np.sin(t)]) / (4*np.pi) + noise*np.random.randn(n,2)
-    x2 = np.column_stack([-t*np.cos(t), -t*np.sin(t)]) / (4*np.pi) + noise*np.random.randn(n,2)
-    X = np.vstack([x1, x2])
-    y = np.array([0]*n + [1]*n)
-    return X, y
-
-X_sp, y_sp = make_spirals(150, 0.12)
-N = len(y_sp)
-
-def relu(x):     return np.maximum(0, x)
-def sigmoid(x):  return 1 / (1 + np.exp(-np.clip(x, -50, 50)))
-
-def ce_loss(p, y):
-    p = np.clip(p, 1e-7, 1-1e-7)
-    return -np.mean(y*np.log(p) + (1-y)*np.log(1-p))
-
-def mlp_train(optimizer='sgd', eta=0.01, n_epochs=200, B=32, beta1=0.9, beta2=0.999):
-    H = 32
-    W1 = np.random.randn(2, H) * np.sqrt(2/2)
-    b1 = np.zeros(H)
-    W2 = np.random.randn(H, 1) * np.sqrt(2/H)
-    b2 = np.zeros(1)
-    params = [W1, b1, W2, b2]
-
-    # Optimizer state
-    m = [np.zeros_like(p) for p in params]
-    s = [np.zeros_like(p) for p in params]
-    t_step = 0
-    eps = 1e-8
-
-    losses = []
-    idx = np.arange(N)
-    for epoch in range(n_epochs):
-        np.random.shuffle(idx)
-        epoch_loss = 0.0
-        n_batches = 0
-        for start in range(0, N, B):
-            batch = idx[start:start+B]
-            Xb = X_sp[batch];  yb = y_sp[batch].reshape(-1,1).astype(float)
-            # Forward
-            a1 = Xb @ W1 + b1
-            z1 = relu(a1)
-            a2 = z1 @ W2 + b2
-            p  = sigmoid(a2)
-            epoch_loss += ce_loss(p, yb)
-            n_batches += 1
-            # Backward
-            dp  = (p - yb) / len(batch)
-            dW2 = z1.T @ dp
-            db2 = dp.sum(axis=0)
-            dz1 = dp @ W2.T
-            da1 = dz1 * (a1 > 0)
-            dW1 = Xb.T @ da1
-            db1 = da1.sum(axis=0)
-            grads = [dW1, db1, dW2, db2]
-            t_step += 1
-            for i, (p_i, g) in enumerate(zip(params, grads)):
-                if optimizer == 'sgd':
-                    p_i -= eta * g
-                elif optimizer == 'momentum':
-                    m[i] = beta1 * m[i] + g
-                    p_i -= eta * m[i]
-                elif optimizer == 'adam':
-                    m[i] = beta1*m[i] + (1-beta1)*g
-                    s[i] = beta2*s[i] + (1-beta2)*g**2
-                    mhat = m[i] / (1 - beta1**t_step)
-                    shat = s[i] / (1 - beta2**t_step)
-                    p_i -= eta * mhat / (np.sqrt(shat) + eps)
-        losses.append(epoch_loss / n_batches)
-    return losses
-
-np.random.seed(0)
-losses_sgd  = mlp_train('sgd',      eta=0.08,  n_epochs=200)
-np.random.seed(0)
-losses_mom  = mlp_train('momentum', eta=0.02,  n_epochs=200)
-np.random.seed(0)
-losses_adam = mlp_train('adam',     eta=0.005, n_epochs=200)
-
-fig, ax = plt.subplots(figsize=(8, 4))
-epochs = np.arange(1, 201)
-ax.plot(epochs, losses_sgd,  'C0-',  lw=2, label='SGD')
-ax.plot(epochs, losses_mom,  'C1--', lw=2, label='SGD + Momentum')
-ax.plot(epochs, losses_adam, 'C3-',  lw=2.5, label='Adam')
-ax.set_xlabel('Époque')
-ax.set_ylabel('Perte (entropie croisée)')
-ax.set_title('Convergence des optimiseurs sur le problème des spirales')
-ax.legend(fontsize=10)
-ax.grid(True, alpha=0.3)
-ax.set_xlim(1, 200)
-plt.tight_layout()
-```
-
-Adam converge plus rapidement et de façon plus régulière grâce à la normalisation adaptative par dimension. SGD seul oscille davantage et converge plus lentement sur ce problème. Le momentum offre un compromis intermédiaire.
-
-### Quel optimiseur choisir?
-
-En pratique, **Adam** est un bon point de départ pour la plupart des architectures. SGD avec momentum peut surpasser Adam sur certains problèmes de vision (comme l'entraînement de réseaux convolutifs sur CIFAR-10 ou ImageNet) si l'on prend le temps d'ajuster le taux d'apprentissage et un calendrier de décroissance. Pour la recherche, il est courant d'essayer les deux et de comparer.
-
-Le **taux d'apprentissage** est l'hyperparamètre le plus important pour tous ces algorithmes. Un $\eta$ trop grand provoque des oscillations ou une divergence; un $\eta$ trop petit converge lentement. Les bibliothèques modernes offrent des **calendriers de taux d'apprentissage** (*learning rate schedules*): décroissance linéaire, décroissance cosinus, ou réchauffement (*warmup*) suivi d'une décroissance.
-
-## Différentiation automatique
-
-*Cette section ne dépend pas des détails de la rétropropagation: vous pouvez la lire même si vous avez survolé la section précédente.*
-
-La rétropropagation est un cas particulier d'un principe plus général. Cette section élargit la perspective: nous montrons comment le calcul de gradients se généralise à des programmes arbitraires, au-delà des réseaux en chaîne. Nous verrons pourquoi on écrit `import jax.numpy as jnp` plutôt que `import numpy as np`, et comment une bibliothèque comme JAX peut différentier n'importe quelle fonction Python sans jamais voir son code source.
-
-Pour illustrer les mécanismes, nous utilisons tout au long de cette section la fonction
+Pour illustrer les mécanismes, nous utilisons la fonction
 
 $$
 f(x, y) = \sin(x) \cdot (x + y)
@@ -1333,23 +848,6 @@ $$
 
 Elle est suffisamment simple pour être traitée à la main, mais suffisamment riche pour révéler les points délicats: $x$ intervient dans deux branches distinctes du calcul.
 
-### Différentiation numérique, symbolique et automatique
-
-Pour calculer la dérivée d'un programme, trois approches existent:
-
-La **différentiation numérique** approxime la dérivée par différences finies:
-
-$$
-\frac{\partial f}{\partial x_i} \approx \frac{f(\mathbf{x} + \epsilon \mathbf{e}_i) - f(\mathbf{x} - \epsilon \mathbf{e}_i)}{2\epsilon}
-$$
-
-Cette méthode est simple à implémenter mais souffre de deux problèmes: elle requiert $O(n)$ évaluations de $f$ pour un gradient en dimension $n$, et elle est sujette aux erreurs d'arrondi (le choix de $\epsilon$ est délicat). Elle reste utile pour *vérifier* des implémentations de gradient.
-
-La **différentiation symbolique** applique les règles de dérivation formellement, comme on le ferait à la main. Elle produit des expressions exactes, mais ces expressions peuvent croître exponentiellement en taille pour des programmes complexes. De plus, elle requiert que le programme soit représenté sous forme symbolique, ce qui exclut les structures de contrôle (boucles, conditions).
-
-La **différentiation automatique** (AD) est une troisième voie. Elle évalue la dérivée exacte d'un programme numérique en le décomposant en opérations élémentaires et en appliquant la règle de la chaîne à chaque étape. Contrairement à la différentiation numérique, elle est exacte (aux erreurs de virgule flottante près). Contrairement à la différentiation symbolique, elle opère sur des valeurs numériques, pas sur des expressions, et gère naturellement les boucles et les conditions.
-
-La rétropropagation n'est rien d'autre que la différentiation automatique en mode arrière, appliquée au programme qui calcule la perte d'un réseau de neurones.
 
 ### Graphes de calcul
 
@@ -1678,7 +1176,7 @@ def grad(f):
         for vjp_fn, res, in_ids, out_id in reversed(_tape):
             cotangents = vjp_fn(res, adjoints[out_id])
             for idx, ct in zip(in_ids, cotangents):
-                adjoints[idx] += ct          # accumulation (fan-out)
+                adjoints[idx] += ct          # accumulation (embranchement)
 
         return tuple(adjoints[v.id] for v in traced)
     return grad_fn
@@ -1754,9 +1252,304 @@ La fonction `loss_fn` est un programme Python ordinaire. L'appel `jax.grad(loss_
 
 Ce paradigme change la façon de penser les modèles. Au lieu de concevoir une architecture puis de dériver ses gradients, on conçoit un programme de calcul quelconque, avec des boucles, des conditions, des appels de fonctions, et on le différentie automatiquement. La seule contrainte est que les opérations soient différentiables (ou différentiables presque partout, comme ReLU).
 
+## Optimisation
+
+La différentiation automatique produit les gradients $\nabla_{\boldsymbol{\theta}} \mathcal{L}$. Il reste à décider comment utiliser ces gradients pour mettre à jour les paramètres. Cette section présente les algorithmes d'optimisation les plus utilisés en pratique, de la descente de gradient stochastique jusqu'à Adam.
+
+### Descente de gradient stochastique par mini-lots
+
+Nous avons vu la descente de gradient au chapitre 3. Pour un réseau de neurones entraîné sur $N$ exemples, calculer le gradient exact sur tout le jeu de données à chaque itération est coûteux. La **descente de gradient stochastique par mini-lots** (*minibatch SGD*) estime le gradient sur un sous-ensemble aléatoire de $B$ exemples:
+
+$$
+\hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L} = \frac{1}{B} \sum_{i \in \mathcal{B}} \nabla_{\boldsymbol{\theta}} \ell(\mathbf{x}_i, y_i; \boldsymbol{\theta})
+$$
+
+où $\mathcal{B}$ est un mini-lot de taille $B$ tiré aléatoirement. Cette estimation est non biaisée: $\mathbb{E}[\hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L}] = \nabla_{\boldsymbol{\theta}} \mathcal{L}$. La mise à jour des paramètres est:
+
+$$
+\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \hat{\nabla}_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}_t)
+$$
+
+où $\eta > 0$ est le **taux d'apprentissage**. Une **époque** correspond à un passage complet sur le jeu de données, soit $N/B$ mises à jour. Les données sont brassées aléatoirement à chaque époque pour éviter les biais d'ordre.
+
+```{prf:algorithm} Descente de gradient stochastique par mini-lots
+:label: minibatch-sgd
+
+**Entrée**: Jeu de données $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, taille de lot $B$, taux $\eta$, nombre d'époques $T$
+
+**Sortie**: Paramètres $\boldsymbol{\theta}$
+
+1. Initialiser $\boldsymbol{\theta}$ (Glorot ou He selon l'activation)
+2. Pour $t = 1, \ldots, T$:
+   - Brasser $\mathcal{D}$ aléatoirement
+   - Pour chaque mini-lot $\mathcal{B} \subset \mathcal{D}$ de taille $B$:
+     - Calculer $\hat{\mathbf{g}} = \frac{1}{B}\sum_{i \in \mathcal{B}} \nabla_{\boldsymbol{\theta}} \ell_i(\boldsymbol{\theta})$ (rétropropagation)
+     - $\boldsymbol{\theta} \leftarrow \boldsymbol{\theta} - \eta \hat{\mathbf{g}}$
+3. Retourner $\boldsymbol{\theta}$
+```
+
+En pratique, $B$ est souvent entre 32 et 512. Un $B$ petit introduit plus de bruit dans l'estimation du gradient (haute variance), ce qui peut aider à échapper aux minima locaux mais ralentit la convergence. Un $B$ grand donne une estimation plus précise mais réduit l'effet régularisateur du bruit stochastique.
+
+### Momentum
+
+Un problème de SGD est l'**oscillation**: sur une surface de perte avec des directions de courbures très différentes (une vallée étroite et allongée, par exemple), le gradient pointe perpendiculairement aux parois et le pas fait zigzaguer d'une paroi à l'autre, progressant lentement dans la direction de la vallée.
+
+L'idée du **momentum** {cite}`polyak1964some` est d'accumuler une vitesse dans les directions stables et d'amortir les oscillations. On maintient un vecteur de vitesse $\mathbf{m}_t$ qui est une moyenne pondérée exponentiellement des gradients passés:
+
+$$
+\mathbf{m}_{t+1} = \beta \mathbf{m}_t + \hat{\mathbf{g}}_t, \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \mathbf{m}_{t+1}
+$$
+
+Le paramètre $\beta \in [0, 1)$ (typiquement $0{,}9$) contrôle la "mémoire": avec $\beta = 0{,}9$, la mise à jour actuelle contribue à 10% de la vitesse, et les gradients des 10 derniers pas ont encore une influence notable. On peut vérifier que $\mathbf{m}_t = \sum_{k=0}^{t} \beta^k \hat{\mathbf{g}}_{t-k}$, ce qui montre que $\mathbf{m}_t$ est bien une moyenne pondérée des gradients passés, avec des poids décroissant géométriquement.
+
+La variante **Nesterov** {cite}`nesterov1983method` calcule le gradient à la position anticipée $\boldsymbol{\theta}_t + \beta \mathbf{m}_t$ plutôt qu'à la position courante:
+
+$$
+\hat{\mathbf{g}}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}_t + \beta \mathbf{m}_t), \qquad \mathbf{m}_{t+1} = \beta \mathbf{m}_t + \hat{\mathbf{g}}_t, \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \mathbf{m}_{t+1}
+$$
+
+Cette "anticipation" améliore la convergence en théorie et souvent en pratique.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+%config InlineBackend.figure_format = 'retina'
+
+def grad_f(t): return np.array([2*t[0], 20*t[1]])
+
+theta0 = np.array([-0.9, 0.85])
+eta    = 0.08
+beta   = 0.5
+n_steps = 40
+
+# SGD
+traj_sgd = [theta0.copy()]
+t = theta0.copy()
+for _ in range(n_steps):
+    t = t - eta * grad_f(t)
+    traj_sgd.append(t.copy())
+traj_sgd = np.array(traj_sgd)
+
+# SGD + Momentum
+traj_mom = [theta0.copy()]
+t = theta0.copy(); m = np.zeros(2)
+for _ in range(n_steps):
+    m = beta * m + grad_f(t)
+    t = t - eta * m
+    traj_mom.append(t.copy())
+traj_mom = np.array(traj_mom)
+
+t1 = np.linspace(-1.1, 1.1, 300)
+t2 = np.linspace(-1.0, 1.0, 300)
+T1, T2 = np.meshgrid(t1, t2)
+Z = T1**2 + 10*T2**2
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
+plt.suptitle(r'SGD vs momentum sur $f(\theta) = \theta_1^2 + 10\theta_2^2$', fontsize=11)
+
+trajs  = [traj_sgd, traj_mom]
+titles = ['SGD (zigzags)', r'SGD + Momentum ($\beta=0{,}5$)']
+colors = ['#1f77b4', '#d62728']
+
+for ax, traj, title, color in zip(axes, trajs, titles, colors):
+    ax.contourf(T1, T2, Z, levels=20, cmap='Greys', alpha=0.5)
+    ax.contour( T1, T2, Z, levels=20, colors='gray', linewidths=0.4, alpha=0.6)
+    # Trajectoire complète avec dégradé d'opacité (début → fin)
+    n = len(traj) - 1
+    for i in range(n):
+        alpha = 0.25 + 0.75 * (i / n)
+        ax.plot(traj[i:i+2, 0], traj[i:i+2, 1], '-', color=color, lw=2, alpha=alpha)
+    ax.plot(*traj[0],  'ko', ms=8,  zorder=5, label='Départ')
+    ax.plot(*traj[-1], 'o',  ms=7,  color=color, zorder=6, label='Arrivée')
+    ax.plot(0, 0, 'r*', ms=12, zorder=5, label='Minimum')
+    ax.set_xlabel(r'$\theta_1$')
+    ax.set_title(title, fontsize=10)
+    ax.legend(fontsize=8, loc='upper right')
+    ax.set_xlim(-1.1, 1.1); ax.set_ylim(-1.0, 1.0)
+    ax.grid(True, alpha=0.2)
+
+axes[0].set_ylabel(r'$\theta_2$')
+plt.tight_layout()
+```
+
+Sur cette surface allongée, SGD zigzague entre les parois de la vallée et progresse lentement vers le minimum. Le momentum ($\beta=0{,}5$) accumule de la vitesse dans la direction $\theta_1$ (la direction de la vallée) et amortit les oscillations dans la direction $\theta_2$ (perpendiculaire aux parois).
+
+### Taux d'apprentissage adaptatifs: RMSProp
+
+SGD et momentum utilisent le même taux d'apprentissage $\eta$ pour tous les paramètres. Cela peut être sous-optimal quand les gradients ont des magnitudes très différentes selon les dimensions: un $\eta$ adapté aux grandes dimensions sera trop grand pour les petites, et vice versa.
+
+**RMSProp** {cite}`tieleman2012rmsprop` maintient une estimation de la variance du gradient par dimension $j$, et divise le gradient par la racine de cette variance:
+
+$$
+s_{t+1,j} = \beta s_{t,j} + (1-\beta) g_{t,j}^2, \qquad \theta_{t+1,j} = \theta_{t,j} - \frac{\eta}{\sqrt{s_{t+1,j} + \epsilon}} g_{t,j}
+$$
+
+où $g_{t,j} = [\hat{\mathbf{g}}_t]_j$ est la $j$-ème composante du gradient, $\beta \approx 0{,}9$ et $\epsilon \approx 10^{-8}$ évite la division par zéro. La quantité $s_{t,j}$ est une moyenne pondérée exponentiellement des carrés des gradients passés: elle estime $\mathbb{E}[g_j^2]$. Diviser par $\sqrt{s_{t,j}}$ normalise effectivement le gradient par son écart-type empirique, ce qui donne un taux d'apprentissage effectif de magnitude similaire pour toutes les dimensions.
+
+### Adam
+
+**Adam** (*Adaptive Moment Estimation*) {cite}`kingma2014adam` combine le momentum (premier moment du gradient) et RMSProp (deuxième moment du gradient):
+
+$$
+\mathbf{m}_{t+1} = \beta_1 \mathbf{m}_t + (1-\beta_1) \hat{\mathbf{g}}_t \qquad \text{(premier moment)}
+$$
+
+$$
+\mathbf{s}_{t+1} = \beta_2 \mathbf{s}_t + (1-\beta_2) \hat{\mathbf{g}}_t^2 \qquad \text{(deuxième moment, élément par élément)}
+$$
+
+Au début de l'entraînement, $\mathbf{m}_t$ et $\mathbf{s}_t$ sont initialisés à zéro. Pendant les premières itérations, ils sous-estiment les moments réels (biais vers zéro). Adam corrige ce biais:
+
+$$
+\hat{\mathbf{m}}_{t+1} = \frac{\mathbf{m}_{t+1}}{1 - \beta_1^{t+1}}, \qquad \hat{\mathbf{s}}_{t+1} = \frac{\mathbf{s}_{t+1}}{1 - \beta_2^{t+1}}
+$$
+
+La mise à jour finale est:
+
+$$
+\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \frac{\hat{\mathbf{m}}_{t+1}}{\sqrt{\hat{\mathbf{s}}_{t+1}} + \epsilon}
+$$
+
+Les valeurs par défaut sont $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$, $\epsilon = 10^{-8}$, $\eta = 10^{-3}$.
+
+```{prf:algorithm} Adam
+:label: ch7-adam
+
+**Entrée**: Taux $\eta$, paramètres $\beta_1, \beta_2, \epsilon$, nombre d'itérations $T$
+
+**Initialiser**: $\boldsymbol{\theta}_0$, $\mathbf{m}_0 = \mathbf{0}$, $\mathbf{s}_0 = \mathbf{0}$
+
+1. Pour $t = 0, 1, \ldots, T-1$:
+   - Calculer $\hat{\mathbf{g}}_t = \nabla_{\boldsymbol{\theta}} \hat{\mathcal{L}}(\boldsymbol{\theta}_t)$ sur un mini-lot
+   - $\mathbf{m}_{t+1} \leftarrow \beta_1 \mathbf{m}_t + (1-\beta_1)\hat{\mathbf{g}}_t$
+   - $\mathbf{s}_{t+1} \leftarrow \beta_2 \mathbf{s}_t + (1-\beta_2)\hat{\mathbf{g}}_t^2$
+   - $\hat{\mathbf{m}} \leftarrow \mathbf{m}_{t+1} / (1 - \beta_1^{t+1})$
+   - $\hat{\mathbf{s}} \leftarrow \mathbf{s}_{t+1} / (1 - \beta_2^{t+1})$
+   - $\boldsymbol{\theta}_{t+1} \leftarrow \boldsymbol{\theta}_t - \eta\, \hat{\mathbf{m}} / (\sqrt{\hat{\mathbf{s}}} + \epsilon)$
+2. Retourner $\boldsymbol{\theta}_T$
+```
+
+Adam est actuellement l'optimiseur le plus utilisé pour les réseaux de neurones. Il converge généralement plus vite que SGD ou momentum grâce à la normalisation adaptative, et il est moins sensible au choix du taux d'apprentissage initial.
+
+La figure ci-dessous compare les courbes de convergence des trois algorithmes sur un MLP entraîné à classer deux spirales enchevêtrées.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+import matplotlib.pyplot as plt
+%config InlineBackend.figure_format = 'retina'
+
+np.random.seed(0)
+
+# --- Génération de données: spirales ---
+def make_spirals(n=200, noise=0.15):
+    t = np.linspace(0, 4*np.pi, n)
+    x1 = np.column_stack([t*np.cos(t), t*np.sin(t)]) / (4*np.pi) + noise*np.random.randn(n,2)
+    x2 = np.column_stack([-t*np.cos(t), -t*np.sin(t)]) / (4*np.pi) + noise*np.random.randn(n,2)
+    X = np.vstack([x1, x2])
+    y = np.array([0]*n + [1]*n)
+    return X, y
+
+X_sp, y_sp = make_spirals(150, 0.12)
+N = len(y_sp)
+
+def relu(x):     return np.maximum(0, x)
+def sigmoid(x):  return 1 / (1 + np.exp(-np.clip(x, -50, 50)))
+
+def ce_loss(p, y):
+    p = np.clip(p, 1e-7, 1-1e-7)
+    return -np.mean(y*np.log(p) + (1-y)*np.log(1-p))
+
+def mlp_train(optimizer='sgd', eta=0.01, n_epochs=200, B=32, beta1=0.9, beta2=0.999):
+    H = 32
+    W1 = np.random.randn(2, H) * np.sqrt(2/2)
+    b1 = np.zeros(H)
+    W2 = np.random.randn(H, 1) * np.sqrt(2/H)
+    b2 = np.zeros(1)
+    params = [W1, b1, W2, b2]
+
+    # Optimizer state
+    m = [np.zeros_like(p) for p in params]
+    s = [np.zeros_like(p) for p in params]
+    t_step = 0
+    eps = 1e-8
+
+    losses = []
+    idx = np.arange(N)
+    for epoch in range(n_epochs):
+        np.random.shuffle(idx)
+        epoch_loss = 0.0
+        n_batches = 0
+        for start in range(0, N, B):
+            batch = idx[start:start+B]
+            Xb = X_sp[batch];  yb = y_sp[batch].reshape(-1,1).astype(float)
+            # Forward
+            a1 = Xb @ W1 + b1
+            z1 = relu(a1)
+            a2 = z1 @ W2 + b2
+            p  = sigmoid(a2)
+            epoch_loss += ce_loss(p, yb)
+            n_batches += 1
+            # Backward
+            dp  = (p - yb) / len(batch)
+            dW2 = z1.T @ dp
+            db2 = dp.sum(axis=0)
+            dz1 = dp @ W2.T
+            da1 = dz1 * (a1 > 0)
+            dW1 = Xb.T @ da1
+            db1 = da1.sum(axis=0)
+            grads = [dW1, db1, dW2, db2]
+            t_step += 1
+            for i, (p_i, g) in enumerate(zip(params, grads)):
+                if optimizer == 'sgd':
+                    p_i -= eta * g
+                elif optimizer == 'momentum':
+                    m[i] = beta1 * m[i] + g
+                    p_i -= eta * m[i]
+                elif optimizer == 'adam':
+                    m[i] = beta1*m[i] + (1-beta1)*g
+                    s[i] = beta2*s[i] + (1-beta2)*g**2
+                    mhat = m[i] / (1 - beta1**t_step)
+                    shat = s[i] / (1 - beta2**t_step)
+                    p_i -= eta * mhat / (np.sqrt(shat) + eps)
+        losses.append(epoch_loss / n_batches)
+    return losses
+
+np.random.seed(0)
+losses_sgd  = mlp_train('sgd',      eta=0.08,  n_epochs=200)
+np.random.seed(0)
+losses_mom  = mlp_train('momentum', eta=0.02,  n_epochs=200)
+np.random.seed(0)
+losses_adam = mlp_train('adam',     eta=0.005, n_epochs=200)
+
+fig, ax = plt.subplots(figsize=(8, 4))
+epochs = np.arange(1, 201)
+ax.plot(epochs, losses_sgd,  'C0-',  lw=2, label='SGD')
+ax.plot(epochs, losses_mom,  'C1--', lw=2, label='SGD + Momentum')
+ax.plot(epochs, losses_adam, 'C3-',  lw=2.5, label='Adam')
+ax.set_xlabel('Époque')
+ax.set_ylabel('Perte (entropie croisée)')
+ax.set_title('Convergence des optimiseurs sur le problème des spirales')
+ax.legend(fontsize=10)
+ax.grid(True, alpha=0.3)
+ax.set_xlim(1, 200)
+plt.tight_layout()
+```
+
+Adam converge plus rapidement et de façon plus régulière grâce à la normalisation adaptative par dimension. SGD seul oscille davantage et converge plus lentement sur ce problème. Le momentum offre un compromis intermédiaire.
+
+### Quel optimiseur choisir?
+
+En pratique, **Adam** est un bon point de départ pour la plupart des architectures. SGD avec momentum peut surpasser Adam sur certains problèmes de vision (comme l'entraînement de réseaux convolutifs sur CIFAR-10 ou ImageNet) si l'on prend le temps d'ajuster le taux d'apprentissage et un calendrier de décroissance. Pour la recherche, il est courant d'essayer les deux et de comparer.
+
+Le **taux d'apprentissage** est l'hyperparamètre le plus important pour tous ces algorithmes. Un $\eta$ trop grand provoque des oscillations ou une divergence; un $\eta$ trop petit converge lentement. Les bibliothèques modernes offrent des **calendriers de taux d'apprentissage** (*learning rate schedules*): décroissance linéaire, décroissance cosinus, ou réchauffement (*warmup*) suivi d'une décroissance.
+
 ## Considérations pratiques
 
-*Cette section suppose que vous avez compris le mécanisme général de la rétropropagation (le gradient se propage de la sortie vers l'entrée), mais pas nécessairement les détails des jacobiennes.*
+*Cette section suppose que vous avez compris le mécanisme général de la différentiation automatique en mode arrière (le gradient se propage de la sortie vers l'entrée), mais pas nécessairement les détails des jacobiennes.*
 
 ### Instabilité du gradient en profondeur
 
@@ -1766,7 +1559,7 @@ $$
 \frac{\partial \mathcal{L}}{\partial \mathbf{z}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{z}_L} \prod_{\ell=2}^{L} \frac{\partial \mathbf{z}_\ell}{\partial \mathbf{z}_{\ell-1}}
 $$
 
-Si les jacobiennes ont un rayon spectral inférieur à 1 (ce qui arrive avec la sigmoïde, dont la dérivée est au plus 0,25), le produit décroît exponentiellement avec la profondeur: le gradient disparaît (*vanishing gradient*). Les premières couches reçoivent des signaux de gradient négligeables et cessent d'apprendre.
+Si les jacobiennes ont un rayon spectral inférieur à 1 (ce qui arrive avec la sigmoïde, dont la dérivée est au plus 0,25), le produit décroît exponentiellement avec la profondeur: le gradient se dissout (*vanishing gradient*). Les premières couches reçoivent des signaux de gradient négligeables et cessent d'apprendre.
 
 Inversement, si le rayon spectral est supérieur à 1, le gradient explose (*exploding gradient*). Les mises à jour deviennent instables et l'entraînement diverge.
 
@@ -1820,7 +1613,7 @@ ax.semilogy(layers, norms_relu,    'C2-s', markersize=4, linewidth=2, label='ReL
 ax.axhspan(0, 1e-8, alpha=0.1, color='C0', label='Zone de disparition')
 ax.set_xlabel('Profondeur (nombre de couches)')
 ax.set_ylabel('Norme du gradient $\\|\\nabla_{W_1}\\mathcal{L}\\|$')
-ax.set_title('Gradient qui disparaît: sigmoïde vs ReLU')
+ax.set_title('Dissolution du gradient: sigmoïde vs ReLU')
 ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3, which='both')
 ax.set_xlim(1, n_layers)
@@ -1921,7 +1714,7 @@ $$
 \mathbf{z}_{\ell+1} = \mathbf{z}_\ell + f(\mathbf{z}_\ell; \boldsymbol{\theta}_\ell)
 $$
 
-Au lieu d'apprendre la transformation complète, le bloc $f$ n'apprend que le résidu, c'est-à-dire la différence entre la sortie désirée et l'entrée. Le gradient se propage directement à travers la connexion identité, ce qui atténue le problème du gradient qui disparaît:
+Au lieu d'apprendre la transformation complète, le bloc $f$ n'apprend que le résidu, c'est-à-dire la différence entre la sortie désirée et l'entrée. Le gradient se propage directement à travers la connexion identité, ce qui atténue la dissolution du gradient:
 
 $$
 \frac{\partial \mathbf{z}_{\ell+1}}{\partial \mathbf{z}_\ell} = I + \frac{\partial f}{\partial \mathbf{z}_\ell}
@@ -1956,7 +1749,7 @@ graph LR
     style z_out2 fill:#d5e8d4,stroke:#82b366
 ```
 
-La connexion identité crée un **chemin autoroutier** pour le gradient: lors de la passe arrière, le gradient peut contourner le bloc $f$ et se propager directement vers les couches précédentes, sans multiplication par les jacobiennes potentiellement petites de $f$.
+La connexion identité crée un **chemin direct** pour le gradient: lors de la passe arrière, le gradient peut contourner le bloc $f$ et se propager directement vers les couches précédentes, sans multiplication par les jacobiennes potentiellement petites de $f$.
 
 ### Écrêtage du gradient
 
@@ -1994,13 +1787,13 @@ $$
 \boldsymbol{\epsilon} \sim \text{Ber}(1-p)^{\otimes m}, \qquad \tilde{\mathbf{z}}_\ell = \frac{1}{1-p}(\boldsymbol{\epsilon} \odot \mathbf{z}_\ell)
 $$
 
-où $p \in [0, 1)$ est le **taux de dropout** (probabilité qu'un neurone soit désactivé), $\boldsymbol{\epsilon} \in \{0,1\}^m$ est le masque aléatoire, et le facteur $\frac{1}{1-p}$ est un **rescaling inversé** (*inverted dropout*): il compense l'absence de neurones pendant l'entraînement, de sorte que l'espérance des activations reste inchangée:
+où $p \in [0, 1)$ est le **taux de dropout** (probabilité qu'un neurone soit désactivé), $\boldsymbol{\epsilon} \in \{0,1\}^m$ est le masque aléatoire, et le facteur $\frac{1}{1-p}$ est une **renormalisation inversée** (*inverted dropout*): il compense l'absence de neurones pendant l'entraînement, de sorte que l'espérance des activations reste inchangée:
 
 $$
 \mathbb{E}\left[\frac{1}{1-p}\epsilon_j z_j\right] = \frac{1}{1-p}(1-p) z_j = z_j
 $$
 
-À l'inférence, on désactive le dropout et on utilise le réseau complet sans rescaling.
+À l'inférence, on désactive le dropout et on utilise le réseau complet sans renormalisation.
 
 ```{code-cell} python
 :tags: [hide-input]
@@ -2330,7 +2123,7 @@ mlp = MLP(n_input=2, n_hidden=8, n_output=1, eta=0.01, seed=42)
 
 losses = []
 for epoch in range(2000):
-    # Sur un problème à 4 exemples, on fait un seul mini-lot = tout le dataset
+    # Sur un problème à 4 exemples, on fait un seul mini-lot = tout le jeu de données
     loss = mlp.train_step(X_xor, y_xor)
     losses.append(loss)
 
@@ -2350,15 +2143,87 @@ plt.tight_layout()
 
 Après quelques centaines d'époques, la perte converge vers zéro et le réseau classe correctement les quatre points. La courbe de convergence montre le profil typique de l'entraînement d'un petit réseau: une descente rapide au début, suivie d'un plateau puis d'une nouvelle descente à mesure que l'optimiseur trouve un bon bassin d'attraction.
 
+## Le MLP en pratique
+
+Les sections précédentes ont présenté le MLP comme un objet mathématique: une composition de transformations affines et de non-linéarités. Mais à quoi ressemble cette composition pour un problème concret de régression ou de classification? La réponse nous ramène directement aux modèles linéaires des chapitres 2 et 3.
+
+### Régression avec un MLP
+
+Au chapitre 2, la régression linéaire prédit la moyenne d'une gaussienne conditionnelle par une transformation affine:
+
+$$
+\hat{y} = \mathbf{w}^\top \mathbf{x} + b
+$$
+
+Passer à un MLP revient à composer des transformations affines et des non-linéarités avant cette sortie linéaire. Pour un réseau à deux couches cachées avec $\mathbf{x} \in \mathbb{R}^d$:
+
+$$
+\hat{y}(\mathbf{x}) = \mathbf{w}_3^\top\, \varphi(W_2\, \varphi(W_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2) + b_3
+$$
+
+où $W_1 \in \mathbb{R}^{h \times d}$, $W_2 \in \mathbb{R}^{h \times h}$, $\mathbf{w}_3 \in \mathbb{R}^h$, et $\varphi$ est une activation (typiquement ReLU). La dernière couche est linéaire (pas d'activation), et la perte reste la somme des carrés, exactement comme au chapitre 2.
+
+Si l'on veut prédire un vecteur $\mathbf{y} \in \mathbb{R}^K$ (par exemple des coordonnées, ou plusieurs cibles simultanément), la dernière couche devient une transformation affine $W_3 \in \mathbb{R}^{K \times h}$:
+
+$$
+\hat{\mathbf{y}}(\mathbf{x}) = W_3\, \varphi(W_2\, \varphi(W_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2) + \mathbf{b}_3
+$$
+
+La perte est la somme des carrés sur les $K$ sorties: $\sum_{k=1}^K (y_k - \hat{y}_k)^2$.
+
+### Classification avec un MLP
+
+Au chapitre 3, la régression logistique modélise la probabilité de la classe positive par:
+
+$$
+p(y = 1 | \mathbf{x}) = \sigma(\mathbf{w}^\top \mathbf{x} + b)
+$$
+
+Un MLP pour la classification binaire compose des couches cachées avant cette sigmoïde:
+
+$$
+p(y = 1 | \mathbf{x}) = \sigma\!\Big(\mathbf{w}_3^\top\, \varphi(W_2\, \varphi(W_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2) + b_3\Big)
+$$
+
+La perte est l'entropie croisée binaire, comme en régression logistique. Pour la classification multiclasse avec $K$ classes, la sigmoïde est remplacée par un softmax et la dernière couche produit $K$ sorties:
+
+$$
+p(y = k | \mathbf{x}) = \text{softmax}_k\!\Big(W_3\, \varphi(W_2\, \varphi(W_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2) + \mathbf{b}_3\Big)
+$$
+
+La perte est l'entropie croisée catégorielle.
+
+### Extracteur de caractéristiques et tête linéaire
+
+Dans tous les cas, on peut écrire le réseau comme la composition de deux parties. Posons $\boldsymbol{\phi}(\mathbf{x}; \boldsymbol{\theta}_\phi) = \varphi(W_2\, \varphi(W_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2) \in \mathbb{R}^h$, la représentation apprise par les couches cachées. Les prédictions s'écrivent alors:
+
+$$
+\begin{aligned}
+\text{Régression:} \quad & \hat{y} = \mathbf{w}_3^\top \boldsymbol{\phi}(\mathbf{x}) + b_3 \\
+\text{Classification binaire:} \quad & p(y = 1 | \mathbf{x}) = \sigma(\mathbf{w}_3^\top \boldsymbol{\phi}(\mathbf{x}) + b_3) \\
+\text{Classification multiclasse:} \quad & p(y = k | \mathbf{x}) = \text{softmax}_k(W_3\, \boldsymbol{\phi}(\mathbf{x}) + \mathbf{b}_3)
+\end{aligned}
+$$
+
+C'est exactement l'équation {eq}`eq:nn-key-idea` du début du chapitre. La dernière couche est un modèle linéaire (chapitre 2) ou une régression logistique (chapitre 3) appliqué aux caractéristiques apprises $\boldsymbol{\phi}(\mathbf{x})$. Les modèles des chapitres 2 et 3 sont le cas particulier $\boldsymbol{\phi}(\mathbf{x}) = \mathbf{x}$ (aucune couche cachée).
+
+### Limites du MLP
+
+Le MLP traite son entrée comme un vecteur plat $\mathbf{x} \in \mathbb{R}^d$: chaque multiplication $W_\ell \mathbf{z}_{\ell-1}$ opère sur toutes les composantes de $\mathbf{z}_{\ell-1}$ sans distinction. La matrice $W_\ell$ est pleine (dense), ce qui signifie que chaque composante de la sortie dépend de toutes les composantes de l'entrée. Il n'y a aucune notion de structure spatiale ou temporelle. Pour des données tabulaires (âge, revenu, nombre de pièces), c'est approprié: il n'y a pas d'ordre naturel entre les variables.
+
+Mais pour une image de $28 \times 28$ pixels, le MLP la transforme en un vecteur de 784 entrées. La matrice $W_1 \in \mathbb{R}^{h \times 784}$ mélange toutes les positions spatiales: elle ne sait pas que le pixel $(0, 0)$ est voisin du pixel $(0, 1)$ mais éloigné du pixel $(27, 27)$. Pour une phrase de 10 mots, le MLP a besoin d'une entrée $\mathbf{x} \in \mathbb{R}^{10d}$ de taille fixe. Que fait-on avec une phrase de 20 mots?
+
+Ces limitations motivent des architectures qui exploitent la structure des données. Les réseaux récurrents (chapitre suivant) traitent les séquences élément par élément en maintenant un état interne. Le mécanisme d'attention et les transformeurs permettent à chaque position d'une séquence de consulter directement toutes les autres, sans contrainte de longueur fixe.
+
 ## Résumé
 
 Ce chapitre a montré comment les réseaux de neurones s'inscrivent dans la progression des modèles vus dans les chapitres précédents. Le point de départ est toujours le cadre de maximum de vraisemblance: un modèle prédit les paramètres d'une distribution conditionnelle. La nouveauté est que la transformation des entrées (la fonction $\boldsymbol{\phi}$) est désormais apprise plutôt que fixée à l'avance. Le problème XOR a illustré pourquoi cette flexibilité est nécessaire: certaines fonctions simples sont inaccessibles aux modèles linéaires, et une couche cachée suffit à les résoudre en transformant l'espace des entrées.
 
-La rétropropagation applique la règle de la chaîne pour calculer les gradients dans un réseau profond. Le mode arrière (VJP) est efficace pour les fonctions à sortie scalaire. La différentiation automatique généralise ce principe à tout programme composé d'opérations différentiables.
+La différentiation automatique calcule les gradients en décomposant un programme en opérations élémentaires et en appliquant la règle de la chaîne. Le mode arrière (VJP) produit le gradient par rapport à tous les paramètres en une seule passe, ce qui en fait la base de l'entraînement des réseaux. Les bibliothèques modernes (JAX, PyTorch) implémentent ce mécanisme automatiquement via le traçage d'opérations.
 
 Pour optimiser les paramètres, SGD par mini-lots reste la base. Le momentum amortit les oscillations en accumulant une vitesse dans les directions stables. Adam combine momentum et taux d'apprentissage adaptatifs par dimension, ce qui en fait l'optimiseur par défaut pour la plupart des applications. Pour éviter le surapprentissage, la décroissance des poids pénalise les paramètres de grande norme, et le dropout désactive aléatoirement des neurones pendant l'entraînement.
 
-Les chapitres suivants présenteront des architectures spécialisées qui exploitent la structure des données: les réseaux convolutifs pour les images et les réseaux récurrents pour les séquences.
+En pratique, un MLP se décompose en un extracteur de caractéristiques (les couches cachées) et une tête linéaire (la couche de sortie), ce qui généralise directement les modèles des chapitres 2 et 3. Cependant, le MLP traite ses entrées comme des vecteurs plats, sans exploiter la structure spatiale ou temporelle des données. Les chapitres suivants présentent des architectures qui remédient à cette limitation: les réseaux récurrents pour les séquences, puis le mécanisme d'attention et les transformeurs.
 
 ```{admonition} Ce que vous devez retenir
 :class: tip
@@ -2369,13 +2234,15 @@ Les chapitres suivants présenteront des architectures spécialisées qui exploi
 
 3. **La non-linéarité est indispensable.** Sans fonctions d'activation, empiler des couches linéaires ne donne qu'une transformation linéaire équivalente à une seule couche.
 
-4. **La rétropropagation calcule les gradients efficacement.** Elle propage le gradient de la perte vers l'arrière, couche par couche, via le mode arrière (VJP) de la règle de la chaîne.
+4. **La différentiation automatique en mode arrière calcule les gradients efficacement.** Un seul VJP (avec $\mathbf{u} = 1$) propage le gradient de la perte vers l'arrière à travers tout le graphe de calcul, quel que soit le nombre de paramètres.
 
 5. **Adam est l'optimiseur par défaut.** Il combine momentum et taux adaptatifs par dimension, avec correction du biais pour les premières itérations.
 
 6. **Dropout et décroissance des poids réduisent le surapprentissage.** Le dropout entraîne un ensemble implicite de sous-réseaux; la décroissance des poids correspond à un prior gaussien sur les paramètres.
 
-7. **L'entraînement en profondeur pose des défis spécifiques.** Le gradient qui disparaît ou explose nécessite l'initialisation soignée (Glorot, He), la normalisation par lots, ou les connexions résiduelles.
+7. **L'entraînement en profondeur pose des défis spécifiques.** La dissolution ou l'explosion du gradient nécessite l'initialisation soignée (Glorot, He), la normalisation par lots, ou les connexions résiduelles.
+
+8. **Un MLP en pratique = extracteur de caractéristiques + tête linéaire.** Les couches cachées construisent une représentation $\boldsymbol{\phi}(\mathbf{x})$, et la couche de sortie effectue la régression ou la classification linéaire sur cette représentation. Les modèles des chapitres 2 et 3 sont le cas particulier $\boldsymbol{\phi}(\mathbf{x}) = \mathbf{x}$.
 ```
 
 ## Exercices
@@ -2421,7 +2288,7 @@ $$
 
 Le maximum de $\sigma'(a) = \sigma(a)(1 - \sigma(a))$ est atteint quand $\sigma(a) = 0{,}5$, soit $a = 0$. La valeur maximale est $0{,}5 \times 0{,}5 = 0{,}25$.
 
-Ce maximum de 0,25 explique le gradient qui disparaît: à chaque couche utilisant la sigmoïde, le gradient est multiplié par un facteur d'au plus 0,25.
+Ce maximum de 0,25 explique la dissolution du gradient: à chaque couche utilisant la sigmoïde, le gradient est multiplié par un facteur d'au plus 0,25.
 ````
 
 ````{admonition} Exercice 3: Rétropropagation manuelle ★★
@@ -2561,10 +2428,10 @@ for name, g_bp, g_num in zip(['W1', 'b1', 'W2', 'b2'], grads_bp, grads_num):
 Toutes les erreurs relatives devraient être inférieures à $10^{-5}$.
 ````
 
-````{admonition} Exercice 5: Gradient qui disparaît ★★★
+````{admonition} Exercice 5: Dissolution du gradient ★★★
 :class: hint dropdown
 
-Cet exercice explore le problème du gradient qui disparaît. Considérez un réseau de $L$ couches, chacune avec une seule unité sigmoïde et un poids $w_\ell$:
+Cet exercice explore la dissolution du gradient. Considérez un réseau de $L$ couches, chacune avec une seule unité sigmoïde et un poids $w_\ell$:
 
 $$
 z_\ell = \sigma(w_\ell z_{\ell-1}), \quad z_0 = x
@@ -2604,7 +2471,7 @@ $$
 \frac{\partial z_L}{\partial w_1} = \prod_{\ell=2}^{L} w_\ell \cdot x
 $$
 
-Le gradient ne disparaît pas (mais peut exploser si $|w_\ell| > 1$). C'est l'une des raisons du succès de ReLU.
+Il n'y a pas de dissolution du gradient (mais il peut exploser si $|w_\ell| > 1$). C'est l'une des raisons du succès de ReLU.
 ````
 
 ````{admonition} Exercice 6: Adam à la main ★★
@@ -2942,5 +2809,703 @@ Le JVP (mode avant) est préférable quand le nombre de sorties $m$ est grand ma
 - Calcul de produits $\mathbf{J}_f \mathbf{v}$ pour des directions $\mathbf{v}$ spécifiques (e.g., directions de courbure en optimisation du second ordre)
 - Différentiation par rapport à un petit nombre de paramètres scalaires (e.g., hyperparamètres)
 - Sensibilités directionnelles en analyse d'incertitude
+````
+
+### Lire un graphe de calcul
+
+Les exercices suivants portent sur les graphes de calcul (DAGs) et la règle de la chaîne. Pour chaque fonction, on décompose le calcul en opérations élémentaires et on représente les dépendances par un DAG.
+
+````{admonition} Exercice 12: du graphe à l'expression (chaîne linéaire) ★
+:class: hint dropdown
+
+Considérez le graphe de calcul suivant:
+
+```{mermaid}
+graph LR
+    x("x") --> exp_x("v₁ = exp(x)")
+    exp_x --> add("v₂ = v₁ + 1")
+    add --> log_v("v₃ = log(v₂)")
+    log_v --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style exp_x fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style log_v fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+**(a)** Écrivez l'expression mathématique $f(x)$ que ce graphe calcule.
+
+**(b)** Évaluez $f(0)$.
+
+**(c)** Cette fonction porte un nom courant en apprentissage profond. Lequel?
+````
+
+````{admonition} Solution exercice 12
+:class: dropdown
+
+**(a)** En remplaçant les variables intermédiaires:
+
+$$
+v_1 = e^x, \quad v_2 = e^x + 1, \quad v_3 = \log(e^x + 1)
+$$
+
+Donc $f(x) = \log(e^x + 1)$.
+
+**(b)** $f(0) = \log(e^0 + 1) = \log(2) \approx 0{,}693$.
+
+**(c)** C'est la fonction **softplus**, une approximation lisse de ReLU.
+````
+
+````{admonition} Exercice 13: du graphe à l'expression (embranchement) ★
+:class: hint dropdown
+
+Considérez le graphe de calcul suivant:
+
+```{mermaid}
+graph LR
+    x("x") --> cos_x("v₁ = cos(x)")
+    x("x") --> sq("v₂ = x²")
+    cos_x --> add("v₃ = v₁ + v₂")
+    sq --> add
+    add --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style cos_x fill:#f5f5f5,stroke:#666
+    style sq fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+**(a)** Écrivez l'expression mathématique $f(x)$.
+
+**(b)** Combien d'arêtes sortantes a le noeud $x$? Qu'est-ce que cela signifie pour la règle de la chaîne?
+
+**(c)** Évaluez $f(\pi)$.
+````
+
+````{admonition} Solution exercice 13
+:class: dropdown
+
+**(a)** $f(x) = \cos(x) + x^2$.
+
+**(b)** Le noeud $x$ a **deux arêtes sortantes**: il alimente $v_1 = \cos(x)$ et $v_2 = x^2$. Cela signifie que $x$ contribue à $f$ par deux chemins distincts, et la règle de la chaîne devra sommer les deux contributions.
+
+**(c)** $f(\pi) = \cos(\pi) + \pi^2 = -1 + \pi^2 \approx 8{,}870$.
+````
+
+````{admonition} Exercice 14: du graphe à l'expression (trois entrées) ★
+:class: hint dropdown
+
+Considérez le graphe de calcul suivant:
+
+```{mermaid}
+graph LR
+    x("x") --> mul("v₁ = x · y")
+    y("y") --> mul
+    z("z") --> log_z("v₂ = log(z)")
+    mul --> add("v₃ = v₁ + v₂")
+    log_z --> add
+    add --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style y fill:#dae8fc,stroke:#6c8ebf
+    style z fill:#dae8fc,stroke:#6c8ebf
+    style mul fill:#f5f5f5,stroke:#666
+    style log_z fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+**(a)** Écrivez l'expression mathématique $f(x, y, z)$.
+
+**(b)** Évaluez $f(2, 3, 1)$.
+
+**(c)** Quelles variables d'entrée ont un embranchement (fan-out) dans ce graphe?
+````
+
+````{admonition} Solution exercice 14
+:class: dropdown
+
+**(a)** $f(x, y, z) = x \cdot y + \log(z)$.
+
+**(b)** $f(2, 3, 1) = 6 + \log(1) = 6 + 0 = 6$.
+
+**(c)** Aucune variable d'entrée n'a d'embranchement: $x$ alimente uniquement $v_1$, $y$ alimente uniquement $v_1$, et $z$ alimente uniquement $v_2$. Le graphe a deux branches indépendantes qui se rejoignent à l'addition.
+````
+
+### Décomposer une fonction en graphe de calcul
+
+````{admonition} Exercice 15: de l'expression au graphe (embranchement simple) ★
+:class: hint dropdown
+
+Soit $f(x) = x \cdot e^x$.
+
+**(a)** Identifiez les variables intermédiaires en décomposant $f$ en opérations élémentaires.
+
+**(b)** Dessinez le DAG correspondant. Combien d'arêtes sortantes a le noeud $x$?
+
+**(c)** Évaluez $f(1)$.
+````
+
+````{admonition} Solution exercice 15
+:class: dropdown
+
+**(a)** Deux opérations élémentaires:
+
+$$
+v_1 = e^x, \quad v_2 = x \cdot v_1 = f(x)
+$$
+
+**(b)** Le DAG est:
+
+```{mermaid}
+graph LR
+    x("x") --> exp_x("v₁ = exp(x)")
+    x("x") --> mul("v₂ = x · v₁")
+    exp_x --> mul
+    mul --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style exp_x fill:#f5f5f5,stroke:#666
+    style mul fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+Le noeud $x$ a **deux arêtes sortantes**: une vers $\exp$ et une vers la multiplication. C'est un embranchement.
+
+**(c)** $f(1) = 1 \cdot e^1 = e \approx 2{,}718$.
+````
+
+````{admonition} Exercice 16: de l'expression au graphe (diamant) ★
+:class: hint dropdown
+
+Soit $f(x, y) = e^{x - y} + (x - y)^2$.
+
+**(a)** Décomposez $f$ en opérations élémentaires et identifiez les variables intermédiaires.
+
+**(b)** Dessinez le DAG. Quel noeud intermédiaire a un embranchement?
+
+**(c)** Évaluez $f(1, 0)$.
+````
+
+````{admonition} Solution exercice 16
+:class: dropdown
+
+**(a)** Quatre opérations élémentaires:
+
+$$
+v_1 = x - y, \quad v_2 = e^{v_1}, \quad v_3 = v_1^2, \quad v_4 = v_2 + v_3 = f(x, y)
+$$
+
+**(b)** Le DAG est:
+
+```{mermaid}
+graph LR
+    x("x") --> sub("v₁ = x − y")
+    y("y") --> sub
+    sub --> exp_v("v₂ = exp(v₁)")
+    sub --> sq("v₃ = v₁²")
+    exp_v --> add("v₄ = v₂ + v₃")
+    sq --> add
+    add --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style y fill:#dae8fc,stroke:#6c8ebf
+    style sub fill:#f5f5f5,stroke:#666
+    style exp_v fill:#f5f5f5,stroke:#666
+    style sq fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+Le noeud $v_1$ a un **embranchement**: il alimente à la fois $v_2 = e^{v_1}$ et $v_3 = v_1^2$. La passe arrière devra accumuler les contributions des deux branches pour obtenir $\bar{v}_1$.
+
+**(c)** $f(1, 0) = e^1 + 1^2 = e + 1 \approx 3{,}718$.
+````
+
+````{admonition} Exercice 17: de l'expression au graphe (triple embranchement) ★★
+:class: hint dropdown
+
+Soit $f(x) = x \cdot \cos(x) + x^2$.
+
+**(a)** Décomposez $f$ en opérations élémentaires.
+
+**(b)** Dessinez le DAG. Combien d'arêtes sortantes a le noeud $x$?
+
+**(c)** Évaluez $f(\pi/2)$.
+````
+
+````{admonition} Solution exercice 17
+:class: dropdown
+
+**(a)** Quatre opérations élémentaires:
+
+$$
+v_1 = \cos(x), \quad v_2 = x \cdot v_1, \quad v_3 = x^2, \quad v_4 = v_2 + v_3 = f(x)
+$$
+
+**(b)** Le DAG est:
+
+```{mermaid}
+graph LR
+    x("x") --> cos_x("v₁ = cos(x)")
+    x("x") --> mul("v₂ = x · v₁")
+    cos_x --> mul
+    x("x") --> sq("v₃ = x²")
+    mul --> add("v₄ = v₂ + v₃")
+    sq --> add
+    add --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style cos_x fill:#f5f5f5,stroke:#666
+    style mul fill:#f5f5f5,stroke:#666
+    style sq fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+Le noeud $x$ a **trois arêtes sortantes**: vers $\cos$, vers la multiplication, et vers le carré. La règle de la chaîne devra sommer trois contributions pour obtenir $\bar{x}$.
+
+**(c)** $f(\pi/2) = (\pi/2) \cdot \cos(\pi/2) + (\pi/2)^2 = 0 + \pi^2/4 \approx 2{,}467$.
+````
+
+### Règle de la chaîne dans un DAG
+
+Les exercices suivants partent de la règle de la chaîne sous forme de jacobiennes, puis montrent comment la réécrire comme une composition de fonctions VJP.
+
+````{admonition} Exercice 18: des jacobiennes aux VJPs (chaîne linéaire) ★★
+:class: hint dropdown
+
+Considérez le graphe de calcul suivant, où chaque noeud est une fonction scalaire:
+
+```{mermaid}
+graph LR
+    x("x") --> sin_x("v₁ = sin(x)")
+    sin_x --> exp_v("v₂ = exp(v₁)")
+    exp_v --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style sin_x fill:#f5f5f5,stroke:#666
+    style exp_v fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+**(a)** Écrivez la jacobienne (ici, la dérivée) de chaque opération élémentaire: $J_{\sin}(x)$ et $J_{\exp}(v_1)$.
+
+**(b)** En appliquant la règle de la chaîne, écrivez $\frac{df}{dx}$ comme un produit de jacobiennes.
+
+**(c)** Pour calculer le gradient, on peut multiplier de droite à gauche. Définissons la fonction $\text{vjp}(g, a, \bar{u}) = \bar{u} \cdot J_g(a)$, c'est-à-dire le produit de l'adjoint entrant par la jacobienne locale de $g$ évaluée en $a$. En partant de $\bar{v}_2 = 1$, écrivez le calcul du gradient comme une composition d'appels à $\text{vjp}$:
+
+$$
+\bar{x} = \text{vjp}\!\big(\sin,\; x,\; \text{vjp}(\exp,\; \ldots,\; \ldots)\big)
+$$
+
+Complétez les arguments.
+
+**(d)** Développez chaque appel $\text{vjp}$ en utilisant les jacobiennes de **(a)**. Vérifiez que vous retrouvez le résultat de **(b)**.
+
+**(e)** Évaluez numériquement en $x = 0$.
+
+**(f)** Vérifiez vos résultats en JAX. Complétez le code ci-dessous qui compare trois méthodes: le produit des jacobiennes, la composition manuelle des VJPs avec `jax.vjp`, et `jax.grad`.
+
+```python
+import jax
+import jax.numpy as jnp
+
+x = jnp.array(0.0)
+
+# Méthode 1: produit des jacobiennes
+v1 = jnp.sin(x)
+J_sin = ???   # jacobienne de sin évaluée en x
+J_exp = ???   # jacobienne de exp évaluée en v1
+grad_jacobians = ???  # produit J_exp * J_sin
+
+# Méthode 2: composition manuelle des VJPs
+v1, vjp_sin = jax.vjp(jnp.sin, x)
+v2, vjp_exp = jax.vjp(jnp.exp, v1)
+(v1_bar,) = vjp_exp(jnp.array(1.0))  # ū = 1
+(x_bar,)  = vjp_sin(v1_bar)
+
+# Méthode 3: jax.grad
+grad_auto = jax.grad(lambda x: jnp.exp(jnp.sin(x)))(x)
+
+print(f'Jacobiennes:  {grad_jacobians}')
+print(f'VJPs manuels: {x_bar}')
+print(f'jax.grad:     {grad_auto}')
+```
+````
+
+````{admonition} Solution exercice 18
+:class: dropdown
+
+La fonction est $f(x) = e^{\sin(x)}$.
+
+**(a)** Jacobiennes locales (dérivées scalaires):
+
+$$
+J_{\sin}(x) = \cos(x), \qquad J_{\exp}(v_1) = e^{v_1}
+$$
+
+**(b)** Par la règle de la chaîne:
+
+$$
+\frac{df}{dx} = J_{\exp}(v_1) \cdot J_{\sin}(x) = e^{v_1} \cdot \cos(x)
+$$
+
+**(c)** La passe arrière compose les VJPs de droite à gauche, en partant de la sortie:
+
+$$
+\bar{x} = \text{vjp}\!\big(\sin,\; x, \;\text{vjp}(\exp,\; v_1,\; \underbrace{1}_{\bar{v}_2})\big)
+$$
+
+**(d)** Développons:
+
+- $\text{vjp}(\exp, v_1, 1) = 1 \cdot J_{\exp}(v_1) = e^{v_1} = e^{\sin(x)}$
+- $\text{vjp}(\sin, x, e^{\sin(x)}) = e^{\sin(x)} \cdot J_{\sin}(x) = e^{\sin(x)} \cdot \cos(x)$
+
+On retrouve bien $\frac{df}{dx} = \cos(x) \, e^{\sin(x)}$.
+
+**(e)** En $x = 0$:
+
+Passe avant: $v_1 = \sin(0) = 0$, $v_2 = e^0 = 1$, $f = 1$.
+
+Passe arrière: $\text{vjp}(\exp, 0, 1) = e^0 = 1$, puis $\text{vjp}(\sin, 0, 1) = 1 \cdot \cos(0) = 1$.
+
+Donc $f'(0) = 1$.
+
+**(f)** Code JAX complété:
+
+```python
+import jax
+import jax.numpy as jnp
+
+x = jnp.array(0.0)
+
+# Méthode 1: produit des jacobiennes
+v1 = jnp.sin(x)
+J_sin = jnp.cos(x)       # cos(0) = 1
+J_exp = jnp.exp(v1)      # exp(0) = 1
+grad_jacobians = J_exp * J_sin  # 1.0
+
+# Méthode 2: composition manuelle des VJPs
+v1, vjp_sin = jax.vjp(jnp.sin, x)
+v2, vjp_exp = jax.vjp(jnp.exp, v1)
+(v1_bar,) = vjp_exp(jnp.array(1.0))
+(x_bar,)  = vjp_sin(v1_bar)
+
+# Méthode 3: jax.grad
+grad_auto = jax.grad(lambda x: jnp.exp(jnp.sin(x)))(x)
+
+print(f'Jacobiennes:  {grad_jacobians}')  # 1.0
+print(f'VJPs manuels: {x_bar}')           # 1.0
+print(f'jax.grad:     {grad_auto}')       # 1.0
+```
+
+Les trois méthodes donnent 1,0. La composition manuelle des VJPs avec `jax.vjp` fait exactement ce que `jax.grad` fait en interne: elle parcourt la bande à rebours en appelant chaque VJP locale.
+````
+
+````{admonition} Exercice 19: jacobiennes et accumulation (embranchement) ★★
+:class: hint dropdown
+
+Reprenons le graphe de $f(x, y) = e^{x - y} + (x - y)^2$ de l'exercice 16:
+
+```{mermaid}
+graph LR
+    x("x") --> sub("v₁ = x − y")
+    y("y") --> sub
+    sub --> exp_v("v₂ = exp(v₁)")
+    sub --> sq("v₃ = v₁²")
+    exp_v --> add("v₄ = v₂ + v₃")
+    sq --> add
+    add --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style y fill:#dae8fc,stroke:#6c8ebf
+    style sub fill:#f5f5f5,stroke:#666
+    style exp_v fill:#f5f5f5,stroke:#666
+    style sq fill:#f5f5f5,stroke:#666
+    style add fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+**(a)** Écrivez la jacobienne de chaque opération élémentaire: $J_{\text{sub}}(x, y)$, $J_{\exp}(v_1)$, $J_{\text{sq}}(v_1)$, $J_{\text{add}}(v_2, v_3)$.
+
+**(b)** Le noeud $v_1$ a deux successeurs ($v_2$ et $v_3$). En utilisant la règle de la chaîne multivariée, écrivez $\frac{\partial f}{\partial v_1}$ comme une somme de deux termes (un par chemin).
+
+**(c)** Écrivez la passe arrière comme une suite d'appels à $\text{vjp}$. Le noeud $v_1$ reçoit deux contributions: montrez comment elles s'accumulent.
+
+$$
+\bar{v}_2, \bar{v}_3 = \text{vjp}(\text{add}, v_2, v_3,\; \bar{v}_4) \quad \text{puis} \quad \bar{v}_1 = \text{vjp}(\exp, v_1,\; \bar{v}_2) + \text{vjp}(\text{sq}, v_1,\; \bar{v}_3)
+$$
+
+Continuez jusqu'à $\bar{x}$ et $\bar{y}$.
+
+**(d)** Évaluez numériquement en $(x, y) = (1, 0)$. Vérifiez par dérivation directe.
+
+**(e)** Vérifiez en JAX. Complétez le code ci-dessous. La partie importante est l'accumulation sur $v_1$: le noeud reçoit les contributions de deux VJPs distincts qu'il faut additionner.
+
+```python
+import jax
+import jax.numpy as jnp
+
+x, y = jnp.array(1.0), jnp.array(0.0)
+
+# Passe avant: enregistrer les VJPs
+v1, vjp_sub = jax.vjp(lambda x, y: x - y, x, y)
+v2, vjp_exp = jax.vjp(jnp.exp, v1)
+v3, vjp_sq  = jax.vjp(lambda v: v**2, v1)
+v4, vjp_add = jax.vjp(lambda a, b: a + b, v2, v3)
+
+# Passe arrière: composer les VJPs
+v4_bar = jnp.array(1.0)
+(v2_bar, v3_bar) = vjp_add(v4_bar)
+(v1_bar_exp,) = vjp_exp(v2_bar)
+(v1_bar_sq,)  = vjp_sq(v3_bar)
+v1_bar = ???                          # accumulation
+(x_bar, y_bar) = vjp_sub(v1_bar)
+
+# Comparaison avec jax.grad
+f = lambda x, y: jnp.exp(x - y) + (x - y)**2
+print(f'VJPs manuels: dx={x_bar}, dy={y_bar}')
+print(f'jax.grad:     dx={jax.grad(f, 0)(x, y)}, '
+      f'dy={jax.grad(f, 1)(x, y)}')
+```
+````
+
+````{admonition} Solution exercice 19
+:class: dropdown
+
+**(a)** Jacobiennes locales:
+
+$$
+J_{\text{sub}}(x, y) = \begin{bmatrix} 1 & -1 \end{bmatrix}, \quad J_{\exp}(v_1) = e^{v_1}, \quad J_{\text{sq}}(v_1) = 2v_1, \quad J_{\text{add}}(v_2, v_3) = \begin{bmatrix} 1 & 1 \end{bmatrix}
+$$
+
+**(b)** Le noeud $v_1$ contribue à $f$ par deux chemins (via $\exp$ et via le carré). La règle de la chaîne multivariée donne:
+
+$$
+\frac{\partial f}{\partial v_1} = \frac{\partial f}{\partial v_2} \cdot J_{\exp}(v_1) + \frac{\partial f}{\partial v_3} \cdot J_{\text{sq}}(v_1) = \bar{v}_2 \cdot e^{v_1} + \bar{v}_3 \cdot 2v_1
+$$
+
+**(c)** Passe arrière complète:
+
+- Initialiser $\bar{v}_4 = 1$.
+- $\bar{v}_2, \bar{v}_3 = \text{vjp}(\text{add}, v_2, v_3,\; 1)$. Comme $J_{\text{add}} = [1, 1]$, on obtient $\bar{v}_2 = 1$, $\bar{v}_3 = 1$.
+- Accumulation sur $v_1$:
+
+$$
+\bar{v}_1 = \text{vjp}(\exp, v_1,\; \bar{v}_2) + \text{vjp}(\text{sq}, v_1,\; \bar{v}_3) = \bar{v}_2 \cdot e^{v_1} + \bar{v}_3 \cdot 2v_1 = e^{v_1} + 2v_1
+$$
+
+- $\bar{x}, \bar{y} = \text{vjp}(\text{sub}, x, y,\; \bar{v}_1)$. Comme $J_{\text{sub}} = [1, -1]$:
+
+$$
+\bar{x} = \bar{v}_1 \cdot 1 = e^{v_1} + 2v_1, \qquad \bar{y} = \bar{v}_1 \cdot (-1) = -(e^{v_1} + 2v_1)
+$$
+
+**(d)** En $(x, y) = (1, 0)$:
+
+Passe avant: $v_1 = 1$, $v_2 = e$, $v_3 = 1$, $v_4 = e + 1 \approx 3{,}718$.
+
+Passe arrière: $\bar{v}_4 = 1$, $\bar{v}_2 = 1$, $\bar{v}_3 = 1$, $\bar{v}_1 = e + 2 \approx 4{,}718$.
+
+$$
+\bar{x} = e + 2 \approx 4{,}718, \quad \bar{y} = -(e + 2) \approx -4{,}718
+$$
+
+Vérification directe: $\frac{\partial f}{\partial x} = e^{x-y} + 2(x - y) = e + 2$. Correct. On note que $\partial f / \partial x = -\partial f / \partial y$, ce qui est attendu puisque $f$ dépend de $x$ et $y$ uniquement à travers $x - y$.
+
+**(e)** Code JAX complété:
+
+```python
+import jax
+import jax.numpy as jnp
+
+x, y = jnp.array(1.0), jnp.array(0.0)
+
+# Passe avant: enregistrer les VJPs
+v1, vjp_sub = jax.vjp(lambda x, y: x - y, x, y)
+v2, vjp_exp = jax.vjp(jnp.exp, v1)
+v3, vjp_sq  = jax.vjp(lambda v: v**2, v1)
+v4, vjp_add = jax.vjp(lambda a, b: a + b, v2, v3)
+
+# Passe arrière: composer les VJPs
+v4_bar = jnp.array(1.0)
+(v2_bar, v3_bar) = vjp_add(v4_bar)
+(v1_bar_exp,) = vjp_exp(v2_bar)
+(v1_bar_sq,)  = vjp_sq(v3_bar)
+v1_bar = v1_bar_exp + v1_bar_sq       # accumulation!
+(x_bar, y_bar) = vjp_sub(v1_bar)
+
+# Comparaison avec jax.grad
+f = lambda x, y: jnp.exp(x - y) + (x - y)**2
+print(f'VJPs manuels: dx={x_bar}, dy={y_bar}')
+# dx=4.718..., dy=-4.718...
+print(f'jax.grad:     dx={jax.grad(f, 0)(x, y)}, '
+      f'dy={jax.grad(f, 1)(x, y)}')
+# dx=4.718..., dy=-4.718...
+```
+
+La ligne `v1_bar = v1_bar_exp + v1_bar_sq` est l'accumulation: le noeud $v_1$ reçoit un adjoint de chaque branche. C'est exactement ce que fait le système d'AD en interne quand une variable a un fan-out.
+````
+
+````{admonition} Exercice 20: ReLU et gradient nul ★★★
+:class: hint dropdown
+
+Considérez le graphe de calcul suivant, qui correspond à $f(x, y) = \text{relu}(x + y) \cdot (x - y)$:
+
+```{mermaid}
+graph LR
+    x("x") --> add("v₁ = x + y")
+    y("y") --> add
+    add --> relu("v₂ = relu(v₁)")
+    x("x") --> sub("v₃ = x − y")
+    y("y") --> sub
+    relu --> mul("v₄ = v₂ · v₃")
+    sub --> mul
+    mul --> f("f")
+
+    style x fill:#dae8fc,stroke:#6c8ebf
+    style y fill:#dae8fc,stroke:#6c8ebf
+    style add fill:#f5f5f5,stroke:#666
+    style relu fill:#f5f5f5,stroke:#666
+    style sub fill:#f5f5f5,stroke:#666
+    style mul fill:#f5f5f5,stroke:#666
+    style f fill:#f8cecc,stroke:#b85450
+```
+
+On rappelle que $\text{relu}(t) = \max(0, t)$ et que $J_{\text{relu}}(t) = \mathbb{1}[t > 0]$.
+
+**(a)** Écrivez la jacobienne de chaque opération élémentaire. Quelles variables d'entrée ont un embranchement?
+
+**(b)** Écrivez la passe arrière comme une suite d'appels à $\text{vjp}$, en montrant comment $\bar{x}$ et $\bar{y}$ accumulent chacun deux contributions (une par branche).
+
+**(c)** Évaluez en $(x, y) = (3, 1)$ (ReLU actif). Vérifiez en simplifiant $f$ quand $x + y > 0$.
+
+**(d)** Évaluez en $(x, y) = (-3, 1)$ (ReLU inactif). Que se passe-t-il pour les gradients?
+
+**(e)** Vérifiez en JAX pour les deux cas. Complétez le code ci-dessous. Notez que $x$ et $y$ alimentent chacun deux opérations: il faut accumuler les contributions des deux branches.
+
+```python
+import jax
+import jax.numpy as jnp
+
+def backward_manual(x, y):
+    # Passe avant
+    v1, vjp_add = jax.vjp(lambda x, y: x + y, x, y)
+    v2, vjp_relu = jax.vjp(jax.nn.relu, v1)
+    v3, vjp_sub = jax.vjp(lambda x, y: x - y, x, y)
+    v4, vjp_mul = jax.vjp(lambda a, b: a * b, v2, v3)
+
+    # Passe arrière
+    (v2_bar, v3_bar) = vjp_mul(jnp.array(1.0))
+    (v1_bar,) = vjp_relu(v2_bar)
+    (x_bar_add, y_bar_add) = vjp_add(v1_bar)
+    (x_bar_sub, y_bar_sub) = vjp_sub(v3_bar)
+    x_bar = ???  # accumulation des deux branches
+    y_bar = ???
+    return x_bar, y_bar
+
+# Cas 1: ReLU actif
+print('ReLU actif (3, 1):', backward_manual(
+    jnp.array(3.0), jnp.array(1.0)))
+# Cas 2: ReLU inactif
+print('ReLU inactif (-3, 1):', backward_manual(
+    jnp.array(-3.0), jnp.array(1.0)))
+
+# Comparaison avec jax.grad
+f = lambda x, y: jax.nn.relu(x + y) * (x - y)
+print('jax.grad (3, 1):',
+      jax.grad(f, 0)(jnp.array(3.0), jnp.array(1.0)),
+      jax.grad(f, 1)(jnp.array(3.0), jnp.array(1.0)))
+print('jax.grad (-3, 1):',
+      jax.grad(f, 0)(jnp.array(-3.0), jnp.array(1.0)),
+      jax.grad(f, 1)(jnp.array(-3.0), jnp.array(1.0)))
+```
+````
+
+````{admonition} Solution exercice 20
+:class: dropdown
+
+**(a)** Jacobiennes locales:
+
+$$
+J_{\text{add}}(x, y) = \begin{bmatrix} 1 & 1 \end{bmatrix}, \quad J_{\text{relu}}(v_1) = \mathbb{1}[v_1 > 0], \quad J_{\text{sub}}(x, y) = \begin{bmatrix} 1 & -1 \end{bmatrix}
+$$
+
+$$
+J_{\text{mul}}(v_2, v_3) = \begin{bmatrix} v_3 & v_2 \end{bmatrix}
+$$
+
+Les deux variables $x$ et $y$ ont un embranchement: chacune alimente $v_1$ (addition) et $v_3$ (soustraction).
+
+**(b)** Passe arrière:
+
+- Initialiser $\bar{v}_4 = 1$.
+- $\bar{v}_2, \bar{v}_3 = \text{vjp}(\text{mul}, v_2, v_3,\; 1) = (v_3, \; v_2)$
+- $\bar{v}_1 = \text{vjp}(\text{relu}, v_1,\; \bar{v}_2) = \mathbb{1}[v_1 > 0] \cdot \bar{v}_2$
+
+Accumulation sur $x$ et $y$ (deux contributions chacun):
+
+$$
+\bar{x} = \text{vjp}(\text{add}, x, y,\; \bar{v}_1)_x + \text{vjp}(\text{sub}, x, y,\; \bar{v}_3)_x = \bar{v}_1 + \bar{v}_3
+$$
+
+$$
+\bar{y} = \text{vjp}(\text{add}, x, y,\; \bar{v}_1)_y + \text{vjp}(\text{sub}, x, y,\; \bar{v}_3)_y = \bar{v}_1 + (-\bar{v}_3)
+$$
+
+**(c)** En $(x, y) = (3, 1)$ — ReLU actif:
+
+Passe avant: $v_1 = 4$, $v_2 = 4$, $v_3 = 2$, $v_4 = 8$.
+
+Passe arrière: $\bar{v}_4 = 1$. $\text{vjp}(\text{mul}) \to \bar{v}_2 = 2$, $\bar{v}_3 = 4$. $\text{vjp}(\text{relu}) \to \bar{v}_1 = \mathbb{1}[4 > 0] \cdot 2 = 2$.
+
+$$
+\bar{x} = \bar{v}_1 + \bar{v}_3 = 2 + 4 = 6, \quad \bar{y} = \bar{v}_1 - \bar{v}_3 = 2 - 4 = -2
+$$
+
+Vérification: quand $x + y > 0$, $f(x, y) = (x+y)(x-y) = x^2 - y^2$, donc $\partial f/\partial x = 2x = 6$ et $\partial f/\partial y = -2y = -2$. Correct.
+
+**(d)** En $(x, y) = (-3, 1)$ — ReLU inactif:
+
+Passe avant: $v_1 = -2$, $v_2 = 0$, $v_3 = -4$, $v_4 = 0$.
+
+Passe arrière: $\bar{v}_4 = 1$. $\text{vjp}(\text{mul}) \to \bar{v}_2 = -4$, $\bar{v}_3 = 0$. $\text{vjp}(\text{relu}) \to \bar{v}_1 = \mathbb{1}[-2 > 0] \cdot (-4) = 0$.
+
+$$
+\bar{x} = 0 + 0 = 0, \quad \bar{y} = 0 - 0 = 0
+$$
+
+Les deux gradients sont nuls. Le ReLU inactif bloque le gradient à travers la branche gauche ($\bar{v}_1 = 0$), et la multiplication par $v_2 = 0$ bloque le gradient à travers la branche droite ($\bar{v}_3 = v_2 \cdot \bar{v}_4 = 0$). Quand la sortie du ReLU est nulle, aucun gradient ne peut remonter, quelle que soit la branche.
+
+**(e)** Code JAX complété:
+
+```python
+import jax
+import jax.numpy as jnp
+
+def backward_manual(x, y):
+    v1, vjp_add = jax.vjp(lambda x, y: x + y, x, y)
+    v2, vjp_relu = jax.vjp(jax.nn.relu, v1)
+    v3, vjp_sub = jax.vjp(lambda x, y: x - y, x, y)
+    v4, vjp_mul = jax.vjp(lambda a, b: a * b, v2, v3)
+
+    (v2_bar, v3_bar) = vjp_mul(jnp.array(1.0))
+    (v1_bar,) = vjp_relu(v2_bar)
+    (x_bar_add, y_bar_add) = vjp_add(v1_bar)
+    (x_bar_sub, y_bar_sub) = vjp_sub(v3_bar)
+    x_bar = x_bar_add + x_bar_sub  # accumulation
+    y_bar = y_bar_add + y_bar_sub
+    return x_bar, y_bar
+
+# ReLU actif:  (6.0, -2.0)
+print(backward_manual(jnp.array(3.0), jnp.array(1.0)))
+# ReLU inactif: (0.0, 0.0)
+print(backward_manual(jnp.array(-3.0), jnp.array(1.0)))
+```
+
+Les résultats confirment les calculs manuels. Le cas $(−3, 1)$ illustre le phénomène du neurone mort: les deux gradients sont exactement zéro, ce que `jax.grad` confirme aussi.
 ````
 
