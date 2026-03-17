@@ -29,10 +29,13 @@
     <loc>http://localhost:3001/ch7-neural-networks</loc>
   </url>
   <url>
-    <loc>http://localhost:3001/ch8-rnn</loc>
+    <loc>http://localhost:3001/ch8-optimization</loc>
   </url>
   <url>
-    <loc>http://localhost:3001/ch9-transformers</loc>
+    <loc>http://localhost:3001/ch9-rnn</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3001/ch10-transformers</loc>
   </url>
   <url>
     <loc>http://localhost:3001/tp0-knn</loc>
@@ -54,6 +57,9 @@
   </url>
   <url>
     <loc>http://localhost:3001/tp6-vjp</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3001/manual-vjps</loc>
   </url>
   <url>
     <loc>http://localhost:3001/projet-energie</loc>
