@@ -18,6 +18,7 @@ dependencies = [
     "sphinxcontrib-mermaid",
     "sphinxcontrib-bibtex",
     "jax>=0.9.1",
+    "sympy>=1.14.0",
 ]
 
 [build-system]
