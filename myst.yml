@@ -43,8 +43,9 @@ project:
     - title: "Partie III : Réseaux de neurones"
       children:
         - file: ch7_neural_networks.md
-        - file: ch8_rnn.md
-        - file: ch9_transformers.md
+        - file: ch8_optimization.md
+        - file: ch9_rnn.md
+        - file: ch10_transformers.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb
@@ -54,6 +55,7 @@ project:
         - file: exercises/tp4_discriminant_analysis.ipynb
         - file: exercises/tp5_mixture_of_experts.ipynb
         - file: exercises/tp6_vjp.ipynb
+        - file: exercises/manual_vjps.ipynb
         - file: exercises/projet_energie.ipynb
     # - title: "Présentations"
     #   children:

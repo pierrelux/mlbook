@@ -17,7 +17,7 @@ kernelspec:
 - Expliquer la dissolution du gradient et les mécanismes de portes (LSTM, GRU)
 ```
 
-Le chapitre précédent a montré comment le MLP apprend une représentation $\boldsymbol{\phi}(\mathbf{x})$ à partir de données tabulaires, puis effectue une prédiction linéaire sur cette représentation. Mais le MLP traite son entrée comme un vecteur plat de taille fixe: chaque dimension est indépendante de ses voisines, et la taille de l'entrée est déterminée à l'avance.
+Le chapitre 7 a montré comment le MLP apprend une représentation $\boldsymbol{\phi}(\mathbf{x})$ à partir de données tabulaires, puis effectue une prédiction linéaire sur cette représentation. Mais le MLP traite son entrée comme un vecteur plat de taille fixe: chaque dimension est indépendante de ses voisines, et la taille de l'entrée est déterminée à l'avance.
 
 Or beaucoup de données ont une structure séquentielle. Un texte est une suite de mots, un signal audio est une suite d'échantillons, une série temporelle de température est une suite de mesures à intervalles réguliers. Ces données ont deux propriétés que le MLP ne sait pas exploiter: elles sont ordonnées (le mot "pas" a un sens différent au début et à la fin d'une phrase), et elles sont de longueur variable (une phrase peut avoir 5 ou 50 mots).
 
@@ -142,7 +142,7 @@ où $\mathbf{a}_j = W_{hh}\, \mathbf{h}_{j-1} + W_{xh}\, \mathbf{x}_j + \mathbf{
 
 À l'inverse, si les valeurs propres sont supérieures à 1, le produit croît exponentiellement: le gradient "explose". Ce problème est plus facile à traiter (on peut tronquer la norme du gradient, une technique appelée écrêtage du gradient (*gradient clipping*)), mais la dissolution du gradient est plus insidieuse, car elle ne produit pas d'erreur visible: l'entraînement semble fonctionner, mais le réseau ignore silencieusement les dépendances à long terme.
 
-C'est le même phénomène que dans les MLP profonds (chapitre 7), mais aggravé par le fait que $T$ peut être très grand (des centaines ou des milliers de pas de temps).
+C'est le même phénomène que dans les MLP profonds (chapitre 8), mais aggravé par le fait que $T$ peut être très grand (des centaines ou des milliers de pas de temps).
 
 ```{code-cell} python
 :tags: [hide-input]

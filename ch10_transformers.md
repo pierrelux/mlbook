@@ -164,7 +164,7 @@ graph TB
 
 Les connexions résiduelles ($X + \text{MultiHead}(X)$ au lieu de $\text{MultiHead}(X)$ seul) sont le même mécanisme que dans les réseaux résiduels (ResNets): elles permettent au gradient de circuler sans atténuation à travers les couches, ce qui rend possible l'entraînement de réseaux profonds.
 
-La normalisation de couche (*layer normalization*) normalise les activations à chaque position indépendamment, ce qui stabilise l'entraînement. Elle remplace la normalisation par lots (*batch normalization*) vue au chapitre 7, car cette dernière est mal adaptée aux séquences de longueurs variables.
+La normalisation de couche (*layer normalization*) normalise les activations à chaque position indépendamment, ce qui stabilise l'entraînement. Elle remplace la normalisation par lots (*batch normalization*) vue au chapitre 8, car cette dernière est mal adaptée aux séquences de longueurs variables.
 
 Un transformeur complet empile $N$ de ces blocs (typiquement $N = 6$ à $N = 96$ selon la taille du modèle). L'entrée du premier bloc est la séquence de représentations initiales (par exemple, les vecteurs d'un plongement de mots). La sortie du dernier bloc est la séquence de représentations contextualisées.
 
