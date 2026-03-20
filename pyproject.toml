@@ -19,6 +19,7 @@ dependencies = [
     "sphinxcontrib-bibtex",
     "jax>=0.9.1",
     "sympy>=1.14.0",
+    "networkx>=3.6.1",
 ]
 
 [build-system]

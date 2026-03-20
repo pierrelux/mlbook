@@ -56,6 +56,7 @@ project:
         - file: exercises/tp5_mixture_of_experts.ipynb
         - file: exercises/tp6_vjp.ipynb
         - file: exercises/manual_vjps.ipynb
+        - file: exercises/autodiff_graphe.ipynb
         - file: exercises/projet_energie.ipynb
     # - title: "Présentations"
     #   children:

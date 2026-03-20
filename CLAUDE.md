@@ -17,6 +17,11 @@ Compiler avec exécution des notebooks:
 uv run jupyter-book build --site --execute
 ```
 
+Publier sur GitHub Pages:
+```bash
+source publish.sh
+```
+
 ## Structure du projet
 
 - `ch*.md` — chapitres du livre (MyST Markdown)
