@@ -62,6 +62,9 @@
     <loc>http://localhost:3003/manual-vjps</loc>
   </url>
   <url>
+    <loc>http://localhost:3003/autodiff-graphe</loc>
+  </url>
+  <url>
     <loc>http://localhost:3003/projet-energie</loc>
   </url>
 </urlset>
