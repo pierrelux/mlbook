@@ -1,0 +1,468 @@
+<style>
+.nn-wrap {
+  --bg1: #ffffff;
+  --bg2: #f5f5f4;
+  --bg3: #eeeeec;
+  --tx1: #1a1a1a;
+  --tx2: #6b6b6b;
+  --tx3: #999;
+  --bd: rgba(0,0,0,.12);
+  --bd2: rgba(0,0,0,.22);
+  --info-bg: #e6f1fb; --info-tx: #185fa5; --info-bd: #85b7eb;
+  --danger-bg: #fcebeb; --danger-tx: #a32d2d; --danger-bd: #f09595;
+  --success-bg: #eaf3de; --success-tx: #3b6d11; --success-bd: #97c459;
+  --warn-bg: #faeeda; --warn-tx: #854f0b; --warn-bd: #ef9f27;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --radius: 8px;
+  --c-gray: rgba(0,0,0,.35);
+  --c-fwd: #185fa5;
+  --c-rev: #a32d2d;
+
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: var(--font-sans);
+  color: var(--tx1);
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .nn-wrap {
+    --bg1: #1a1a1a; --bg2: #2a2a28; --bg3: #333331;
+    --tx1: #e8e6e0; --tx2: #a0a09a; --tx3: #707068;
+    --bd: rgba(255,255,255,.1); --bd2: rgba(255,255,255,.2);
+    --info-bg: #0c447c; --info-tx: #b5d4f4; --info-bd: #378add;
+    --danger-bg: #501313; --danger-tx: #f7c1c1; --danger-bd: #e24b4a;
+    --success-bg: #173404; --success-tx: #c0dd97; --success-bd: #639922;
+    --warn-bg: #412402; --warn-tx: #fac775; --warn-bd: #ef9f27;
+    --c-gray: rgba(255,255,255,.3);
+    --c-fwd: #b5d4f4;
+    --c-rev: #f7c1c1;
+  }
+}
+.nn-wrap svg { overflow: visible !important; }
+.nn-wrap .se { stroke: var(--bd2); stroke-width: 1; fill: none }
+.nn-wrap .nd rect { rx: 8; transition: fill .3s, stroke .3s, stroke-width .3s }
+.nn-wrap .nd.idle rect  { fill: var(--bg2); stroke: var(--bd); stroke-width: .5 }
+.nn-wrap .nd.af rect    { fill: var(--info-bg); stroke: var(--info-tx); stroke-width: 2 }
+.nn-wrap .nd.ar rect    { fill: var(--danger-bg); stroke: var(--danger-tx); stroke-width: 2 }
+.nn-wrap .nd.done rect  { fill: var(--success-bg); stroke: var(--success-tx); stroke-width: 1 }
+.nn-wrap .nd.acc rect   { fill: var(--warn-bg); stroke: var(--warn-tx); stroke-width: 2.2 }
+.nn-wrap .nm  { font-size: 13px; font-weight: 500; fill: var(--tx1) }
+.nn-wrap .nv  { font-size: 11px; fill: var(--tx2); font-family: var(--font-mono) }
+.nn-wrap .ndr { font-size: 11px; font-weight: 500; font-family: var(--font-mono) }
+.nn-wrap .ndr.cf { fill: var(--info-tx) }
+.nn-wrap .ndr.cr { fill: var(--danger-tx) }
+.nn-wrap .ndr.cs { fill: var(--success-tx) }
+.nn-wrap .ndr.ca { fill: var(--warn-tx) }
+.nn-wrap .opl { font-size: 10px; fill: var(--tx3); font-style: italic; font-family: var(--font-mono) }
+.nn-wrap .lyr { font-size: 10px; fill: var(--tx3); font-style: italic }
+.nn-wrap .fline { fill: none; stroke-width: 2.2; stroke-linecap: round }
+.nn-wrap .fline.fl-f { stroke: var(--info-tx); stroke-dasharray: 6 4 }
+.nn-wrap .fline.fl-r { stroke: var(--danger-tx); stroke-dasharray: 6 4 }
+@keyframes nn-dashF { to { stroke-dashoffset: -20 } }
+@keyframes nn-dashR { to { stroke-dashoffset: 20 } }
+.nn-wrap .fline.fl-f { animation: nn-dashF .5s linear infinite }
+.nn-wrap .fline.fl-r { animation: nn-dashR .5s linear infinite }
+.nn-wrap .badge { font-size: 11px; font-family: var(--font-mono); font-weight: 500; opacity: 0; transition: opacity .4s .15s }
+.nn-wrap .badge.show { opacity: 1 }
+.nn-wrap .elbl { font-size: 10px; font-family: var(--font-mono); font-weight: 600; opacity: 0; transition: opacity .3s .1s }
+.nn-wrap .elbl.show { opacity: 1 }
+.nn-tabs { display: flex; gap: 6px; margin-bottom: 10px }
+.nn-tab {
+  padding: 6px 16px; font-size: 13px;
+  border-radius: var(--radius); cursor: pointer;
+  border: .5px solid var(--bd2);
+  background: var(--bg1); color: var(--tx2);
+  transition: all .15s; font-family: var(--font-sans);
+}
+.nn-tab:hover { background: var(--bg2) }
+.nn-tab.on {
+  background: var(--tx1); color: var(--bg1);
+  border-color: var(--tx1);
+}
+.nn-tab.on:hover { opacity: .9 }
+.nn-info {
+  min-height: 80px; margin: 8px 0; padding: 12px 16px;
+  border-radius: var(--radius); background: var(--bg2);
+}
+.nn-info h3 { font-size: 14px; font-weight: 500; margin: 0 0 5px; color: var(--tx1) }
+.nn-info .fm { font-size: 12.5px; line-height: 1.7; color: var(--tx2); font-family: var(--font-mono) }
+.nn-info .fm b { font-weight: 600; color: var(--tx1) }
+.nn-wrap .pill {
+  display: inline-block; margin-top: 4px; padding: 2px 8px;
+  border-radius: 4px; font-size: 11.5px;
+}
+.nn-wrap .pill.pf { background: var(--info-bg); color: var(--info-tx) }
+.nn-wrap .pill.pr { background: var(--danger-bg); color: var(--danger-tx) }
+.nn-wrap .pill.pa { background: var(--warn-bg); color: var(--warn-tx) }
+.nn-wrap .pill.ps { background: var(--success-bg); color: var(--success-tx) }
+.nn-nav { display: flex; align-items: center; gap: 8px }
+.nn-nav button {
+  font-family: var(--font-sans); font-size: 13px;
+  padding: 5px 12px; border-radius: var(--radius);
+  border: .5px solid var(--bd2); background: var(--bg1);
+  color: var(--tx1); cursor: pointer; transition: all .15s;
+}
+.nn-nav button:hover:not(:disabled) { background: var(--bg2) }
+.nn-nav button:disabled { opacity: .35; cursor: default }
+.nn-dots { display: flex; gap: 5px; flex: 1; justify-content: center }
+.nn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bd2); transition: all .2s; cursor: pointer;
+}
+.nn-dot.on { background: var(--tx1); transform: scale(1.3) }
+</style>
+
+<div class="nn-wrap">
+
+<div class="nn-tabs">
+  <button class="nn-tab on" id="nn-tb-f">Passe avant</button>
+  <button class="nn-tab" id="nn-tb-r">Rétropropagation</button>
+</div>
+
+<svg id="nn-G" width="100%" viewBox="0 0 780 220" style="overflow:visible">
+
+<g id="nn-SE">
+  <line class="se" x1="100" y1="160" x2="144" y2="160"/>
+  <line class="se" x1="153" y1="64"  x2="178" y2="126"/>
+  <line class="se" x1="261" y1="64"  x2="236" y2="126"/>
+  <line class="se" x1="270" y1="160" x2="314" y2="160"/>
+  <line class="se" x1="420" y1="160" x2="464" y2="160"/>
+  <line class="se" x1="462" y1="64"  x2="494" y2="126"/>
+  <line class="se" x1="582" y1="64"  x2="550" y2="126"/>
+  <line class="se" x1="580" y1="160" x2="624" y2="160"/>
+  <line class="se" x1="718" y1="64"  x2="706" y2="126"/>
+</g>
+
+<g id="nn-FL"></g>
+<g id="nn-PL"></g>
+
+<g class="nd idle" id="nn-Nw1">
+  <rect x="109" y="8" width="88" height="56"/>
+  <text class="nm" x="153" y="22" text-anchor="middle" dominant-baseline="central">w₁</text>
+  <text class="nv" id="nn-Nw1-v" x="153" y="36" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nw1-d" x="153" y="50" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Nb1">
+  <rect x="217" y="8" width="88" height="56"/>
+  <text class="nm" x="261" y="22" text-anchor="middle" dominant-baseline="central">b₁</text>
+  <text class="nv" id="nn-Nb1-v" x="261" y="36" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nb1-d" x="261" y="50" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Nw2">
+  <rect x="418" y="8" width="88" height="56"/>
+  <text class="nm" x="462" y="22" text-anchor="middle" dominant-baseline="central">w₂</text>
+  <text class="nv" id="nn-Nw2-v" x="462" y="36" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nw2-d" x="462" y="50" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Nb2">
+  <rect x="538" y="8" width="88" height="56"/>
+  <text class="nm" x="582" y="22" text-anchor="middle" dominant-baseline="central">b₂</text>
+  <text class="nv" id="nn-Nb2-v" x="582" y="36" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nb2-d" x="582" y="50" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Ny">
+  <rect x="674" y="8" width="88" height="56"/>
+  <text class="nm" x="718" y="22" text-anchor="middle" dominant-baseline="central">y (cible)</text>
+  <text class="nv" id="nn-Ny-v" x="718" y="36" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Ny-d" x="718" y="50" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+
+<g class="nd idle" id="nn-Nx">
+  <rect x="12" y="126" width="88" height="68"/>
+  <text class="nm" x="56" y="144" text-anchor="middle" dominant-baseline="central">x</text>
+  <text class="nv" id="nn-Nx-v" x="56" y="160" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nx-d" x="56" y="176" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Na1">
+  <rect x="144" y="126" width="126" height="68"/>
+  <text class="nm" x="207" y="144" text-anchor="middle" dominant-baseline="central">a₁</text>
+  <text class="nv" id="nn-Na1-v" x="207" y="160" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Na1-d" x="207" y="176" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Nz1">
+  <rect x="314" y="126" width="106" height="68"/>
+  <text class="nm" x="367" y="144" text-anchor="middle" dominant-baseline="central">z₁</text>
+  <text class="nv" id="nn-Nz1-v" x="367" y="160" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nz1-d" x="367" y="176" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-Nyh">
+  <rect x="464" y="126" width="116" height="68"/>
+  <text class="nm" x="522" y="144" text-anchor="middle" dominant-baseline="central">ŷ</text>
+  <text class="nv" id="nn-Nyh-v" x="522" y="160" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-Nyh-d" x="522" y="176" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="nn-NL">
+  <rect x="624" y="126" width="126" height="68"/>
+  <text class="nm" x="687" y="144" text-anchor="middle" dominant-baseline="central">L</text>
+  <text class="nv" id="nn-NL-v" x="687" y="160" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="nn-NL-d" x="687" y="176" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+
+<text class="opl" x="207" y="120" text-anchor="middle">φ₁: w₁x + b₁</text>
+<text class="opl" x="367" y="120" text-anchor="middle">φ₂: ReLU</text>
+<text class="opl" x="522" y="120" text-anchor="middle">φ₃: w₂z₁ + b₂</text>
+<text class="opl" x="687" y="120" text-anchor="middle">φ₄: ½(ŷ − y)²</text>
+
+<text class="lyr" x="207" y="208" text-anchor="middle">Couche 1</text>
+<text class="lyr" x="522" y="208" text-anchor="middle">Couche 2</text>
+
+<g id="nn-BL"></g>
+</svg>
+
+<div class="nn-info">
+  <h3 id="nn-stitle"></h3>
+  <div class="fm" id="nn-sform"></div>
+</div>
+
+<div class="nn-nav">
+  <button id="nn-bp">&#8592; Préc.</button>
+  <div class="nn-dots" id="nn-dots"></div>
+  <button id="nn-bn">Suiv. &#8594;</button>
+</div>
+
+</div>
+
+<script>
+(function() {
+var P = 'nn-';
+function $(id) { return document.getElementById(P + id); }
+
+var X0=2.0,Y0=1.0,W1=0.5,B1=-0.1,W2=-0.3,B2=0.2;
+var A1=W1*X0+B1, Z1=Math.max(0,A1), YH=W2*Z1+B2, LS=0.5*Math.pow(YH-Y0,2);
+var dL=1, dYH=(YH-Y0)*dL, dW2=dYH*Z1, dB2=dYH, dZ1=dYH*W2;
+var dA1=dZ1*(A1>0?1:0), dW1=dA1*X0, dB1=dA1, dX=dA1*W1;
+function R(v){return v.toFixed(3);}
+
+// Resolve CSS variable colors for arrowheads
+function getColor(v) {
+  return getComputedStyle(document.querySelector('.nn-wrap')).getPropertyValue(v).trim();
+}
+
+var E = [
+  [100,160,144,160],[153,64,178,126],[261,64,236,126],
+  [270,160,314,160],[420,160,464,160],[462,64,494,126],
+  [582,64,550,126],[580,160,624,160],[718,64,706,126]
+];
+var mode='f', step=0, pulseFrames=[];
+
+// Edge label perpendicular offsets (hand-tuned per edge)
+var EL_OFF = [
+  {dx:0,dy:-14},   // 0: x→a₁ horizontal
+  {dx:-14,dy:-6},  // 1: w₁→a₁ diagonal
+  {dx:14,dy:-6},   // 2: b₁→a₁ diagonal
+  {dx:0,dy:-14},   // 3: a₁→z₁ horizontal (σ' gate)
+  {dx:0,dy:-14},   // 4: z₁→ŷ horizontal
+  {dx:-14,dy:-6},  // 5: w₂→ŷ diagonal
+  {dx:14,dy:-6},   // 6: b₂→ŷ diagonal
+  {dx:0,dy:-14},   // 7: ŷ→L horizontal
+  {dx:14,dy:-6}    // 8: y→L diagonal
+];
+
+// Build static edge arrowheads once
+function buildStaticArrows() {
+  var ns = 'http://www.w3.org/2000/svg';
+  var seGroup = document.getElementById('nn-SE');
+  var lines = seGroup.querySelectorAll('line.se');
+  var color = getColor('--c-gray') || 'rgba(0,0,0,.35)';
+  lines.forEach(function(ln) {
+    var x1=+ln.getAttribute('x1'), y1=+ln.getAttribute('y1');
+    var x2=+ln.getAttribute('x2'), y2=+ln.getAttribute('y2');
+    var ang = Math.atan2(y2-y1, x2-x1), aLen=7, aSpread=0.45;
+    var p = document.createElementNS(ns, 'polygon');
+    var ax1=x2-aLen*Math.cos(ang-aSpread), ay1=y2-aLen*Math.sin(ang-aSpread);
+    var ax2=x2-aLen*Math.cos(ang+aSpread), ay2=y2-aLen*Math.sin(ang+aSpread);
+    p.setAttribute('points', ax1+','+ay1+' '+x2+','+y2+' '+ax2+','+ay2);
+    p.style.fill = 'none';
+    p.style.stroke = color;
+    p.style.strokeWidth = '1.2';
+    p.style.strokeLinecap = 'round';
+    p.style.strokeLinejoin = 'round';
+    seGroup.appendChild(p);
+  });
+}
+
+var fwd = [
+  {t:'Initialiser les entrées et paramètres',
+   fm:'Entrée : <b>x = '+R(X0)+'</b>, cible : <b>y = '+R(Y0)+'</b><br>Paramètres : w₁ = '+R(W1)+', b₁ = '+R(B1)+', w₂ = '+R(W2)+', b₂ = '+R(B2)+'<br><span class="pill pf">La passe avant calcule les activations couche par couche.</span>',
+   n:{x:{c:'af',v:'= '+R(X0)},y:{c:'af',v:'= '+R(Y0)},w1:{c:'af',v:'= '+R(W1)},b1:{c:'af',v:'= '+R(B1)},w2:{c:'af',v:'= '+R(W2)},b2:{c:'af',v:'= '+R(B2)},a1:{c:'idle'},z1:{c:'idle'},yh:{c:'idle'},L:{c:'idle'}},
+   fl:[],bd:[]},
+  {t:'Couche 1 : a₁ = φ₁(x, w₁, b₁)',
+   fm:'<b>a₁</b> = w₁ · x + b₁ = '+R(W1)+' × '+R(X0)+' + ('+R(B1)+') = <b>'+R(A1)+'</b>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'af',v:'= '+R(A1)},z1:{c:'idle'},yh:{c:'idle'},L:{c:'idle'}},
+   fl:[{e:0,d:'f'},{e:1,d:'f'},{e:2,d:'f'}],bd:[]},
+  {t:'Activation : z₁ = φ₂(a₁) = ReLU(a₁)',
+   fm:'<b>z₁</b> = ReLU('+R(A1)+') = <b>'+R(Z1)+'</b><br><span class="pill pf">a₁ = '+R(A1)+' > 0 → le neurone est actif</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'af',v:'= '+R(Z1)},yh:{c:'idle'},L:{c:'idle'}},
+   fl:[{e:3,d:'f'}],bd:[]},
+  {t:'Couche 2 : ŷ = φ₃(z₁, w₂, b₂)',
+   fm:'<b>ŷ</b> = w₂ · z₁ + b₂ = ('+R(W2)+') × '+R(Z1)+' + '+R(B2)+' = <b>'+R(YH)+'</b>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'done',v:'= '+R(Z1)},yh:{c:'af',v:'= '+R(YH)},L:{c:'idle'}},
+   fl:[{e:4,d:'f'},{e:5,d:'f'},{e:6,d:'f'}],bd:[]},
+  {t:'Perte : L = φ₄(ŷ, y)',
+   fm:'<b>L</b> = ½(ŷ − y)² = ½('+R(YH)+' − '+R(Y0)+')² = ½ × '+R(Math.pow(YH-Y0,2))+' = <b>'+R(LS)+'</b><br><span class="pill ps">Passe avant complète — les valeurs intermédiaires sont stockées.</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'done',v:'= '+R(Z1)},yh:{c:'done',v:'= '+R(YH)},L:{c:'af',v:'= '+R(LS)}},
+   fl:[{e:7,d:'f'},{e:8,d:'f'}],bd:[]}
+];
+
+var rev = [
+  {t:'Passe avant terminée — valeurs stockées',
+   fm:'Toutes les valeurs intermédiaires sont en mémoire.<br><span class="pill pr">La rétropropagation propage les adjoints de la perte vers les paramètres.</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'done',v:'= '+R(Z1)},yh:{c:'done',v:'= '+R(YH)},L:{c:'done',v:'= '+R(LS)}},
+   fl:[],bd:[]},
+  {t:'Initialiser L̄ = 1',
+   fm:'<b>L̄</b> = ∂L/∂L = <b>1</b>. Point de départ de la rétropropagation.',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'done',v:'= '+R(Z1)},yh:{c:'done',v:'= '+R(YH)},L:{c:'ar',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cr'}},
+   fl:[],bd:[]},
+  {t:'Traiter φ₄ (perte) → ŷ̄',
+   fm:'<b>ŷ̄</b> += (D<sub>ŷ</sub>φ₄)<sup>⊤</sup> L̄ = (ŷ − y) × 1 = '+R(YH)+' − '+R(Y0)+' = <b>'+R(dYH)+'</b><br><span class="pill pr">y est une constante (cible), pas un paramètre</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2)},b2:{c:'done',v:'= '+R(B2)},a1:{c:'done',v:'= '+R(A1)},z1:{c:'done',v:'= '+R(Z1)},yh:{c:'ar',v:'= '+R(YH),d:'ŷ̄ = '+R(dYH),dc:'cr'},L:{c:'done',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cs'}},
+   fl:[{e:7,d:'r',lbl:'ŷ−y'}],bd:[{x:602,y:176,t:R(dYH),cl:'pr'}]},
+  {t:'Traiter φ₃ (couche 2) → w̄₂, b̄₂, z̄₁',
+   fm:'<b>w̄₂</b> += (D<sub>w₂</sub>φ₃)<sup>⊤</sup> ŷ̄ = z₁ × ŷ̄ = '+R(Z1)+' × ('+R(dYH)+') = <b>'+R(dW2)+'</b><br><b>b̄₂</b> += (D<sub>b₂</sub>φ₃)<sup>⊤</sup> ŷ̄ = 1 × ('+R(dYH)+') = <b>'+R(dB2)+'</b><br><b>z̄₁</b> += (D<sub>z₁</sub>φ₃)<sup>⊤</sup> ŷ̄ = w₂ × ŷ̄ = ('+R(W2)+') × ('+R(dYH)+') = <b>'+R(dZ1)+'</b><br><span class="pill pa">w̄₂, b̄₂ stockés pour l\'optimiseur — z̄₁ continue à reculer</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'ar',v:'= '+R(W2),d:'w̄₂ = '+R(dW2),dc:'cr'},b2:{c:'ar',v:'= '+R(B2),d:'b̄₂ = '+R(dB2),dc:'cr'},a1:{c:'done',v:'= '+R(A1)},z1:{c:'ar',v:'= '+R(Z1),d:'z̄₁ = '+R(dZ1),dc:'cr'},yh:{c:'done',v:'= '+R(YH),d:'ŷ̄ = '+R(dYH),dc:'cs'},L:{c:'done',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cs'}},
+   fl:[{e:4,d:'r',lbl:'w₂'},{e:5,d:'r',lbl:'z₁'},{e:6,d:'r',lbl:'1'}],bd:[{x:478,y:94,t:R(dW2),cl:'pr'},{x:566,y:94,t:R(dB2),cl:'pr'},{x:442,y:176,t:R(dZ1),cl:'pr'}]},
+  {t:'Traiter φ₂ (ReLU) → ā₁ — la porte σ\'',
+   fm:'<b>ā₁</b> = σ\'(a₁) × z̄₁ = 1 × '+R(dZ1)+' = <b>'+R(dA1)+'</b><br><span class="pill pa">σ\' agit comme une porte : a₁ = '+R(A1)+' > 0 → σ\' = 1, le gradient passe</span><br><span class="pill pr">Si a₁ ≤ 0, σ\' = 0 et le gradient serait bloqué (neurone mort)</span>',
+   n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},w1:{c:'done',v:'= '+R(W1)},b1:{c:'done',v:'= '+R(B1)},w2:{c:'done',v:'= '+R(W2),d:'w̄₂ = '+R(dW2),dc:'cs'},b2:{c:'done',v:'= '+R(B2),d:'b̄₂ = '+R(dB2),dc:'cs'},a1:{c:'ar',v:'= '+R(A1),d:'ā₁ = '+R(dA1),dc:'cr'},z1:{c:'done',v:'= '+R(Z1),d:'z̄₁ = '+R(dZ1),dc:'cs'},yh:{c:'done',v:'= '+R(YH),d:'ŷ̄ = '+R(dYH),dc:'cs'},L:{c:'done',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cs'}},
+   fl:[{e:3,d:'r',lbl:'σ\'(a₁)',gate:1}],bd:[{x:292,y:176,t:R(dA1),cl:'pr'}]},
+  {t:'Traiter φ₁ (couche 1) → w̄₁, b̄₁, x̄',
+   fm:'<b>w̄₁</b> += (D<sub>w₁</sub>φ₁)<sup>⊤</sup> ā₁ = x × ā₁ = '+R(X0)+' × '+R(dA1)+' = <b>'+R(dW1)+'</b><br><b>b̄₁</b> += (D<sub>b₁</sub>φ₁)<sup>⊤</sup> ā₁ = 1 × '+R(dA1)+' = <b>'+R(dB1)+'</b><br><b>x̄</b> += (D<sub>x</sub>φ₁)<sup>⊤</sup> ā₁ = w₁ × ā₁ = '+R(W1)+' × '+R(dA1)+' = <b>'+R(dX)+'</b>',
+   n:{x:{c:'ar',v:'= '+R(X0),d:'x̄ = '+R(dX),dc:'cr'},y:{c:'done',v:'= '+R(Y0)},w1:{c:'ar',v:'= '+R(W1),d:'w̄₁ = '+R(dW1),dc:'cr'},b1:{c:'ar',v:'= '+R(B1),d:'b̄₁ = '+R(dB1),dc:'cr'},w2:{c:'done',v:'= '+R(W2),d:'w̄₂ = '+R(dW2),dc:'cs'},b2:{c:'done',v:'= '+R(B2),d:'b̄₂ = '+R(dB2),dc:'cs'},a1:{c:'done',v:'= '+R(A1),d:'ā₁ = '+R(dA1),dc:'cs'},z1:{c:'done',v:'= '+R(Z1),d:'z̄₁ = '+R(dZ1),dc:'cs'},yh:{c:'done',v:'= '+R(YH),d:'ŷ̄ = '+R(dYH),dc:'cs'},L:{c:'done',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cs'}},
+   fl:[{e:0,d:'r',lbl:'w₁'},{e:1,d:'r',lbl:'x'},{e:2,d:'r',lbl:'1'}],bd:[{x:166,y:94,t:R(dW1),cl:'pr'},{x:249,y:94,t:R(dB1),cl:'pr'},{x:122,y:176,t:R(dX),cl:'pr'}]},
+  {t:'Gradient complet — prêt pour la mise à jour',
+   fm:'∇<sub>θ</sub>L = (w̄₁, b̄₁, w̄₂, b̄₂) = (<b>'+R(dW1)+'</b>, <b>'+R(dB1)+'</b>, <b>'+R(dW2)+'</b>, <b>'+R(dB2)+'</b>)<br><br><span class="pill ps">θ ← θ − η · ∇<sub>θ</sub>L — une seule passe arrière pour tous les paramètres</span>',
+   n:{x:{c:'done',v:'= '+R(X0),d:'x̄ = '+R(dX),dc:'cs'},y:{c:'done',v:'= '+R(Y0)},w1:{c:'acc',v:'= '+R(W1),d:'w̄₁ = '+R(dW1),dc:'ca'},b1:{c:'acc',v:'= '+R(B1),d:'b̄₁ = '+R(dB1),dc:'ca'},w2:{c:'acc',v:'= '+R(W2),d:'w̄₂ = '+R(dW2),dc:'ca'},b2:{c:'acc',v:'= '+R(B2),d:'b̄₂ = '+R(dB2),dc:'ca'},a1:{c:'done',v:'= '+R(A1),d:'ā₁ = '+R(dA1),dc:'cs'},z1:{c:'done',v:'= '+R(Z1),d:'z̄₁ = '+R(dZ1),dc:'cs'},yh:{c:'done',v:'= '+R(YH),d:'ŷ̄ = '+R(dYH),dc:'cs'},L:{c:'done',v:'= '+R(LS),d:'L̄ = 1.000',dc:'cs'}},
+   fl:[],bd:[]}
+];
+
+var nkeys=['x','y','w1','b1','a1','z1','w2','b2','yh','L'];
+var nels={x:'Nx',y:'Ny',w1:'Nw1',b1:'Nb1',a1:'Na1',z1:'Nz1',w2:'Nw2',b2:'Nb2',yh:'Nyh',L:'NL'};
+function steps(){return mode==='f'?fwd:rev;}
+
+function clearLayers(){
+  $('FL').innerHTML='';$('PL').innerHTML='';$('BL').innerHTML='';
+  pulseFrames.forEach(function(id){cancelAnimationFrame(id);});
+  pulseFrames=[];
+}
+
+function mkLine(ei,dir){
+  var e=E[ei],ns='http://www.w3.org/2000/svg';
+  var sx,sy,tx,ty;
+  if(dir==='f'){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}
+  else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var ln=document.createElementNS(ns,'line');
+  ln.setAttribute('x1',sx);ln.setAttribute('y1',sy);ln.setAttribute('x2',tx);ln.setAttribute('y2',ty);
+  ln.setAttribute('class','fline fl-'+dir);
+  $('FL').appendChild(ln);
+  // Arrowhead via polygon with inline styles (immune to external CSS)
+  var color = getColor(dir==='f'?'--c-fwd':'--c-rev') || (dir==='f'?'#185fa5':'#a32d2d');
+  var ang=Math.atan2(ty-sy,tx-sx),aLen=9,aSpread=0.4;
+  var p=document.createElementNS(ns,'polygon');
+  var x1=tx-aLen*Math.cos(ang-aSpread),y1=ty-aLen*Math.sin(ang-aSpread);
+  var x2=tx-aLen*Math.cos(ang+aSpread),y2=ty-aLen*Math.sin(ang+aSpread);
+  p.setAttribute('points',x1+','+y1+' '+tx+','+ty+' '+x2+','+y2);
+  p.style.fill = color;
+  p.style.stroke = 'none';
+  p.style.opacity = '1';
+  $('FL').appendChild(p);
+}
+
+function mkPulse(ei,dir,delay){
+  var e=E[ei],ns='http://www.w3.org/2000/svg';
+  var sx,sy,tx,ty;
+  if(dir==='f'){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var c=document.createElementNS(ns,'circle');
+  c.setAttribute('r','5');c.setAttribute('fill',dir==='f'?'var(--info-tx)':'var(--danger-tx)');
+  c.setAttribute('opacity','0');$('PL').appendChild(c);
+  var start=null,dur=600,dl=delay||0;
+  function tick(ts){
+    if(!start)start=ts;var elapsed=ts-start-dl;
+    if(elapsed<0){pulseFrames.push(requestAnimationFrame(tick));return;}
+    var t=Math.min(1,elapsed/dur);
+    var ease=t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    c.setAttribute('cx',sx+(tx-sx)*ease);c.setAttribute('cy',sy+(ty-sy)*ease);
+    c.setAttribute('opacity',t<0.1?t/0.1:(t>0.85?(1-t)/0.15:0.85));
+    if(t<1)pulseFrames.push(requestAnimationFrame(tick));else c.remove();
+  }
+  pulseFrames.push(requestAnimationFrame(tick));
+}
+
+function mkBadge(bx,by,txt,cl){
+  var ns='http://www.w3.org/2000/svg';
+  var g=document.createElementNS(ns,'g');g.setAttribute('class','badge');
+  var te=document.createElementNS(ns,'text');
+  te.setAttribute('x',bx);te.setAttribute('y',by);
+  te.setAttribute('text-anchor','middle');te.setAttribute('dominant-baseline','central');
+  te.setAttribute('font-size','10px');te.setAttribute('font-family','var(--font-mono)');
+  te.setAttribute('font-weight','500');
+  var colors={pf:'var(--info-tx)',pr:'var(--danger-tx)',pa:'var(--warn-tx)',ps:'var(--success-tx)'};
+  te.style.fill=colors[cl]||'var(--tx2)';te.textContent=txt;
+  g.appendChild(te);$('BL').appendChild(g);
+  setTimeout(function(){g.classList.add('show');},50);
+}
+
+function mkEdgeLabel(ei,dir,text,gate){
+  var e=E[ei],ns='http://www.w3.org/2000/svg';
+  var mx=(e[0]+e[2])/2,my=(e[1]+e[3])/2;
+  var o=EL_OFF[ei];
+  var g=document.createElementNS(ns,'g');g.setAttribute('class','elbl');
+  var r=document.createElementNS(ns,'rect');
+  var tw=text.length*6+8,th=15;
+  r.setAttribute('x',mx+o.dx-tw/2);r.setAttribute('y',my+o.dy-th/2);
+  r.setAttribute('width',tw);r.setAttribute('height',th);
+  r.setAttribute('rx','3');
+  if(gate){
+    r.style.fill='var(--warn-bg)';r.style.stroke='var(--warn-bd)';
+  } else {
+    r.style.fill=dir==='f'?'var(--info-bg)':'var(--danger-bg)';
+    r.style.stroke=dir==='f'?'var(--info-bd)':'var(--danger-bd)';
+  }
+  r.style.strokeWidth='0.5';
+  g.appendChild(r);
+  var t=document.createElementNS(ns,'text');
+  t.setAttribute('x',mx+o.dx);t.setAttribute('y',my+o.dy);
+  t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','central');
+  t.style.fill=gate?'var(--warn-tx)':(dir==='f'?'var(--info-tx)':'var(--danger-tx)');
+  t.textContent=text;
+  g.appendChild(t);$('FL').appendChild(g);
+  setTimeout(function(){g.classList.add('show');},50);
+}
+
+function render(){
+  clearLayers();
+  var S=steps(),st=S[step];
+  nkeys.forEach(function(k){
+    var nd=st.n[k]||{c:'idle'};
+    var g=$(nels[k]);g.setAttribute('class','nd '+(nd.c||'idle'));
+    $(nels[k]+'-v').textContent=nd.v||'';
+    var dt=$(nels[k]+'-d');dt.textContent=nd.d||'';dt.setAttribute('class','ndr '+(nd.dc||''));
+  });
+  st.fl.forEach(function(f,i){mkLine(f.e,f.d);mkPulse(f.e,f.d,i*120);if(f.lbl)mkEdgeLabel(f.e,f.d,f.lbl,f.gate);});
+  (st.bd||[]).forEach(function(b){mkBadge(b.x,b.y,b.t,b.cl);});
+  $('stitle').textContent=st.t;
+  $('sform').innerHTML=st.fm;
+  var dots=$('dots');dots.innerHTML='';
+  for(var k=0;k<S.length;k++){
+    var d=document.createElement('div');
+    d.className='nn-dot'+(k===step?' on':'');
+    d.setAttribute('data-i',k);
+    d.onclick=function(){step=+this.getAttribute('data-i');render();};
+    dots.appendChild(d);
+  }
+  $('bp').disabled=step===0;
+  $('bn').disabled=step===S.length-1;
+}
+
+function go(d){var S=steps();step=Math.max(0,Math.min(S.length-1,step+d));render();}
+
+$('tb-f').onclick=function(){mode='f';step=0;$('tb-f').className='nn-tab on';$('tb-r').className='nn-tab';render();};
+$('tb-r').onclick=function(){mode='r';step=0;$('tb-f').className='nn-tab';$('tb-r').className='nn-tab on';render();};
+$('bp').onclick=function(){go(-1);};
+$('bn').onclick=function(){go(1);};
+
+buildStaticArrows();
+render();
+})();
+</script>

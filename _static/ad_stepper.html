@@ -1,0 +1,409 @@
+<style>
+.ad-wrap {
+  --bg1: #ffffff;
+  --bg2: #f5f5f4;
+  --bg3: #eeeeec;
+  --tx1: #1a1a1a;
+  --tx2: #6b6b6b;
+  --tx3: #999;
+  --bd: rgba(0,0,0,.12);
+  --bd2: rgba(0,0,0,.22);
+  --info-bg: #e6f1fb; --info-tx: #185fa5; --info-bd: #85b7eb;
+  --danger-bg: #fcebeb; --danger-tx: #a32d2d; --danger-bd: #f09595;
+  --success-bg: #eaf3de; --success-tx: #3b6d11; --success-bd: #97c459;
+  --warn-bg: #faeeda; --warn-tx: #854f0b; --warn-bd: #ef9f27;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --radius: 8px;
+  --c-gray: rgba(0,0,0,.35);
+  --c-fwd: #185fa5;
+  --c-rev: #a32d2d;
+
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: var(--font-sans);
+  color: var(--tx1);
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .ad-wrap {
+    --bg1: #1a1a1a; --bg2: #2a2a28; --bg3: #333331;
+    --tx1: #e8e6e0; --tx2: #a0a09a; --tx3: #707068;
+    --bd: rgba(255,255,255,.1); --bd2: rgba(255,255,255,.2);
+    --info-bg: #0c447c; --info-tx: #b5d4f4; --info-bd: #378add;
+    --danger-bg: #501313; --danger-tx: #f7c1c1; --danger-bd: #e24b4a;
+    --success-bg: #173404; --success-tx: #c0dd97; --success-bd: #639922;
+    --warn-bg: #412402; --warn-tx: #fac775; --warn-bd: #ef9f27;
+    --c-gray: rgba(255,255,255,.3);
+    --c-fwd: #b5d4f4;
+    --c-rev: #f7c1c1;
+  }
+}
+.ad-wrap svg { overflow: visible !important; }
+.ad-wrap .se { stroke: var(--bd2); stroke-width: 1; fill: none }
+.ad-wrap .nd rect { rx: 8; transition: fill .3s, stroke .3s, stroke-width .3s }
+.ad-wrap .nd.idle rect  { fill: var(--bg2); stroke: var(--bd); stroke-width: .5 }
+.ad-wrap .nd.af rect    { fill: var(--info-bg); stroke: var(--info-tx); stroke-width: 2 }
+.ad-wrap .nd.ar rect    { fill: var(--danger-bg); stroke: var(--danger-tx); stroke-width: 2 }
+.ad-wrap .nd.done rect  { fill: var(--success-bg); stroke: var(--success-tx); stroke-width: 1 }
+.ad-wrap .nd.acc rect   { fill: var(--warn-bg); stroke: var(--warn-tx); stroke-width: 2.2 }
+.ad-wrap .nm  { font-size: 13px; font-weight: 500; fill: var(--tx1) }
+.ad-wrap .nv  { font-size: 11px; fill: var(--tx2); font-family: var(--font-mono) }
+.ad-wrap .ndr { font-size: 11px; font-weight: 500; font-family: var(--font-mono) }
+.ad-wrap .ndr.cf { fill: var(--info-tx) }
+.ad-wrap .ndr.cr { fill: var(--danger-tx) }
+.ad-wrap .ndr.cs { fill: var(--success-tx) }
+.ad-wrap .ndr.ca { fill: var(--warn-tx) }
+.ad-wrap .opl { font-size: 10.5px; fill: var(--tx3); font-style: italic; font-family: var(--font-mono) }
+.ad-wrap .fline { fill: none; stroke-width: 2.2; stroke-linecap: round }
+.ad-wrap .fline.fl-f { stroke: var(--info-tx); stroke-dasharray: 6 4 }
+.ad-wrap .fline.fl-r { stroke: var(--danger-tx); stroke-dasharray: 6 4 }
+@keyframes ad-dashF { to { stroke-dashoffset: -20 } }
+@keyframes ad-dashR { to { stroke-dashoffset: 20 } }
+.ad-wrap .fline.fl-f { animation: ad-dashF .5s linear infinite }
+.ad-wrap .fline.fl-r { animation: ad-dashR .5s linear infinite }
+.ad-wrap .badge { font-size: 11px; font-family: var(--font-mono); font-weight: 500; opacity: 0; transition: opacity .4s .15s }
+.ad-wrap .badge.show { opacity: 1 }
+.ad-wrap .elbl { font-size: 10px; font-family: var(--font-mono); font-weight: 600; opacity: 0; transition: opacity .3s .1s }
+.ad-wrap .elbl.show { opacity: 1 }
+.ad-tabs { display: flex; gap: 6px; margin-bottom: 10px }
+.ad-tab {
+  padding: 6px 16px; font-size: 13px;
+  border-radius: var(--radius); cursor: pointer;
+  border: .5px solid var(--bd2);
+  background: var(--bg1); color: var(--tx2);
+  transition: all .15s; font-family: var(--font-sans);
+}
+.ad-tab:hover { background: var(--bg2) }
+.ad-tab.on {
+  background: var(--tx1); color: var(--bg1);
+  border-color: var(--tx1);
+}
+.ad-tab.on:hover { opacity: .9 }
+.ad-info {
+  min-height: 80px; margin: 8px 0; padding: 12px 16px;
+  border-radius: var(--radius); background: var(--bg2);
+}
+.ad-info h3 { font-size: 14px; font-weight: 500; margin: 0 0 5px; color: var(--tx1) }
+.ad-info .fm { font-size: 12.5px; line-height: 1.7; color: var(--tx2); font-family: var(--font-mono) }
+.ad-info .fm b { font-weight: 600; color: var(--tx1) }
+.ad-wrap .pill {
+  display: inline-block; margin-top: 4px; padding: 2px 8px;
+  border-radius: 4px; font-size: 11.5px;
+}
+.ad-wrap .pill.pf { background: var(--info-bg); color: var(--info-tx) }
+.ad-wrap .pill.pr { background: var(--danger-bg); color: var(--danger-tx) }
+.ad-wrap .pill.pa { background: var(--warn-bg); color: var(--warn-tx) }
+.ad-wrap .pill.ps { background: var(--success-bg); color: var(--success-tx) }
+.ad-nav { display: flex; align-items: center; gap: 8px }
+.ad-nav button {
+  font-family: var(--font-sans); font-size: 13px;
+  padding: 5px 12px; border-radius: var(--radius);
+  border: .5px solid var(--bd2); background: var(--bg1);
+  color: var(--tx1); cursor: pointer; transition: all .15s;
+}
+.ad-nav button:hover:not(:disabled) { background: var(--bg2) }
+.ad-nav button:disabled { opacity: .35; cursor: default }
+.ad-dots { display: flex; gap: 5px; flex: 1; justify-content: center }
+.ad-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bd2); transition: all .2s; cursor: pointer;
+}
+.ad-dot.on { background: var(--tx1); transform: scale(1.3) }
+</style>
+
+<div class="ad-wrap">
+
+<div class="ad-tabs">
+  <button class="ad-tab on" id="ad-tb-f">Mode avant (JVP)</button>
+  <button class="ad-tab" id="ad-tb-r">Mode arrière (VJP)</button>
+</div>
+
+<svg id="ad-G" width="100%" viewBox="0 0 680 290" style="overflow:visible">
+
+<g id="ad-SE">
+  <line class="se" x1="148" y1="62" x2="232" y2="62"/>
+  <line class="se" x1="148" y1="82" x2="232" y2="196"/>
+  <line class="se" x1="148" y1="222" x2="232" y2="222"/>
+  <line class="se" x1="388" y1="62" x2="486" y2="112"/>
+  <line class="se" x1="388" y1="222" x2="486" y2="148"/>
+</g>
+
+<g id="ad-FL"></g>
+<g id="ad-PL"></g>
+
+<g class="nd idle" id="ad-Nx">
+  <rect x="32" y="26" width="116" height="72"/>
+  <text class="nm" x="90" y="46" text-anchor="middle" dominant-baseline="central">x</text>
+  <text class="nv" id="ad-Nx-v" x="90" y="64" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="ad-Nx-d" x="90" y="82" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="ad-Ny">
+  <rect x="32" y="186" width="116" height="72"/>
+  <text class="nm" x="90" y="206" text-anchor="middle" dominant-baseline="central">y</text>
+  <text class="nv" id="ad-Ny-v" x="90" y="224" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="ad-Ny-d" x="90" y="242" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="ad-Nv1">
+  <rect x="232" y="26" width="156" height="72"/>
+  <text class="nm" x="310" y="44" text-anchor="middle" dominant-baseline="central">v₁ = sin(x)</text>
+  <text class="nv" id="ad-Nv1-v" x="310" y="63" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="ad-Nv1-d" x="310" y="82" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="ad-Nv2">
+  <rect x="232" y="186" width="156" height="72"/>
+  <text class="nm" x="310" y="204" text-anchor="middle" dominant-baseline="central">v₂ = x + y</text>
+  <text class="nv" id="ad-Nv2-v" x="310" y="223" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="ad-Nv2-d" x="310" y="242" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+<g class="nd idle" id="ad-Nf">
+  <rect x="486" y="82" width="168" height="86"/>
+  <text class="nm" x="570" y="105" text-anchor="middle" dominant-baseline="central">f = v₁ · v₂</text>
+  <text class="nv" id="ad-Nf-v" x="570" y="126" text-anchor="middle" dominant-baseline="central"></text>
+  <text class="ndr" id="ad-Nf-d" x="570" y="147" text-anchor="middle" dominant-baseline="central"></text>
+</g>
+
+<text class="opl" x="310" y="20" text-anchor="middle">φ₁(x) = sin(x)</text>
+<text class="opl" x="310" y="180" text-anchor="middle">φ₂(x, y) = x + y</text>
+<text class="opl" x="570" y="76" text-anchor="middle">φ₃(v₁, v₂) = v₁ · v₂</text>
+
+<g id="ad-BL"></g>
+</svg>
+
+<div class="ad-info">
+  <h3 id="ad-stitle"></h3>
+  <div class="fm" id="ad-sform"></div>
+</div>
+
+<div class="ad-nav">
+  <button id="ad-bp">&#8592; Préc.</button>
+  <div class="ad-dots" id="ad-dots"></div>
+  <button id="ad-bn">Suiv. &#8594;</button>
+</div>
+
+</div>
+
+<script>
+(function() {
+var P = 'ad-';
+function $(id) { return document.getElementById(P + id); }
+
+var X0 = 0.5, Y0 = 1.2;
+var V1 = Math.sin(X0), V2 = X0 + Y0, VF = V1 * V2, CX = Math.cos(X0);
+var v1_bar = V2, v2_bar = V1;
+var xbar_via_phi2 = v2_bar, ybar_via_phi2 = v2_bar;
+var xbar_via_phi1 = CX * v1_bar;
+var xbar_tot = xbar_via_phi2 + xbar_via_phi1;
+var v1_dot = CX, v2_dot = 1, f_dot = V2 * v1_dot + V1 * v2_dot;
+function R(v) { return v.toFixed(3); }
+
+var E = [
+  [148,62,232,62],[148,82,232,196],[148,222,232,222],
+  [388,62,486,112],[388,222,486,148]
+];
+var mode = 'f', step = 0, pulseFrames = [];
+
+// Resolve CSS variable colors for arrowheads (avoids context-isolation issues)
+function getColor(v) {
+  return getComputedStyle(document.querySelector('.ad-wrap')).getPropertyValue(v).trim();
+}
+
+// Build static edge arrowheads once
+function buildStaticArrows() {
+  var ns = 'http://www.w3.org/2000/svg';
+  var seGroup = document.getElementById('ad-SE');
+  var lines = seGroup.querySelectorAll('line.se');
+  var color = getColor('--bd2') || 'rgba(0,0,0,.22)';
+  lines.forEach(function(ln) {
+    var x1=+ln.getAttribute('x1'), y1=+ln.getAttribute('y1');
+    var x2=+ln.getAttribute('x2'), y2=+ln.getAttribute('y2');
+    var ang = Math.atan2(y2-y1, x2-x1), aLen=7, aSpread=0.45;
+    var p = document.createElementNS(ns, 'polygon');
+    var ax1=x2-aLen*Math.cos(ang-aSpread), ay1=y2-aLen*Math.sin(ang-aSpread);
+    var ax2=x2-aLen*Math.cos(ang+aSpread), ay2=y2-aLen*Math.sin(ang+aSpread);
+    p.setAttribute('points', ax1+','+ay1+' '+x2+','+y2+' '+ax2+','+ay2);
+    // Use inline styles to override any external CSS
+    p.style.fill = 'none';
+    p.style.stroke = color;
+    p.style.strokeWidth = '1.2';
+    p.style.strokeLinecap = 'round';
+    p.style.strokeLinejoin = 'round';
+    seGroup.appendChild(p);
+  });
+}
+
+var fwd = [
+  { t:'Initialiser les tangentes',
+    fm:'Seed : <b>ẋ = 1</b>, ẏ = 0<br>Calcule la dérivée directionnelle ∂f/∂x<br><span class="pill pf">Une passe = un produit Jacobien-vecteur J<sub>f</sub> ẋ</span>',
+    n:{x:{c:'af',v:'= '+R(X0),d:'ẋ = 1',dc:'cf'},y:{c:'af',v:'= '+R(Y0),d:'ẏ = 0',dc:'cf'},v1:{c:'idle'},v2:{c:'idle'},f:{c:'idle'}},
+    fl:[],bd:[]},
+  { t:'v₁ = φ₁(x) : propager la tangente',
+    fm:'<b>v̇₁</b> = D<sub>x</sub>φ₁ · ẋ = cos('+R(X0)+') × 1 = <b>'+R(v1_dot)+'</b>',
+    n:{x:{c:'done',v:'= '+R(X0),d:'ẋ = 1',dc:'cf'},y:{c:'done',v:'= '+R(Y0),d:'ẏ = 0',dc:'cf'},v1:{c:'af',v:'= '+R(V1),d:'v̇₁ = '+R(v1_dot),dc:'cf'},v2:{c:'idle'},f:{c:'idle'}},
+    fl:[{e:0,d:'f',lbl:'ẋ'}],bd:[]},
+  { t:'v₂ = φ₂(x, y) : accumuler deux contributions',
+    fm:'<b>v̇₂</b> = D<sub>x</sub>φ₂ · ẋ + D<sub>y</sub>φ₂ · ẏ = 1×1 + 1×0 = <b>1.000</b><br><span class="pill pf">v₂ reçoit de deux prédécesseurs : x et y</span>',
+    n:{x:{c:'done',v:'= '+R(X0),d:'ẋ = 1',dc:'cf'},y:{c:'done',v:'= '+R(Y0),d:'ẏ = 0',dc:'cf'},v1:{c:'done',v:'= '+R(V1),d:'v̇₁ = '+R(v1_dot),dc:'cf'},v2:{c:'af',v:'= '+R(V2),d:'v̇₂ = 1.000',dc:'cf'},f:{c:'idle'}},
+    fl:[{e:1,d:'f',lbl:'ẋ'},{e:2,d:'f',lbl:'ẏ'}],bd:[{x:195,y:196,t:'+1',cl:'pf'},{x:195,y:230,t:'+0',cl:'pf'}]},
+  { t:'f = φ₃(v₁, v₂) : accumuler les deux branches',
+    fm:'<b>ḟ</b> = D<sub>v₁</sub>φ₃ · v̇₁ + D<sub>v₂</sub>φ₃ · v̇₂ = v₂·v̇₁ + v₁·v̇₂<br>= '+R(V2)+' × '+R(v1_dot)+' + '+R(V1)+' × 1.000<br>= <b>'+R(V2*v1_dot)+'</b> + <b>'+R(V1)+'</b> = <b>'+R(f_dot)+'</b><br><span class="pill ps">ḟ = ∂f/∂x = '+R(f_dot)+', une direction par passe</span>',
+    n:{x:{c:'done',v:'= '+R(X0),d:'ẋ = 1',dc:'cs'},y:{c:'done',v:'= '+R(Y0),d:'ẏ = 0',dc:'cs'},v1:{c:'done',v:'= '+R(V1),d:'v̇₁ = '+R(v1_dot),dc:'cs'},v2:{c:'done',v:'= '+R(V2),d:'v̇₂ = 1.000',dc:'cs'},f:{c:'af',v:'= '+R(VF),d:'ḟ = '+R(f_dot),dc:'cf'}},
+    fl:[{e:3,d:'f',lbl:'v̇₁'},{e:4,d:'f',lbl:'v̇₂'}],bd:[{x:454,y:112,t:'+'+R(V2*v1_dot),cl:'pf'},{x:454,y:148,t:'+'+R(V1),cl:'pf'}]}
+];
+
+var rev = [
+  { t:'Passe avant terminée, valeurs stockées',
+    fm:'Toutes les valeurs intermédiaires sont en mémoire.<br><span class="pill pr">La passe arrière propage les adjoints de droite à gauche.</span>',
+    n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},v1:{c:'done',v:'= '+R(V1)},v2:{c:'done',v:'= '+R(V2)},f:{c:'done',v:'= '+R(VF)}},
+    fl:[],bd:[]},
+  { t:'Initialiser f̄ = 1',
+    fm:'<b>f̄</b> = ∂f/∂f = <b>1</b><br>Point de départ de la passe arrière.',
+    n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},v1:{c:'done',v:'= '+R(V1)},v2:{c:'done',v:'= '+R(V2)},f:{c:'ar',v:'= '+R(VF),d:'f̄ = 1.000',dc:'cr'}},
+    fl:[],bd:[]},
+  { t:'Traiter φ₃ (mul) → envoyer v̄₁ et v̄₂',
+    fm:'<b>v̄₁</b> += f̄ · D<sub>v₁</sub>φ₃ = 1 × v₂ = <b>'+R(v1_bar)+'</b><br><b>v̄₂</b> += f̄ · D<sub>v₂</sub>φ₃ = 1 × v₁ = <b>'+R(v2_bar)+'</b><br><span class="pill pr">Le gradient se divise en deux flux : un par prédécesseur</span>',
+    n:{x:{c:'done',v:'= '+R(X0)},y:{c:'done',v:'= '+R(Y0)},v1:{c:'ar',v:'= '+R(V1),d:'v̄₁ = '+R(v1_bar),dc:'cr'},v2:{c:'ar',v:'= '+R(V2),d:'v̄₂ = '+R(v2_bar),dc:'cr'},f:{c:'done',v:'= '+R(VF),d:'f̄ = 1.000',dc:'cs'}},
+    fl:[{e:3,d:'r',lbl:'f̄'},{e:4,d:'r',lbl:'f̄'}],bd:[{x:442,y:56,t:'+'+R(v1_bar),cl:'pr'},{x:442,y:228,t:'+'+R(v2_bar),cl:'pr'}]},
+  { t:'Traiter φ₂ (add) → envoyer x̄ et ȳ',
+    fm:'<b>x̄</b> += v̄₂ · D<sub>x</sub>φ₂ = '+R(v2_bar)+' × 1 = <b>'+R(xbar_via_phi2)+'</b> ← chemin 1<br><b>ȳ</b> += v̄₂ · D<sub>y</sub>φ₂ = '+R(v2_bar)+' × 1 = <b>'+R(ybar_via_phi2)+'</b><br><span class="pill pa">x a reçu '+R(xbar_via_phi2)+', mais il reste un chemin via φ₁</span>',
+    n:{x:{c:'ar',v:'= '+R(X0),d:'x̄ = '+R(xbar_via_phi2),dc:'cr'},y:{c:'ar',v:'= '+R(Y0),d:'ȳ = '+R(ybar_via_phi2),dc:'cr'},v1:{c:'done',v:'= '+R(V1),d:'v̄₁ = '+R(v1_bar),dc:'cs'},v2:{c:'done',v:'= '+R(V2),d:'v̄₂ = '+R(v2_bar),dc:'cs'},f:{c:'done',v:'= '+R(VF),d:'f̄ = 1.000',dc:'cs'}},
+    fl:[{e:1,d:'r',lbl:'v̄₂'},{e:2,d:'r',lbl:'v̄₂'}],bd:[{x:100,y:110,t:'+'+R(xbar_via_phi2),cl:'pr'},{x:100,y:172,t:'via φ₂',cl:'pr',sm:1}]},
+  { t:'Traiter φ₁ (sin) → accumulation sur x̄ !',
+    fm:'<b>x̄</b> += v̄₁ · D<sub>x</sub>φ₁ = '+R(v1_bar)+' × cos(x) = '+R(v1_bar)+' × '+R(CX)+' = <b>'+R(xbar_via_phi1)+'</b> ← chemin 2<br><br><span class="pill pa">x̄ = '+R(xbar_via_phi2)+' + '+R(xbar_via_phi1)+' = '+R(xbar_tot)+'</span> somme des deux chemins<br><span class="pill ps">∇f = ('+R(xbar_tot)+', '+R(ybar_via_phi2)+'), gradient complet, une seule passe</span>',
+    n:{x:{c:'acc',v:'= '+R(X0),d:'x̄ = '+R(xbar_tot),dc:'ca'},y:{c:'done',v:'= '+R(Y0),d:'ȳ = '+R(ybar_via_phi2),dc:'cs'},v1:{c:'done',v:'= '+R(V1),d:'v̄₁ = '+R(v1_bar),dc:'cs'},v2:{c:'done',v:'= '+R(V2),d:'v̄₂ = '+R(v2_bar),dc:'cs'},f:{c:'done',v:'= '+R(VF),d:'f̄ = 1.000',dc:'cs'}},
+    fl:[{e:0,d:'r',lbl:'v̄₁'}],bd:[{x:100,y:110,t:R(xbar_via_phi2)+' + '+R(xbar_via_phi1),cl:'pa'},{x:100,y:172,t:'via φ₂ + via φ₁',cl:'pa',sm:1}]}
+];
+
+var nkeys = ['x','y','v1','v2','f'];
+var nels  = {x:'Nx',y:'Ny',v1:'Nv1',v2:'Nv2',f:'Nf'};
+function steps() { return mode === 'f' ? fwd : rev; }
+
+function clearLayers() {
+  $('FL').innerHTML = ''; $('PL').innerHTML = ''; $('BL').innerHTML = '';
+  pulseFrames.forEach(function(id) { cancelAnimationFrame(id); });
+  pulseFrames = [];
+}
+
+function mkLine(ei, dir) {
+  var e=E[ei], ns='http://www.w3.org/2000/svg';
+  var sx,sy,tx,ty;
+  if(dir==='f'){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}
+  else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var ln=document.createElementNS(ns,'line');
+  ln.setAttribute('x1',sx);ln.setAttribute('y1',sy);ln.setAttribute('x2',tx);ln.setAttribute('y2',ty);
+  ln.setAttribute('class','fline fl-'+dir);
+  $('FL').appendChild(ln);
+  // Arrowhead via polygon with inline styles (immune to external CSS)
+  var color = getColor(dir==='f'?'--c-fwd':'--c-rev') || (dir==='f'?'#185fa5':'#a32d2d');
+  var ang=Math.atan2(ty-sy,tx-sx), aLen=9, aSpread=0.4;
+  var p=document.createElementNS(ns,'polygon');
+  var x1=tx-aLen*Math.cos(ang-aSpread), y1=ty-aLen*Math.sin(ang-aSpread);
+  var x2=tx-aLen*Math.cos(ang+aSpread), y2=ty-aLen*Math.sin(ang+aSpread);
+  p.setAttribute('points',x1+','+y1+' '+tx+','+ty+' '+x2+','+y2);
+  p.style.fill = color;
+  p.style.stroke = 'none';
+  p.style.opacity = '1';
+  $('FL').appendChild(p);
+}
+
+function mkPulse(ei, dir, delay) {
+  var e = E[ei], ns = 'http://www.w3.org/2000/svg';
+  var sx,sy,tx,ty;
+  if (dir==='f'){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var c = document.createElementNS(ns,'circle');
+  c.setAttribute('r','6');
+  c.setAttribute('fill',dir==='f'?'var(--info-tx)':'var(--danger-tx)');
+  c.setAttribute('opacity','0');
+  $('PL').appendChild(c);
+  var start=null,dur=600,dl=delay||0;
+  function tick(ts){
+    if(!start)start=ts; var elapsed=ts-start-dl;
+    if(elapsed<0){pulseFrames.push(requestAnimationFrame(tick));return;}
+    var t=Math.min(1,elapsed/dur);
+    var ease=t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    c.setAttribute('cx',sx+(tx-sx)*ease);c.setAttribute('cy',sy+(ty-sy)*ease);
+    c.setAttribute('opacity',t<0.1?t/0.1:(t>0.85?(1-t)/0.15:0.85));
+    if(t<1)pulseFrames.push(requestAnimationFrame(tick));else c.remove();
+  }
+  pulseFrames.push(requestAnimationFrame(tick));
+}
+
+function mkBadge(bx,by,txt,cl,sm){
+  var ns='http://www.w3.org/2000/svg';
+  var g=document.createElementNS(ns,'g');g.setAttribute('class','badge');
+  var te=document.createElementNS(ns,'text');
+  te.setAttribute('x',bx);te.setAttribute('y',by);
+  te.setAttribute('text-anchor','middle');te.setAttribute('dominant-baseline','central');
+  te.setAttribute('font-size',sm?'9.5px':'11px');
+  te.setAttribute('font-family','var(--font-mono)');te.setAttribute('font-weight','500');
+  var colors={pf:'var(--info-tx)',pr:'var(--danger-tx)',pa:'var(--warn-tx)',ps:'var(--success-tx)'};
+  te.style.fill=colors[cl]||'var(--tx2)';te.textContent=txt;
+  g.appendChild(te);$('BL').appendChild(g);
+  setTimeout(function(){g.classList.add('show');},50);
+}
+
+// Edge label: perpendicular offsets (hand-tuned per edge)
+var EL_OFF = [
+  {dx:0,dy:-13},{dx:-16,dy:-6},{dx:0,dy:13},{dx:0,dy:-13},{dx:0,dy:13}
+];
+function mkEdgeLabel(ei,dir,text){
+  var e=E[ei],ns='http://www.w3.org/2000/svg';
+  var mx=(e[0]+e[2])/2,my=(e[1]+e[3])/2;
+  var o=EL_OFF[ei];
+  var g=document.createElementNS(ns,'g');g.setAttribute('class','elbl');
+  // background pill
+  var r=document.createElementNS(ns,'rect');
+  var tw=text.length*6+8,th=15;
+  r.setAttribute('x',mx+o.dx-tw/2);r.setAttribute('y',my+o.dy-th/2);
+  r.setAttribute('width',tw);r.setAttribute('height',th);
+  r.setAttribute('rx','3');
+  r.style.fill=dir==='f'?'var(--info-bg)':'var(--danger-bg)';
+  r.style.stroke=dir==='f'?'var(--info-bd)':'var(--danger-bd)';
+  r.style.strokeWidth='0.5';
+  g.appendChild(r);
+  var t=document.createElementNS(ns,'text');
+  t.setAttribute('x',mx+o.dx);t.setAttribute('y',my+o.dy);
+  t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','central');
+  t.style.fill=dir==='f'?'var(--info-tx)':'var(--danger-tx)';
+  t.textContent=text;
+  g.appendChild(t);$('FL').appendChild(g);
+  setTimeout(function(){g.classList.add('show');},50);
+}
+
+function render(){
+  clearLayers();
+  var S=steps(),st=S[step];
+  nkeys.forEach(function(k){
+    var nd=st.n[k]||{c:'idle'};
+    var g=$(nels[k]);g.setAttribute('class','nd '+(nd.c||'idle'));
+    $(nels[k]+'-v').textContent=nd.v||'';
+    var dt=$(nels[k]+'-d');dt.textContent=nd.d||'';dt.setAttribute('class','ndr '+(nd.dc||''));
+  });
+  st.fl.forEach(function(f,i){mkLine(f.e,f.d);mkPulse(f.e,f.d,i*120);if(f.lbl)mkEdgeLabel(f.e,f.d,f.lbl);});
+  st.bd.forEach(function(b){mkBadge(b.x,b.y,b.t,b.cl,b.sm);});
+  $('stitle').textContent=st.t;
+  $('sform').innerHTML=st.fm;
+  var dots=$('dots');dots.innerHTML='';
+  for(var k=0;k<S.length;k++){
+    var d=document.createElement('div');
+    d.className='ad-dot'+(k===step?' on':'');
+    d.setAttribute('data-i',k);
+    d.onclick=function(){step=+this.getAttribute('data-i');render();};
+    dots.appendChild(d);
+  }
+  $('bp').disabled=step===0;
+  $('bn').disabled=step===S.length-1;
+}
+
+function go(d){var S=steps();step=Math.max(0,Math.min(S.length-1,step+d));render();}
+
+$('tb-f').onclick=function(){mode='f';step=0;$('tb-f').className='ad-tab on';$('tb-r').className='ad-tab';render();};
+$('tb-r').onclick=function(){mode='r';step=0;$('tb-f').className='ad-tab';$('tb-r').className='ad-tab on';render();};
+$('bp').onclick=function(){go(-1);};
+$('bn').onclick=function(){go(1);};
+
+buildStaticArrows();
+render();
+})();
+</script>

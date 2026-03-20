@@ -599,7 +599,7 @@ $$
 
 Cette méthode est simple à implémenter mais souffre de deux problèmes: elle requiert $O(n)$ évaluations de $f$ pour un gradient en dimension $n$, et elle est sujette aux erreurs d'arrondi (le choix de $\epsilon$ est délicat). Elle reste utile pour *vérifier* des implémentations de gradient.
 
-La **dérivation symbolique** applique les règles de dérivation formellement, comme on le ferait à la main. Le résultat est une *expression mathématique* — pas un nombre. La bibliothèque SymPy permet de s'en convaincre:
+La **dérivation symbolique** applique les règles de dérivation formellement, comme on le ferait à la main. Le résultat est une *expression mathématique*, pas un nombre. La bibliothèque SymPy permet de s'en convaincre:
 
 ```{code-cell} python
 :tags: [remove-output]
@@ -625,7 +625,7 @@ Cette distinction entre *construire une expression* et *évaluer un nombre* est 
 
 L'approche symbolique produit des résultats exacts, mais les expressions intermédiaires peuvent croître de façon exponentielle. Considérons une composition itérée $h(x) = \sin(\sin(\cdots\sin(x)\cdots))$ sur $k$ niveaux. Chaque application de la règle de la chaîne multiplie l'expression par un facteur $\cos(\cdots)$, et l'expression de la dérivée accumule un produit de cosinus imbriqués dont la taille croît avec $k$. Pour des programmes réels avec des centaines d'opérations, cette croissance rend l'approche impraticable. De plus, la dérivation symbolique requiert que le programme soit représenté sous forme d'expression mathématique, ce qui exclut les structures de contrôle comme les boucles et les conditions.
 
-La **dérivation automatique** (DA) est une troisième voie. Au lieu de construire l'expression symbolique de la dérivée puis de l'évaluer, elle *évalue directement la dérivée* en un point donné, en propageant des valeurs numériques à travers le programme. Chaque opération élémentaire (addition, multiplication, $\sin$, $\exp$, ...) est accompagnée de sa règle de dérivation locale, et la règle de la chaîne assemble ces dérivées locales au fur et à mesure de l'exécution. Le résultat est un nombre — la valeur exacte de la dérivée au point considéré — obtenu sans jamais former une expression intermédiaire. Contrairement à la dérivation numérique, ce résultat est exact (aux erreurs de virgule flottante près). Contrairement à la dérivation symbolique, il gère naturellement les boucles et les conditions, puisqu'il opère sur l'exécution concrète du programme.
+La **dérivation automatique** (DA) est une troisième voie. Au lieu de construire l'expression symbolique de la dérivée puis de l'évaluer, elle *évalue directement la dérivée* en un point donné, en propageant des valeurs numériques à travers le programme. Chaque opération élémentaire (addition, multiplication, $\sin$, $\exp$, ...) est accompagnée de sa règle de dérivation locale, et la règle de la chaîne assemble ces dérivées locales au fur et à mesure de l'exécution. Le résultat est un nombre, la valeur exacte de la dérivée au point considéré, obtenu sans jamais former une expression intermédiaire. Contrairement à la dérivation numérique, ce résultat est exact (aux erreurs de virgule flottante près). Contrairement à la dérivation symbolique, il gère naturellement les boucles et les conditions, puisqu'il opère sur l'exécution concrète du programme.
 
 La rétropropagation n'est rien d'autre que la dérivation automatique en mode arrière, appliquée au programme qui calcule la perte d'un réseau de neurones.
 
@@ -664,7 +664,7 @@ Pour une perte scalaire $\mathcal{L}: \mathbb{R}^n \to \mathbb{R}$, le gradient 
 
 La figure ci-dessous contraste les deux modes sur une chaîne de trois fonctions $f_1 \circ f_2 \circ f_3$. Le mode avant (JVP) propage un vecteur tangent de gauche à droite, ce qui coûte une passe par paramètre. Le mode arrière (VJP) propage l'adjoint de droite à gauche en une seule passe.
 
-**Mode avant (JVP)** — le vecteur tangent $\tilde{v}$ se propage de gauche à droite:
+**Mode avant (JVP)**: le vecteur tangent $\tilde{v}$ se propage de gauche à droite.
 
 ```{mermaid}
 graph LR
@@ -681,14 +681,14 @@ graph LR
     linkStyle 0,1,2,3 stroke:#1f77b4,stroke-width:2px
 ```
 
-**Mode arrière (VJP)** — l'adjoint $\bar{u}$ se propage de droite à gauche:
+**Mode arrière (VJP)**: l'adjoint $\bar{u}$ se propage de droite à gauche.
 
 ```{mermaid}
 graph RL
     L((ℒ)) -->|"ū₃ = 1"| f3((f₃))
-    f3 -->|"ū₂ = J_f₃ᵀ ū₃"| f2((f₂))
-    f2 -->|"ū₁ = J_f₂ᵀ ū₂"| f1((f₁))
-    f1 -->|"ū₀ = J_f₁ᵀ ū₁"| x0["∇ℒ"]
+    f3 -->|"ū₂ = ū₃ J_f₃"| f2((f₂))
+    f2 -->|"ū₁ = ū₂ J_f₂"| f1((f₁))
+    f1 -->|"ū₀ = ū₁ J_f₁"| x0["∇ℒ"]
 
     style x0 fill:none,stroke:none
     style f1 fill:#f0f0f0,stroke:#444
@@ -731,33 +731,75 @@ graph LR
     style mul   fill:#f5f5f5,stroke:#666
 ```
 
-Remarquez que $x$ a **deux arêtes sortantes**: il alimente $v_1 = \sin(x)$ et $v_2 = x + y$. Cela signifie que $x$ contribue à $f$ par deux chemins distincts. La règle de la chaîne doit sommer les deux contributions:
-
-$$
-\frac{\partial f}{\partial x} = \frac{\partial f}{\partial v_1}\frac{\partial v_1}{\partial x} + \frac{\partial f}{\partial v_2}\frac{\partial v_2}{\partial x} = \cos(x) \cdot v_2 + v_1 \cdot 1
-$$
-
 #### Règle de la chaîne sur un DAG
+
+```{admonition} Convention: opérations locales et jacobiennes
+:class: note
+
+Chaque nœud $v$ du graphe calcule une opération locale $\phi_v$ à partir de ses prédécesseurs. On note $D_u \phi_v$ la jacobienne de $\phi_v$ par rapport à l'argument $u$, évaluée aux valeurs de la passe avant. Cette notation distingue la fonction $\phi_v$ de sa valeur $v$, et rend chaque dérivée non ambiguë.
+```
+
+Remarquez que $x$ a **deux arêtes sortantes**: il alimente $v_1 = \sin(x)$ et $v_2 = x + y$. Cela signifie que $x$ contribue à $f$ par deux chemins distincts dans le graphe. Notons $\phi_1(x) = \sin(x)$, $\phi_2(x,y) = x + y$ et $\phi_3(v_1,v_2) = v_1 \cdot v_2$ les opérations locales de chaque noeud. La fonction composée est $f(x,y) = \phi_3(\phi_1(x),\, \phi_2(x,y))$. En appliquant la règle de la chaîne multivariée, la dérivée totale de $f$ par rapport à $x$ est:
+
+$$
+\frac{df}{dx} = D_{v_1} \phi_3 \cdot D_x \phi_1 + D_{v_2} \phi_3 \cdot D_x \phi_2 = v_2 \cdot \cos(x) + v_1 \cdot 1
+$$
+
+La somme comporte deux termes, un par chemin de $x$ à $f$ dans le graphe:
+- **Chemin** $x \to v_1 \to f$: le produit des jacobiennes locales le long des arêtes, $D_{v_1}\phi_3 \cdot D_x \phi_1$
+- **Chemin** $x \to v_2 \to f$: le produit $D_{v_2}\phi_3 \cdot D_x \phi_2$
+
+C'est la structure générale: la dérivée totale par rapport à une variable est la **somme sur tous les chemins** de cette variable à la sortie, où chaque chemin contribue le produit des jacobiennes locales le long de ses arêtes. Un noeud avec $k$ arêtes sortantes génère $k$ termes dans cette somme.
 
 De manière générale, notons $\text{pred}(v)$ l'ensemble des **prédécesseurs** d'un noeud $v$ (les noeuds dont $v$ dépend directement) et $\text{succ}(u)$ l'ensemble de ses **successeurs** (les noeuds qui dépendent directement de $u$). La règle de la chaîne s'écrit dans les deux sens:
 
-**Direction avant (tangentes).** Étant donné un vecteur tangent $\dot{x}_i$ pour chaque entrée, la tangente d'un noeud intermédiaire se propage vers l'avant:
+**Direction avant (tangentes).** Étant donné un vecteur tangent $\dot{x}_i$ pour chaque entrée, la tangente d'un noeud intermédiaire se propage vers l'avant. Le noeud $v$ reçoit les tangentes de tous ses prédécesseurs et les combine:
+
+```{mermaid}
+graph LR
+    u1(("u₁")) -->|"D_u₁ φ_v · u̇₁"| v(("v"))
+    u2(("u₂")) -->|"D_u₂ φ_v · u̇₂"| v
+    u3(("u₃")) -->|"D_u₃ φ_v · u̇₃"| v
+
+    style u1 fill:#f5f5f5,stroke:#666
+    style u2 fill:#f5f5f5,stroke:#666
+    style u3 fill:#f5f5f5,stroke:#666
+    style v fill:#dae8fc,stroke:#6c8ebf
+    linkStyle 0,1,2 stroke:#185fa5,stroke-width:2px
+```
 
 $$
-\dot{v} = \sum_{u \in \text{pred}(v)} \frac{\partial v}{\partial u} \, \dot{u}
+\dot{v} = \sum_{u \in \text{pred}(v)} D_u \phi_v \; \dot{u}
 $$
 
-**Direction arrière (adjoints).** Étant donné un adjoint $\bar{f} = 1$ pour la sortie, l'adjoint de chaque noeud se propage vers l'arrière:
+Chaque arête entrante contribue un JVP (jacobienne locale $\times$ tangente du prédécesseur). Le noeud $v$ somme ces contributions.
+
+**Direction arrière (adjoints).** Étant donné un adjoint $\bar{f} = 1$ pour la sortie, l'adjoint de chaque noeud se propage vers l'arrière. Le noeud $u$ reçoit les adjoints de tous ses successeurs:
+
+```{mermaid}
+graph RL
+    v1(("v₁")) -->|"v̄₁ · D_u φ_v₁"| u(("u"))
+    v2(("v₂")) -->|"v̄₂ · D_u φ_v₂"| u
+    v3(("v₃")) -->|"v̄₃ · D_u φ_v₃"| u
+
+    style v1 fill:#f5f5f5,stroke:#666
+    style v2 fill:#f5f5f5,stroke:#666
+    style v3 fill:#f5f5f5,stroke:#666
+    style u fill:#fcebeb,stroke:#a32d2d
+    linkStyle 0,1,2 stroke:#a32d2d,stroke-width:2px
+```
 
 $$
-\bar{u} = \sum_{k \in \text{succ}(u)} \frac{\partial k}{\partial u} \, \bar{k}
+\bar{u} = \sum_{v \in \text{succ}(u)} \bar{v} \, D_u \phi_v
 $$
 
-Les deux formules sont symétriques: la première accumule les contributions des prédécesseurs (les noeuds *dont dépend* $v$), la seconde accumule les contributions des successeurs (les noeuds *qui dépendent* de $u$). C'est la règle de la chaîne multivariée.
+Chaque arête sortante (parcourue à rebours) contribue un VJP (adjoint du successeur $\times$ jacobienne locale). Le noeud $u$ somme ces contributions.
+
+Les deux formules sont symétriques: la première applique $D_u \phi_v$ à droite d'un vecteur tangent (JVP), la seconde applique $D_u \phi_v$ à gauche d'un vecteur adjoint (VJP). C'est la règle de la chaîne multivariée.
 
 ### Tri topologique
 
-Les deux formules ci-dessus posent un problème d'ordre. Pour calculer $\dot{v}$ (direction avant), il faut d'abord connaître $\dot{u}$ pour tous les prédécesseurs $u$ de $v$. Pour calculer $\bar{u}$ (direction arrière), il faut d'abord connaître $\bar{k}$ pour tous les successeurs $k$ de $u$.
+Les deux formules ci-dessus posent un problème d'ordre. Pour calculer $\dot{v}$ (direction avant), il faut d'abord connaître $\dot{u}$ pour tous les prédécesseurs $u$ de $v$. Pour calculer $\bar{u}$ (direction arrière), il faut d'abord connaître $\bar{v}$ pour tous les successeurs $v$ de $u$.
 
 Un **tri topologique** fournit un ordre de traitement qui respecte ces contraintes: chaque noeud apparaît après tous ses prédécesseurs. La passe avant suit cet ordre; la passe arrière le parcourt à rebours.
 
@@ -816,7 +858,7 @@ Le mode avant propage les tangentes dans le même sens que l'exécution du progr
 1. Initialiser les tangentes: $\dot{x}_i := (\dot{\mathbf{x}})_i$ pour chaque entrée $x_i$
 2. Pour chaque noeud $v$ dans l'ordre topologique:
    - Calculer la valeur: $v := \text{op}_v(\{u : u \in \text{pred}(v)\})$
-   - Calculer la tangente: $\displaystyle\dot{v} := \sum_{u \in \text{pred}(v)} \frac{\partial v}{\partial u} \, \dot{u}$
+   - Calculer la tangente: $\displaystyle\dot{v} := \sum_{u \in \text{pred}(v)} D_u \phi_v \; \dot{u}$
 3. Retourner $f(\mathbf{x})$ et $\dot{f}$
 ```
 
@@ -841,7 +883,7 @@ Le mode arrière procède en deux temps: d'abord une passe avant qui calcule et 
 2. Initialiser les adjoints: $\bar{v} := 0$ pour tout $v$; $\bar{f} := 1$
 3. Pour chaque noeud $v$ dans l'ordre topologique **inverse**:
    - Pour chaque prédécesseur $u \in \text{pred}(v)$:
-     - $\bar{u} \mathrel{+}= \dfrac{\partial v}{\partial u} \, \bar{v}$
+     - $\bar{u} \mathrel{+}= \bar{v} \, D_u \phi_v$
 4. Retourner $f(\mathbf{x})$ et $\{\bar{x}_i\}$ pour chaque entrée $x_i$
 ```
 
@@ -849,35 +891,49 @@ Une seule passe arrière calcule le gradient par rapport à *toutes* les entrée
 
 Le mode arrière a été décrit pour la première fois par Seppo Linnainmaa {cite}`linnainmaa1970` dans sa thèse de maîtrise à l'Université d'Helsinki. Dans le contexte de l'apprentissage profond, cet algorithme porte le nom de **rétropropagation** (*backpropagation*), popularisé par Rumelhart, Hinton et Williams en 1986 {cite}`rumelhart1986learning`. Un réseau à $K$ couches définit un DAG en chaîne $f_1 \circ f_2 \circ \cdots \circ f_K$, où chaque noeud n'a qu'un seul prédécesseur et un seul successeur. La passe arrière se simplifie alors en une boucle sur les couches $K, K-1, \ldots, 1$. Mais le mode arrière est plus général: il s'applique à tout programme différentiable, y compris ceux qui contiennent des embranchements, des variables réutilisées, des boucles ou des conditions. C'est ce qui permet à des bibliothèques comme JAX ou PyTorch de différentier n'importe quelle fonction Python.
 
+L'animation interactive ci-dessous illustre les deux algorithmes sur le DAG de $f(x,y) = \sin(x) \cdot (x + y)$ avec les valeurs $(x, y) = (0.5, \; 1.2)$. En mode avant, les tangentes se propagent de gauche à droite; en mode arrière, les adjoints se propagent de droite à gauche. Observez en particulier comment $\bar{x}$ accumule les contributions de ses deux successeurs $\phi_1$ et $\phi_2$ lors de la passe arrière.
+
+```{code-cell} python
+:tags: [remove-input]
+
+from IPython.display import HTML
+from pathlib import Path
+import html as _html
+
+_content = Path("_static/ad_stepper.html").read_text()
+_doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0">{_content}</body></html>'
+HTML(f'<iframe srcdoc="{_html.escape(_doc, quote=True)}" width="100%" height="580" style="border:none;" scrolling="no"></iframe>')
+```
+
 ### Règles VJP: une bibliothèque d'opérateurs adjoints
 
-L'algorithme du mode arrière fait intervenir les dérivées partielles locales $\frac{\partial v}{\partial u}$ à chaque étape. Une question reste ouverte: comment calcule-t-on $\frac{\partial v}{\partial u} \, \bar{v}$ efficacement, *sans* construire la jacobienne complète?
+L'algorithme du mode arrière fait intervenir les jacobiennes locales $D_u \phi_v$ à chaque étape. Une question reste ouverte: comment calcule-t-on $\bar{v} \, D_u \phi_v$ efficacement, *sans* construire la jacobienne complète?
 
-La réponse repose sur une distinction fondamentale. La jacobienne $\mathbf{J}_f(\mathbf{x}) \in \mathbb{R}^{m \times n}$ est une *représentation matricielle* d'un objet plus abstrait: la différentielle $df_\mathbf{x}$, qui est un opérateur linéaire $df_\mathbf{x}: \mathbb{R}^n \to \mathbb{R}^m$. Ce qui importe dans le mode arrière n'est pas $df_\mathbf{x}$ lui-même, mais son **opérateur adjoint** $df_\mathbf{x}^*: \mathbb{R}^m \to \mathbb{R}^n$, qui mappe les vecteurs du co-domaine vers le domaine (c'est-à-dire qui propage le signal en sens inverse). En coordonnées, $df_\mathbf{x}^*(\mathbf{u}) = \mathbf{J}_f(\mathbf{x})^\top \mathbf{u}$.
+La réponse repose sur une distinction fondamentale. La jacobienne $\mathbf{J}_f(\mathbf{x}) \in \mathbb{R}^{m \times n}$ est une *représentation matricielle* d'un objet plus abstrait: la différentielle $df_\mathbf{x}$, qui est un opérateur linéaire $df_\mathbf{x}: \mathbb{R}^n \to \mathbb{R}^m$. Ce qui importe dans le mode arrière n'est pas $df_\mathbf{x}$ lui-même, mais son **opérateur adjoint** $df_\mathbf{x}^*: \mathbb{R}^m \to \mathbb{R}^n$, qui envoie les vecteurs du co-domaine vers le domaine (c'est-à-dire qui propage le signal en sens inverse). En coordonnées, le VJP est $\mathbf{u}^\top \mathbf{J}_f(\mathbf{x})$: le produit d'un vecteur adjoint (ligne) par la jacobienne.
 
-Pour définir un opérateur linéaire, il n'est pas nécessaire d'en donner la matrice — il suffit de spécifier son *action* sur des vecteurs. Une bibliothèque de DA (JAX, PyTorch) maintient pour chaque opération primitive une **règle VJP**: une fonction qui calcule directement $\mathbf{J}_f(\mathbf{x})^\top \mathbf{u}$ à partir de $\mathbf{u}$, $\mathbf{x}$, et éventuellement $f(\mathbf{x})$, en n'utilisant que des opérations arithmétiques simples.
+Pour définir un opérateur linéaire, il n'est pas nécessaire d'en donner la matrice: on peut spécifier son *action* sur des vecteurs. Une bibliothèque de DA (JAX, PyTorch) maintient pour chaque opération primitive une **règle VJP**: une fonction qui calcule directement $\mathbf{u}^\top \mathbf{J}_f(\mathbf{x})$ à partir de $\mathbf{u}$, $\mathbf{x}$, et éventuellement $f(\mathbf{x})$, en n'utilisant que des opérations arithmétiques simples.
 
-Lorsque deux opérations se composent — $h = g \circ f$ — la règle VJP de $h$ est le produit des règles VJP de $g$ et $f$:
+Lorsque deux opérations se composent, $h = g \circ f$, la règle VJP de $h$ est le produit des règles VJP de $g$ et $f$:
 
 $$
-\mathbf{J}_h^\top \mathbf{u} = \mathbf{J}_f^\top \underbrace{(\mathbf{J}_g^\top \mathbf{u})}_{\text{appel récursif}}
+\mathbf{u}^\top \mathbf{J}_h = \underbrace{(\mathbf{u}^\top \mathbf{J}_g)}_{\text{appel récursif}} \mathbf{J}_f
 $$
 
 La passe arrière n'est rien d'autre que l'exécution récursive de ces règles, de la sortie vers l'entrée. Le système est entièrement **sans matrice jacobienne explicite**: aucune matrice $\mathbf{J}_f$ n'est jamais construite ni stockée.
 
 Le tableau ci-dessous liste les règles VJP pour les opérations clés d'un MLP. À chaque fois, la règle VJP évite de former la jacobienne correspondante:
 
-| Opération | $f(\mathbf{x})$ | Jacobienne (non formée) | Règle VJP: $\mathbf{J}_f^\top \mathbf{u}$ |
+| Opération | $f(\mathbf{x})$ | Jacobienne (non formée) | Règle VJP: $\mathbf{u}^\top \mathbf{J}_f$ |
 |-----------|-----------------|--------------------------|-------------------------------------------|
-| Couche affine (entrée $\mathbf{z}$) | $W\mathbf{z} + \mathbf{b}$ | $W \in \mathbb{R}^{m \times n}$ | $W^\top \mathbf{u}$ |
+| Couche affine (entrée $\mathbf{z}$) | $W\mathbf{z} + \mathbf{b}$ | $W \in \mathbb{R}^{m \times n}$ | $\mathbf{u}^\top W$ |
 | Couche affine (poids $W$) | $W\mathbf{z} + \mathbf{b}$ | $\mathbf{z}^\top \otimes I_m$ | $\mathbf{u}\mathbf{z}^\top$ (produit externe) |
 | Couche affine (biais $\mathbf{b}$) | $W\mathbf{z} + \mathbf{b}$ | $I_m \in \mathbb{R}^{m \times m}$ | $\mathbf{u}$ |
 | Activation élémentaire | $\varphi(\mathbf{a})$ | $\operatorname{diag}(\varphi'(\mathbf{a})) \in \mathbb{R}^{m \times m}$ | $\mathbf{u} \odot \varphi'(\mathbf{a})$ |
 | Somme $s = \sum_i x_i$ | scalaire | $\mathbf{1}^\top \in \mathbb{R}^{1 \times n}$ | $u \cdot \mathbf{1}$ (diffusion) |
 
-L'exemple de l'activation élémentaire illustre parfaitement le bénéfice: la jacobienne serait une matrice $m \times m$ coûtant $O(m^2)$ en mémoire, alors que la règle VJP — $\mathbf{u} \odot \varphi'(\mathbf{a})$ — est un produit élément par élément en $O(m)$.
+L'exemple de l'activation élémentaire illustre parfaitement le bénéfice: la jacobienne serait une matrice $m \times m$ coûtant $O(m^2)$ en mémoire, alors que la règle VJP, $\mathbf{u} \odot \varphi'(\mathbf{a})$, est un produit élément par élément en $O(m)$.
 
-En JAX, `jax.custom_vjp` permet d'enregistrer exactement ce type de règle pour une opération personnalisée. Écrire une règle VJP correcte pour un nouvel opérateur est une compétence essentielle en apprentissage profond avancé — les exercices 9 à 11 vous entraînent à cette dérivation.
+En JAX, `jax.custom_vjp` permet d'enregistrer exactement ce type de règle pour une opération personnalisée. Écrire une règle VJP correcte pour un nouvel opérateur est une compétence essentielle en apprentissage profond avancé; les exercices 9 à 11 vous entraînent à cette dérivation.
 
 ### Exemple: MLP avec une couche cachée
 
@@ -930,31 +986,45 @@ $$
 \end{aligned}
 $$
 
-La passe arrière propage le gradient en sens inverse, couche par couche:
+La passe arrière propage les adjoints en sens inverse, couche par couche. La notation $\bar{v}$ désigne l'adjoint du noeud $v$, c'est-à-dire la sensibilité de $\mathcal{L}$ à $v$:
 
 $$
 \begin{aligned}
-\frac{\partial \mathcal{L}}{\partial \hat{y}} &= \hat{y} - y \\[4pt]
-\frac{\partial \mathcal{L}}{\partial \mathbf{w}_2} &= \frac{\partial \mathcal{L}}{\partial \hat{y}} \, \mathbf{z}_1, \qquad
-\frac{\partial \mathcal{L}}{\partial b_2} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \\[4pt]
-\frac{\partial \mathcal{L}}{\partial \mathbf{z}_1} &= \frac{\partial \mathcal{L}}{\partial \hat{y}} \, \mathbf{w}_2 \\[4pt]
-\frac{\partial \mathcal{L}}{\partial \mathbf{a}_1} &= \frac{\partial \mathcal{L}}{\partial \mathbf{z}_1} \odot \varphi'(\mathbf{a}_1) \\[4pt]
-\frac{\partial \mathcal{L}}{\partial W_1} &= \frac{\partial \mathcal{L}}{\partial \mathbf{a}_1} \, \mathbf{x}^\top, \qquad
-\frac{\partial \mathcal{L}}{\partial \mathbf{b}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{a}_1}
+\bar{\hat{y}} &= \hat{y} - y \\[4pt]
+\bar{\mathbf{w}}_2 &= \bar{\hat{y}} \, \mathbf{z}_1, \qquad
+\bar{b}_2 = \bar{\hat{y}} \\[4pt]
+\bar{\mathbf{z}}_1 &= \bar{\hat{y}} \, \mathbf{w}_2 \\[4pt]
+\bar{\mathbf{a}}_1 &= \bar{\mathbf{z}}_1 \odot \varphi'(\mathbf{a}_1) \\[4pt]
+\bar{W}_1 &= \bar{\mathbf{a}}_1 \, \mathbf{x}^\top, \qquad
+\bar{\mathbf{b}}_1 = \bar{\mathbf{a}}_1
 \end{aligned}
 $$
 
-où $\odot$ désigne le produit élément par élément. Chaque ligne utilise uniquement des quantités déjà calculées, soit lors de la passe avant ($\mathbf{z}_1$, $\mathbf{a}_1$, $\mathbf{x}$), soit lors des étapes précédentes de la passe arrière. La structure est toujours la même: le gradient par rapport aux pré-activations d'une couche est propagé vers l'arrière pour obtenir le gradient de la couche précédente.
+où $\odot$ désigne le produit élément par élément. Chaque ligne utilise uniquement des quantités déjà calculées, soit lors de la passe avant ($\mathbf{z}_1$, $\mathbf{a}_1$, $\mathbf{x}$), soit lors des étapes précédentes de la passe arrière. La structure est toujours la même: l'adjoint des pré-activations d'une couche est propagé vers l'arrière pour obtenir l'adjoint de la couche précédente.
 
 **Point de contrôle:** Si vous pouvez suivre cet exemple du début à la fin, vous avez compris le mécanisme de la rétropropagation. C'est une instance de l'algorithme du mode arrière de la section précédente, spécialisée à un réseau en chaîne. Si certaines étapes restent floues, l'exercice 3 vous permettra de refaire ce calcul vous-même avec des valeurs numériques.
 
+L'animation interactive ci-dessous déroule la passe avant et la rétropropagation sur un réseau à deux couches avec des valeurs numériques concrètes. Observez comment chaque couche produit les gradients de ses paramètres ($\bar{w}$, $\bar{b}$) tout en propageant le signal vers l'arrière, et comment la dérivée de l'activation ($\sigma'$) joue le rôle de «porte» qui laisse passer ou bloque le gradient.
+
+```{code-cell} python
+:tags: [remove-input]
+
+from IPython.display import HTML
+from pathlib import Path
+import html as _html
+
+_content = Path("_static/nn_backprop_stepper.html").read_text()
+_doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0">{_content}</body></html>'
+HTML(f'<iframe srcdoc="{_html.escape(_doc, quote=True)}" width="100%" height="580" style="border:none;" scrolling="no"></iframe>')
+```
+
 ### La liste de Wengert
 
-En 1964, Wengert {cite}`wengert1964simple` a proposé de représenter toute fonction calculable comme une séquence ordonnée d'opérations élémentaires — chacune ayant une dérivée connue. Cette séquence, appelée **liste de Wengert** (ou *tape*, bande), est le graphe de calcul sérialisé en ordre topologique. La contribution de Wengert était de rendre la dérivation *algorithmique*: en décomposant un programme en étapes atomiques et en les écrivant dans l'ordre, une machine peut appliquer la règle de la chaîne mécaniquement, sans intervention humaine.
+En 1964, Wengert {cite}`wengert1964simple` a proposé de représenter toute fonction calculable comme une séquence ordonnée d'opérations élémentaires, chacune ayant une dérivée connue. Cette séquence, appelée **liste de Wengert** (ou *tape*, bande), est le graphe de calcul sérialisé en ordre topologique. La contribution de Wengert était de rendre la dérivation *algorithmique*: en décomposant un programme en étapes atomiques et en les écrivant dans l'ordre, une machine peut appliquer la règle de la chaîne mécaniquement, sans intervention humaine.
 
 En mode avant, cette liste guide la propagation des tangentes: chaque étape calcule simultanément sa valeur et sa dérivée, sans rien retenir. Mais en mode arrière, la bande devient indispensable comme structure de *stockage*: il faut rejouer les opérations à rebours, ce qui exige de conserver les valeurs intermédiaires de la passe avant. C'est ce rôle de stockage qui domine dans les bibliothèques modernes de DA (JAX, PyTorch), puisque l'entraînement des réseaux utilise le mode arrière.
 
-Concrètement, pendant la passe avant, chaque opération enregistre sur la bande ses entrées, sa sortie, et une **fonction VJP locale**. Cette fonction est construite au moment de l'opération, et elle *capture* les valeurs intermédiaires dont elle aura besoin plus tard pour calculer le gradient — en programmation, on appelle cela une *fermeture* (*closure*). Prenons l'opération $v_3 = v_1 \cdot v_2$ comme exemple. Au moment du calcul, la passe avant connaît les valeurs de $v_1$ et $v_2$. La règle VJP de la multiplication est $(\bar{v}_1, \bar{v}_2) = (v_2 \cdot \bar{v}_3,\; v_1 \cdot \bar{v}_3)$: elle a besoin des valeurs $v_1$ et $v_2$ de la passe avant. La fermeture les capture:
+Concrètement, pendant la passe avant, chaque opération enregistre sur la bande ses entrées, sa sortie, et une **fonction VJP locale**. Cette fonction est construite au moment de l'opération, et elle *capture* les valeurs intermédiaires dont elle aura besoin plus tard pour calculer le gradient. En programmation, on appelle cela une *fermeture* (*closure*). Prenons l'opération $v_3 = v_1 \cdot v_2$ comme exemple. Au moment du calcul, la passe avant connaît les valeurs de $v_1$ et $v_2$. La règle VJP de la multiplication est $(\bar{v}_1, \bar{v}_2) = (v_2 \cdot \bar{v}_3,\; v_1 \cdot \bar{v}_3)$: elle a besoin des valeurs $v_1$ et $v_2$ de la passe avant. La fermeture les capture:
 
 ```python
 # Pendant la passe avant, au moment de v3 = v1 * v2 :
@@ -1078,7 +1148,7 @@ grad_jnp = jax.grad(f_jnp)(1.0)   # fonctionne: retourne cos(1)*1 + sin(1) ≈ 1
 # grad_np = jax.grad(f_np)(1.0)   # lèverait une erreur ou donnerait un résultat faux
 ```
 
-`jax.numpy` est essentiellement un espace de noms qui réimplémente toutes les fonctions NumPy de manière à intercepter les traceurs. Pour les tableaux NumPy ordinaires (sans traceur), `jnp` et `np` produisent les mêmes résultats numériques. La différence n'apparaît que pendant la trace.
+`jax.numpy` est un espace de noms qui réimplémente toutes les fonctions NumPy de manière à intercepter les traceurs. Pour les tableaux NumPy ordinaires (sans traceur), `jnp` et `np` produisent les mêmes résultats numériques. La différence n'apparaît que pendant la trace.
 
 ### Implémentation minimale
 
@@ -1214,7 +1284,7 @@ print(f'∂f/∂x (diff. fin.)  = {df_dx_num:.6f}')
 print(f'∂f/∂y (diff. fin.)  = {df_dy_num:.6f}')
 ```
 
-Les trois méthodes sont en accord. Remarquez que `grad` est une fonction d'ordre supérieur qui retourne une nouvelle fonction, exactement comme `jax.grad`. L'accumulation des adjoints (ligne `adjoints[idx] += ct`) gère automatiquement le cas où une variable contribue à plusieurs branches du calcul — c'est la somme des deux chemins pour $x$.
+Les trois méthodes sont en accord. Remarquez que `grad` est une fonction d'ordre supérieur qui retourne une nouvelle fonction, exactement comme `jax.grad`. L'accumulation des adjoints (ligne `adjoints[idx] += ct`) gère automatiquement le cas où une variable contribue à plusieurs branches du calcul: c'est la somme des deux chemins pour $x$.
 
 ### La programmation différentiable
 
@@ -1541,13 +1611,13 @@ $$
 
 $$
 \begin{aligned}
-\frac{\partial \mathcal{L}}{\partial \hat{y}} &= 0{,}4 - 1 = -0{,}6 \\
-\frac{\partial \mathcal{L}}{\partial \mathbf{w}_2} &= -0{,}6 \times [0{,}5, 0]^\top = [-0{,}3, 0]^\top \\
-\frac{\partial \mathcal{L}}{\partial b_2} &= -0{,}6 \\
-\frac{\partial \mathcal{L}}{\partial \mathbf{z}_1} &= -0{,}6 \times [0{,}8, 0{,}4]^\top = [-0{,}48, -0{,}24]^\top \\
-\frac{\partial \mathcal{L}}{\partial \mathbf{a}_1} &= [-0{,}48, -0{,}24]^\top \odot [1, 0]^\top = [-0{,}48, 0]^\top \\
-\frac{\partial \mathcal{L}}{\partial \mathbf{w}_1} &= [-0{,}48, 0]^\top \times 1 = [-0{,}48, 0]^\top \\
-\frac{\partial \mathcal{L}}{\partial \mathbf{b}_1} &= [-0{,}48, 0]^\top
+\bar{\hat{y}} &= 0{,}4 - 1 = -0{,}6 \\
+\bar{\mathbf{w}}_2 &= -0{,}6 \times [0{,}5, 0]^\top = [-0{,}3, 0]^\top \\
+\bar{b}_2 &= -0{,}6 \\
+\bar{\mathbf{z}}_1 &= -0{,}6 \times [0{,}8, 0{,}4]^\top = [-0{,}48, -0{,}24]^\top \\
+\bar{\mathbf{a}}_1 &= [-0{,}48, -0{,}24]^\top \odot [1, 0]^\top = [-0{,}48, 0]^\top \\
+\bar{\mathbf{w}}_1 &= [-0{,}48, 0]^\top \times 1 = [-0{,}48, 0]^\top \\
+\bar{\mathbf{b}}_1 &= [-0{,}48, 0]^\top
 \end{aligned}
 $$
 
@@ -1704,7 +1774,7 @@ $$
 
 **4. Remarque d'implémentation:**
 
-Ce résultat est élégant: pour calculer le gradient par rapport aux pré-activations de la couche softmax, il suffit de soustraire 1 à la probabilité prédite pour la vraie classe. Pas besoin de calculer explicitement la jacobienne $K \times K$ du softmax (qui serait coûteuse pour de grandes sorties). En pratique:
+Le gradient par rapport aux pré-activations de la couche softmax se réduit à soustraire 1 à la probabilité prédite pour la vraie classe. On n'a pas besoin de calculer explicitement la jacobienne $K \times K$ du softmax (qui serait coûteuse pour de grandes sorties). En pratique:
 
 ```python
 def softmax_cross_entropy_grad(logits, c):
@@ -1723,7 +1793,7 @@ Soit $f(\mathbf{z}) = W\mathbf{z} + \mathbf{b}$ avec $W \in \mathbb{R}^{m \times
 
 1. Écrivez la jacobienne $\mathbf{J}_f$ par rapport à $\mathbf{z}$. Quelle est sa taille?
 
-2. Calculez $\mathbf{J}_f^\top \mathbf{u}$ (la règle VJP par rapport à $\mathbf{z}$). Montrez que le résultat est $W^\top \mathbf{u}$. Interprétez: $W^\top$ est l'opérateur adjoint de $W$.
+2. Calculez $\mathbf{u}^\top \mathbf{J}_f$ (la règle VJP par rapport à $\mathbf{z}$). Montrez que le résultat est $\mathbf{u}^\top W$. Interprétez: la multiplication à gauche par $W$ (JVP) se transpose en multiplication à droite par $W$ (VJP).
 
 3. Traitez maintenant $W$ comme variable. Soit $g(W) = W\mathbf{z} + \mathbf{b}$ avec $\mathbf{z}$ fixé. Écrivez $g$ composante par composante: $(g(W))_i = \sum_j W_{ij} z_j + b_i$. En déduire $\frac{\partial g_i}{\partial W_{kl}}$, puis la règle VJP par rapport à $W$.
 
@@ -1744,10 +1814,10 @@ La jacobienne est $\mathbf{J}_f = W \in \mathbb{R}^{m \times n}$.
 **2. VJP par rapport à $\mathbf{z}$:**
 
 $$
-\mathbf{J}_f^\top \mathbf{u} = W^\top \mathbf{u} \in \mathbb{R}^n
+\mathbf{u}^\top \mathbf{J}_f = \mathbf{u}^\top W \in \mathbb{R}^{1 \times n}
 $$
 
-$W^\top$ est bien l'adjoint de l'opérateur $W$: si $W$ projette $\mathbb{R}^n \to \mathbb{R}^m$, son adjoint $W^\top$ projette en sens inverse $\mathbb{R}^m \to \mathbb{R}^n$. Aucune matrice supplémentaire n'est formée: $W$ est déjà disponible depuis la passe avant.
+Le JVP multiplie $W$ à gauche ($W \mathbf{v}$); le VJP multiplie $W$ à droite ($\mathbf{u}^\top W$). Le même opérateur, appliqué dans l'autre sens. Aucune matrice supplémentaire n'est formée: $W$ est déjà disponible depuis la passe avant.
 
 **3. Jacobienne par rapport à $W$:**
 
@@ -1758,20 +1828,20 @@ Vectorisons $W$ en $\operatorname{vec}(W) \in \mathbb{R}^{mn}$ (concaténation d
 Sans vectoriser: le résultat du VJP doit avoir la même forme que $W$, soit $\mathbb{R}^{m \times n}$. On a:
 
 $$
-\left(\mathbf{J}_W^\top \mathbf{u}\right)_{kl} = \sum_i u_i \frac{\partial g_i}{\partial W_{kl}} = u_k z_l
+\left(\mathbf{u}^\top \mathbf{J}_W\right)_{kl} = \sum_i u_i \frac{\partial g_i}{\partial W_{kl}} = u_k z_l
 $$
 
-Ce qui donne la matrice $\mathbf{u}\mathbf{z}^\top \in \mathbb{R}^{m \times n}$ — un produit externe $O(mn)$, exactement le coût minimal pour produire une matrice de cette taille.
+Ce qui donne la matrice $\mathbf{u}\mathbf{z}^\top \in \mathbb{R}^{m \times n}$, un produit externe $O(mn)$, exactement le coût minimal pour produire une matrice de cette taille.
 
-Par rapport à $\mathbf{b}$: $\frac{\partial g_i}{\partial b_k} = \mathbb{1}(i=k)$, donc $\mathbf{J}_\mathbf{b}^\top \mathbf{u} = \mathbf{u}$.
+Par rapport à $\mathbf{b}$: $\frac{\partial g_i}{\partial b_k} = \mathbb{1}(i=k)$, donc $\mathbf{u}^\top \mathbf{J}_\mathbf{b} = \mathbf{u}^\top$.
 
 **5. Correspondance avec la rétropropagation:**
 
-Dans la section "Exemple: MLP avec une couche cachée", avec $\mathbf{u} = \frac{\partial \mathcal{L}}{\partial \mathbf{a}_1}$:
+Dans la section "Exemple: MLP avec une couche cachée", avec $\mathbf{u} = \bar{\mathbf{a}}_1$:
 
 $$
-\frac{\partial \mathcal{L}}{\partial W_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{a}_1} \mathbf{x}^\top = \mathbf{u}\mathbf{z}^\top, \qquad
-\frac{\partial \mathcal{L}}{\partial \mathbf{b}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{a}_1} = \mathbf{u}
+\bar{W}_1 = \bar{\mathbf{a}}_1 \, \mathbf{x}^\top = \mathbf{u}\mathbf{z}^\top, \qquad
+\bar{\mathbf{b}}_1 = \bar{\mathbf{a}}_1 = \mathbf{u}
 $$
 
 Ce sont exactement les règles VJP dérivées ci-dessus, appliquées avec $\mathbf{z} = \mathbf{x}$.
@@ -1784,7 +1854,7 @@ Soit $g: \mathbb{R}^m \to \mathbb{R}^m$ définie par $g(\mathbf{a})_i = \varphi(
 
 1. Calculez la jacobienne $\mathbf{J}_g(\mathbf{a}) \in \mathbb{R}^{m \times m}$. Quelle est sa structure particulière? Quel coût en mémoire si $m = 10^4$?
 
-2. Calculez la règle VJP: $\mathbf{J}_g^\top \mathbf{u}$. Montrez qu'elle se réduit à $\mathbf{u} \odot \varphi'(\mathbf{a})$. Quel est le coût en mémoire?
+2. Calculez la règle VJP: $\mathbf{u}^\top \mathbf{J}_g$. Montrez qu'elle se réduit à $\mathbf{u} \odot \varphi'(\mathbf{a})$. Quel est le coût en mémoire?
 
 3. Spécialisez à $\varphi = \sigma$ (sigmoïde). En utilisant la formule $\sigma'(a) = \sigma(a)(1-\sigma(a))$ de l'exercice 2, écrivez la règle VJP uniquement en termes de $\mathbf{u}$ et $g(\mathbf{a}) = \sigma(\mathbf{a})$ (sans recalculer la passe avant).
 
@@ -1802,12 +1872,12 @@ $$
 \mathbf{J}_g(\mathbf{a}) = \operatorname{diag}(\varphi'(\mathbf{a})) \in \mathbb{R}^{m \times m}
 $$
 
-C'est une matrice *diagonale*. Malgré cela, si on la stockait naïvement, le coût serait $O(m^2)$. Pour $m = 10^4$: $10^8$ flottants $\approx$ 800 Mo — prohibitif.
+C'est une matrice *diagonale*. Malgré cela, si on la stockait naïvement, le coût serait $O(m^2)$. Pour $m = 10^4$: $10^8$ flottants $\approx$ 800 Mo, ce qui est prohibitif.
 
 **2. Règle VJP:**
 
 $$
-\mathbf{J}_g^\top \mathbf{u} = \operatorname{diag}(\varphi'(\mathbf{a}))^\top \mathbf{u} = \operatorname{diag}(\varphi'(\mathbf{a})) \mathbf{u} = \mathbf{u} \odot \varphi'(\mathbf{a})
+\mathbf{u}^\top \mathbf{J}_g = \mathbf{u}^\top \operatorname{diag}(\varphi'(\mathbf{a})) = \mathbf{u} \odot \varphi'(\mathbf{a})
 $$
 
 Coût: $O(m)$ en temps et en mémoire. La matrice diagonale n'est jamais formée.
@@ -1817,7 +1887,7 @@ Coût: $O(m)$ en temps et en mémoire. La matrice diagonale n'est jamais formée
 Puisque $\sigma'(a) = \sigma(a)(1 - \sigma(a))$ et $g(\mathbf{a}) = \sigma(\mathbf{a})$ est disponible depuis la passe avant:
 
 $$
-\mathbf{J}_g^\top \mathbf{u} = \mathbf{u} \odot g(\mathbf{a}) \odot (1 - g(\mathbf{a}))
+\mathbf{u}^\top \mathbf{J}_g = \mathbf{u} \odot g(\mathbf{a}) \odot (1 - g(\mathbf{a}))
 $$
 
 Pas besoin de recalculer $\sigma(\mathbf{a})$: la passe avant l'a déjà produit et stocké. C'est la raison pour laquelle les implémentations de rétropropagation *cachent* les activations intermédiaires.
@@ -1850,12 +1920,12 @@ $$
 \mathbf{J}_f \cdot \mathbf{v} = W\mathbf{v} \in \mathbb{R}^m
 $$
 
-Coût: $O(mn)$ — un produit matrice-vecteur.
+Coût: $O(mn)$, un produit matrice-vecteur.
 
 **2. Comparaison JVP vs VJP pour le gradient complet:**
 
 - **$n$ JVPs**: calculer $\mathbf{J}_f \mathbf{e}_1, \ldots, \mathbf{J}_f \mathbf{e}_n$ reconstruit la jacobienne colonne par colonne. Coût total: $n \times O(mn) = O(mn^2)$.
-- **1 VJP**: calculer $W^\top \mathbf{u}$ pour un seul $\mathbf{u}$. Coût: $O(mn)$.
+- **1 VJP**: calculer $\mathbf{u}^\top W$ pour un seul $\mathbf{u}$. Coût: $O(mn)$.
 
 Pour une perte scalaire, le VJP en mode arrière est donc $n$ fois plus efficace que le JVP en mode avant.
 
@@ -1864,7 +1934,7 @@ Pour une perte scalaire, le VJP en mode arrière est donc $n$ fois plus efficace
 - Mode avant ($n$ JVPs): $1000 \times 10^6 = 10^9$ opérations
 - Mode arrière (1 VJP): $10^6$ opérations
 
-Le mode arrière est $10^3 = 1000$ fois moins coûteux — et c'est par couche. Sur un réseau de 100 couches, l'avantage s'accumule.
+Le mode arrière est $10^3 = 1000$ fois moins coûteux, et c'est par couche. Sur un réseau de 100 couches, l'avantage s'accumule.
 
 **4. Cas favorables au mode avant:**
 
@@ -2294,7 +2364,7 @@ graph LR
 
 **(a)** Écrivez la jacobienne de chaque opération élémentaire: $J_{\text{sub}}(x, y)$, $J_{\exp}(v_1)$, $J_{\text{sq}}(v_1)$, $J_{\text{add}}(v_2, v_3)$.
 
-**(b)** Le noeud $v_1$ a deux successeurs ($v_2$ et $v_3$). En utilisant la règle de la chaîne multivariée, écrivez $\frac{\partial f}{\partial v_1}$ comme une somme de deux termes (un par chemin).
+**(b)** Le noeud $v_1$ a deux successeurs ($v_2$ et $v_3$). En utilisant la règle de la chaîne multivariée, écrivez $\bar{v}_1$ comme une somme de deux termes (un par chemin).
 
 **(c)** Écrivez la passe arrière comme une suite d'appels à $\text{vjp}$. Le noeud $v_1$ reçoit deux contributions: montrez comment elles s'accumulent.
 
@@ -2348,7 +2418,7 @@ $$
 **(b)** Le noeud $v_1$ contribue à $f$ par deux chemins (via $\exp$ et via le carré). La règle de la chaîne multivariée donne:
 
 $$
-\frac{\partial f}{\partial v_1} = \frac{\partial f}{\partial v_2} \cdot J_{\exp}(v_1) + \frac{\partial f}{\partial v_3} \cdot J_{\text{sq}}(v_1) = \bar{v}_2 \cdot e^{v_1} + \bar{v}_3 \cdot 2v_1
+\bar{v}_1 = \bar{v}_2 \, D_{v_1} \phi_2 + \bar{v}_3 \, D_{v_1} \phi_3 = \bar{v}_2 \cdot e^{v_1} + \bar{v}_3 \cdot 2v_1
 $$
 
 **(c)** Passe arrière complète:
@@ -2519,7 +2589,7 @@ $$
 \bar{y} = \text{vjp}(\text{add}, x, y,\; \bar{v}_1)_y + \text{vjp}(\text{sub}, x, y,\; \bar{v}_3)_y = \bar{v}_1 + (-\bar{v}_3)
 $$
 
-**(c)** En $(x, y) = (3, 1)$ — ReLU actif:
+**(c)** En $(x, y) = (3, 1)$ (ReLU actif):
 
 Passe avant: $v_1 = 4$, $v_2 = 4$, $v_3 = 2$, $v_4 = 8$.
 
@@ -2531,7 +2601,7 @@ $$
 
 Vérification: quand $x + y > 0$, $f(x, y) = (x+y)(x-y) = x^2 - y^2$, donc $\partial f/\partial x = 2x = 6$ et $\partial f/\partial y = -2y = -2$. Correct.
 
-**(d)** En $(x, y) = (-3, 1)$ — ReLU inactif:
+**(d)** En $(x, y) = (-3, 1)$ (ReLU inactif):
 
 Passe avant: $v_1 = -2$, $v_2 = 0$, $v_3 = -4$, $v_4 = 0$.
 
