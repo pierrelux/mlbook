@@ -57,6 +57,7 @@ project:
         - file: exercises/tp6_vjp.ipynb
         - file: exercises/manual_vjps.ipynb
         - file: exercises/autodiff_graphe.ipynb
+        - file: exercises/tp7_traceur.ipynb
         - file: exercises/projet_energie.ipynb
     # - title: "Présentations"
     #   children:
