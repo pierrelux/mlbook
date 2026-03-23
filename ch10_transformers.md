@@ -96,22 +96,6 @@ _doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="ma
 HTML(f'<iframe srcdoc="{_html.escape(_doc, quote=True)}" width="100%" height="900" style="border:none;" scrolling="no"></iframe>')
 ```
 
-### Lien avec la régression à noyau
-
-L'attention par produit scalaire est un cas particulier d'une famille plus ancienne: la régression non paramétrique à noyau. L'estimateur de Nadaraya-Watson {cite}`nadaraya1964estimating,watson1964smooth` prédit la sortie pour un point $\mathbf{x}$ par une moyenne pondérée des observations:
-
-$$
-\hat{y}(\mathbf{x}) = \sum_{i=1}^n \frac{K_\lambda(\mathbf{x}, \mathbf{x}_i)}{\sum_{j=1}^n K_\lambda(\mathbf{x}, \mathbf{x}_j)}\, y_i
-$$
-
-Avec un noyau gaussien $K_\lambda(\mathbf{x}, \mathbf{x}_i) = \exp(-\|\mathbf{x} - \mathbf{x}_i\|^2 / 2\lambda^2)$, le lien avec l'attention est exact, pas seulement structurel. En développant $\|\mathbf{x} - \mathbf{x}_i\|^2 = \|\mathbf{x}\|^2 - 2\mathbf{x}^\top \mathbf{x}_i + \|\mathbf{x}_i\|^2$, le terme $\|\mathbf{x}\|^2$ est constant pour toutes les positions et disparaît dans le rapport du softmax. Si les clés ont des normes comparables, le score se réduit à $\mathbf{x}^\top \mathbf{x}_i / \lambda^2$: un produit scalaire mis à l'échelle, exactement la forme de l'attention avec $\sqrt{d_k}$ jouant le rôle de $\lambda$ (l'exercice 5 développe cette dérivation en détail).
-
-La correspondance devient plus révélatrice quand on examine ce que l'attention apprend. Dans Nadaraya-Watson, le noyau est fixé a priori. Dans l'attention, les projections $W_Q$ et $W_K$ induisent un noyau effectif $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \exp(\mathbf{x}_i^\top W_Q W_K^\top \mathbf{x}_j / \sqrt{d_k})$. La matrice $M = W_Q W_K^\top$ apprend quelles directions de l'espace d'entrée sont pertinentes pour la comparaison, de façon analogue à l'apprentissage de la forme et de la bande passante du noyau {cite}`tsai2019transformer`. Contrairement aux noyaux de Mercer, cette matrice est en général asymétrique ($M \neq M^\top$), ce qui permet à l'attention de traiter différemment la relation « sujet → verbe » et la relation « verbe → sujet » {cite}`wright2021transformers`.
-
-La divergence la plus profonde concerne $W_V$. Dans Nadaraya-Watson, les « valeurs » $y_i$ sont les observations brutes: l'estimateur ne peut retourner que des moyennes pondérées des données. Si l'on pose $W_V = I$, l'attention se réduit exactement à Nadaraya-Watson. Mais une projection $W_V$ apprise transforme ce que chaque position offre avant l'agrégation. L'attention apprend simultanément comment pondérer (via $W_Q$, $W_K$) et quoi retourner (via $W_V$). L'attention multi-têtes pousse cette idée plus loin: $H$ estimateurs à noyau indépendants, chacun avec ses propres projections $(W_Q^{(h)}, W_K^{(h)}, W_V^{(h)})$, combinés linéairement par $W_O$ — un ensemble de régresseurs à noyau spécialisés.
-
-Le lien avec la régression à noyau dépasse le cas gaussien. Santos et al. {cite}`santos2026sparse` montrent que remplacer le softmax par sparsemax produit exactement le noyau d'Epanechnikov (à support compact), et que $\alpha$-entmax avec $\alpha = 1 + 1/n$ engendre la hiérarchie classique des noyaux: Epanechnikov ($n = 1$), biweight ($n = 2$), triweight ($n = 3$), gaussien ($n \to \infty$). Le choix de la fonction de normalisation dans l'attention est équivalent au choix du noyau en régression non paramétrique, chacun avec son propre compromis biais-variance.
-
 ## Auto-attention
 
 Dans le mécanisme d'attention décrit ci-dessus, les requêtes proviennent d'une séquence et les clés/valeurs d'une autre (par exemple, le décodeur interroge l'encodeur). C'est l'attention croisée.
@@ -133,8 +117,6 @@ $$
 La sortie a la même forme que l'entrée: $T$ vecteurs de dimension $d_v$. Chaque vecteur de sortie est une combinaison pondérée de toutes les valeurs, les poids étant déterminés par la similarité entre la requête de cette position et les clés de toutes les autres positions.
 
 Une propriété importante de l'auto-attention est qu'elle est équivariante par permutation: si l'on permute les lignes de $X$, les lignes de la sortie sont permutées de la même façon. L'auto-attention ne contient aucune notion d'ordre intrinsèque. Contrairement au RNN, où la position $t$ reçoit nécessairement l'information des positions $1, \ldots, t-1$ via $\mathbf{h}_{t-1}$, l'auto-attention traite toutes les positions de façon symétrique. Nous verrons plus loin comment l'encodage positionnel restaure la notion d'ordre.
-
-La complexité de calcul de l'auto-attention est $O(T^2 d)$: le produit $Q K^\top$ a $T^2$ entrées. Pour de longues séquences, cette complexité quadratique peut devenir un goulot d'étranglement. C'est le principal inconvénient du mécanisme, et il existe des travaux sur des variantes plus efficaces (attention linéaire, attention éparse), que nous ne détaillerons pas ici.
 
 ### Chemins directs entre positions
 
@@ -181,6 +163,22 @@ Attention multi-têtes: chaque tête apprend des projections distinctes et captu
 :::
 
 Chaque tête peut apprendre à capturer un type de relation différent: une tête peut se spécialiser dans les dépendances locales, une autre dans les dépendances à longue portée, une autre encore dans les relations syntaxiques.
+
+## Lien avec la régression à noyau
+
+L'attention par produit scalaire est un cas particulier d'une famille plus ancienne: la régression non paramétrique à noyau. L'estimateur de Nadaraya-Watson {cite}`nadaraya1964estimating,watson1964smooth` prédit la sortie pour un point $\mathbf{x}$ par une moyenne pondérée des observations:
+
+$$
+\hat{y}(\mathbf{x}) = \sum_{i=1}^n \frac{K_\lambda(\mathbf{x}, \mathbf{x}_i)}{\sum_{j=1}^n K_\lambda(\mathbf{x}, \mathbf{x}_j)}\, y_i
+$$
+
+Avec un noyau gaussien $K_\lambda(\mathbf{x}, \mathbf{x}_i) = \exp(-\|\mathbf{x} - \mathbf{x}_i\|^2 / 2\lambda^2)$, le lien avec l'attention est exact, pas seulement structurel. En développant $\|\mathbf{x} - \mathbf{x}_i\|^2 = \|\mathbf{x}\|^2 - 2\mathbf{x}^\top \mathbf{x}_i + \|\mathbf{x}_i\|^2$, le terme $\|\mathbf{x}\|^2$ est constant pour toutes les positions et disparaît dans le rapport du softmax. Si les clés ont des normes comparables, le score se réduit à $\mathbf{x}^\top \mathbf{x}_i / \lambda^2$: un produit scalaire mis à l'échelle, exactement la forme de l'attention avec $\sqrt{d_k}$ jouant le rôle de $\lambda$ (l'exercice 5 développe cette dérivation en détail).
+
+La correspondance devient plus révélatrice quand on examine ce que l'attention apprend. Dans Nadaraya-Watson, le noyau est fixé a priori. Dans l'attention, les projections $W_Q$ et $W_K$ induisent un noyau effectif $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \exp(\mathbf{x}_i^\top W_Q W_K^\top \mathbf{x}_j / \sqrt{d_k})$. La matrice $M = W_Q W_K^\top$ apprend quelles directions de l'espace d'entrée sont pertinentes pour la comparaison, de façon analogue à l'apprentissage de la forme et de la bande passante du noyau {cite}`tsai2019transformer`. Contrairement aux noyaux de Mercer, cette matrice est en général asymétrique ($M \neq M^\top$), ce qui permet à l'attention de traiter différemment la relation « sujet → verbe » et la relation « verbe → sujet » {cite}`wright2021transformers`.
+
+La divergence la plus profonde concerne $W_V$. Dans Nadaraya-Watson, les « valeurs » $y_i$ sont les observations brutes: l'estimateur ne peut retourner que des moyennes pondérées des données. Si l'on pose $W_V = I$, l'attention se réduit exactement à Nadaraya-Watson. Mais une projection $W_V$ apprise transforme ce que chaque position offre avant l'agrégation. L'attention apprend simultanément comment pondérer (via $W_Q$, $W_K$) et quoi retourner (via $W_V$). L'attention multi-têtes pousse cette idée plus loin: $H$ estimateurs à noyau indépendants, chacun avec ses propres projections $(W_Q^{(h)}, W_K^{(h)}, W_V^{(h)})$, combinés linéairement par $W_O$ — un ensemble de régresseurs à noyau spécialisés.
+
+Le lien avec la régression à noyau dépasse le cas gaussien. Santos et al. {cite}`santos2026sparse` montrent que remplacer le softmax par sparsemax produit exactement le noyau d'Epanechnikov (à support compact), et que $\alpha$-entmax avec $\alpha = 1 + 1/n$ engendre la hiérarchie classique des noyaux: Epanechnikov ($n = 1$), biweight ($n = 2$), triweight ($n = 3$), gaussien ($n \to \infty$). Le choix de la fonction de normalisation dans l'attention est équivalent au choix du noyau en régression non paramétrique, chacun avec son propre compromis biais-variance.
 
 ## Le bloc transformeur
 
@@ -302,7 +300,7 @@ Dans un RNN, le calcul de $\mathbf{h}_t$ attend $\mathbf{h}_{t-1}$: les $T$ pas 
 
 ### Le coût quadratique de l'attention
 
-Cet avantage a une contrepartie. La matrice $QK^\top$ contient $T^2$ entrées: une pour chaque paire de positions. Pour une séquence de $T = 4096$ positions avec 16 têtes et $d_k = 64$, la matrice d'attention d'une seule tête contient $4096^2 \approx 16{,}8$ millions d'entrées, soit environ 268 millions pour l'ensemble des têtes d'une seule couche. La mémoire et le temps de calcul croissent quadratiquement avec la longueur de la séquence.
+Cet avantage a une contrepartie. La complexité de calcul de l'auto-attention est $O(T^2 d)$: la matrice $QK^\top$ contient $T^2$ entrées, une pour chaque paire de positions. Pour une séquence de $T = 4096$ positions avec 16 têtes et $d_k = 64$, la matrice d'attention d'une seule tête contient $4096^2 \approx 16{,}8$ millions d'entrées, soit environ 268 millions pour l'ensemble des têtes d'une seule couche. La mémoire et le temps de calcul croissent quadratiquement avec la longueur de la séquence.
 
 C'est pourquoi les premiers transformeurs étaient limités à environ 512 jetons. L'adoption du transformeur n'est pas une victoire pure sur les RNN: on échange une profondeur séquentielle $O(T)$ contre un coût mémoire $O(T^2)$. Pour de courtes séquences, un RNN peut être plus économe. Pour de longues séquences, des variantes d'attention sous-quadratique (attention linéaire, attention éparse) tentent de retrouver le meilleur des deux régimes.
 
