@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explorateur d'attention</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666666;
+    --text-tertiary: #999999;
+    --border-light: rgba(0,0,0,0.1);
+    --border-med: rgba(0,0,0,0.2);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2a2a28;
+      --text-primary: #e0e0e0;
+      --text-secondary: #999999;
+      --text-tertiary: #666666;
+      --border-light: rgba(255,255,255,0.1);
+      --border-med: rgba(255,255,255,0.2);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    padding: 1.5rem;
+    line-height: 1.5;
+  }
+  .sec { margin-bottom: 1.5rem; }
+  .sec-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .preset-btn {
+    font-size: 12px; padding: 6px 14px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-med); background: var(--bg-primary);
+    cursor: pointer; transition: background 0.15s; color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
+  .preset-btn:hover { background: var(--bg-secondary); }
+  .preset-btn.active { border-color: #378ADD; background: #E6F1FB; color: #185FA5; }
+  @media (prefers-color-scheme: dark) {
+    .preset-btn.active { background: #0C447C; color: #B5D4F4; border-color: #378ADD; }
+  }
+  .q-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .q-row label { font-size: 12px; min-width: 18px; font-family: var(--font-mono); color: var(--text-secondary); }
+  .q-row input[type=range] { flex: 1; max-width: 220px; }
+  .q-row .val { font-size: 12px; min-width: 36px; text-align: right; font-family: var(--font-mono); }
+  .temp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .temp-row .val { font-size: 13px; font-weight: 500; font-family: var(--font-mono); min-width: 40px; }
+  .temp-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .output-box {
+    border-radius: var(--radius-lg); padding: 20px; text-align: center;
+    background: var(--bg-secondary);
+  }
+  .out-num { font-size: 32px; font-weight: 500; font-family: var(--font-mono); }
+  .stacked-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin-top: 12px; }
+  .stacked-seg {
+    transition: width 0.35s ease; display: flex; align-items: center;
+    justify-content: center; font-size: 10px; font-weight: 500; color: #fff;
+    overflow: hidden; white-space: nowrap; min-width: 0;
+  }
+  .breakdown { font-size: 12px; color: var(--text-secondary); margin-top: 10px; font-family: var(--font-mono); }
+  .vec-wrap { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 16px; }
+  .narration {
+    font-size: 13px; color: var(--text-secondary); padding: 10px 14px;
+    border-radius: var(--radius-md); background: var(--bg-primary);
+    border: 1px solid var(--border-light); margin-bottom: 14px;
+    min-height: 40px; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="sec">
+  <div class="sec-label">Scénario</div>
+  <div class="presets" id="presets"></div>
+  <div class="narration" id="narration"></div>
+  <div style="max-width: 320px;">
+    <div class="q-row"><label>q₁</label><input type="range" min="-2" max="2" step="0.05" value="2" id="q0"><span class="val" id="q0v">2.0</span></div>
+    <div class="q-row"><label>q₂</label><input type="range" min="-2" max="2" step="0.05" value="0" id="q1"><span class="val" id="q1v">0.0</span></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Température τ (divise les scores avant le softmax)</div>
+  <div class="temp-row">
+    <span style="font-size:11px; color: var(--text-tertiary);">dure</span>
+    <input type="range" min="0.1" max="5" step="0.1" value="1" id="temp" style="flex:1; max-width: 280px;">
+    <span style="font-size:11px; color: var(--text-tertiary);">douce</span>
+    <span class="val" id="temp-val">1.0</span>
+  </div>
+  <div class="temp-hint" id="temp-hint"></div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Espace des vecteurs</div>
+  <div class="vec-wrap">
+    <svg id="vsv" viewBox="-40 -40 380 290" style="width:100%; max-width:540px; display:block; margin:0 auto;"></svg>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Sortie = Σ αₜ vₜ</div>
+  <div class="output-box">
+    <div class="out-num" id="out-num">—</div>
+    <div class="stacked-bar" id="stacked"></div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+</div>
+
+<script>
+const K = [[1,0],[0,1],[-1,0]];
+const V = [10, 20, 30];
+const C = ['#7F77DD','#1D9E75','#D85A30'];
+const isDk = matchMedia('(prefers-color-scheme:dark)').matches;
+
+const scenarios = [
+  { label: 'q → k₁ (v=10)', q:[2,0],
+    txt:'q pointe dans la même direction que k₁. Le produit scalaire q⊤k₁ est élevé, q⊤k₃ est négatif. L\'attention se concentre sur la position 1 → la sortie est proche de 10.' },
+  { label: 'q → k₂ (v=20)', q:[0,2],
+    txt:'q pointe vers k₂. Les deux autres clés sont orthogonales ou opposées → scores faibles. L\'attention est concentrée sur la position 2 → sortie ≈ 20.' },
+  { label: 'q → k₃ (v=30)', q:[-2,0],
+    txt:'q pointe dans la même direction que k₃ (et à l\'opposé de k₁). La sortie est tirée vers 30.' },
+  { label: 'q entre k₁ et k₂', q:[1.4,1.4],
+    txt:'q est à mi-chemin entre k₁ et k₂. Les deux reçoivent un poids similaire, k₃ est ignoré. La sortie mélange v₁=10 et v₂=20.' },
+  { label: 'q = 0 → uniforme', q:[0,0],
+    txt:'Quand q est nul, tous les produits scalaires valent 0. Le softmax donne des poids uniformes → la sortie est la moyenne des valeurs: (10+20+30)/3 = 20.' },
+];
+
+let activePreset = 0;
+const presetsEl = document.getElementById('presets');
+scenarios.forEach((s,i) => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn'+(i===0?' active':'');
+  btn.textContent = s.label;
+  btn.onclick = () => { document.getElementById('q0').value=s.q[0]; document.getElementById('q1').value=s.q[1]; activePreset=i; hlP(); update(); };
+  presetsEl.appendChild(btn);
+});
+function hlP(){ presetsEl.querySelectorAll('.preset-btn').forEach((b,i)=>b.classList.toggle('active',i===activePreset)); }
+
+function softmax(arr,tau){ const sc=arr.map(x=>x/tau); const mx=Math.max(...sc); const ex=sc.map(x=>Math.exp(x-mx)); const sm=ex.reduce((a,b)=>a+b,0); return ex.map(e=>e/sm); }
+
+function update(){
+  const q=[parseFloat(document.getElementById('q0').value),parseFloat(document.getElementById('q1').value)];
+  const tau=parseFloat(document.getElementById('temp').value);
+  document.getElementById('q0v').textContent=q[0].toFixed(2);
+  document.getElementById('q1v').textContent=q[1].toFixed(2);
+  document.getElementById('temp-val').textContent=tau.toFixed(1);
+
+  let hint='τ = '+tau.toFixed(1);
+  if(Math.abs(tau-1)<0.05) hint+=' — scores bruts';
+  else if(tau<0.3) hint+=' — quasi one-hot (consultation dure)';
+  else if(tau<0.8) hint+=' — attention concentrée';
+  else if(tau>3) hint+=' — quasi uniforme (moyenne)';
+  else if(tau>1.5) hint+=' — attention diffuse';
+  document.getElementById('temp-hint').textContent=hint;
+
+  const scores=K.map(k=>q[0]*k[0]+q[1]*k[1]);
+  const alphas=softmax(scores,tau);
+  const out=alphas.reduce((s,a,i)=>s+a*V[i],0);
+
+  document.getElementById('out-num').textContent=out.toFixed(1);
+  const stackedEl=document.getElementById('stacked');
+  stackedEl.innerHTML='';
+  alphas.forEach((a,i)=>{
+    const seg=document.createElement('div');
+    seg.className='stacked-seg';
+    seg.style.width=(a*100).toFixed(1)+'%';
+    seg.style.background=C[i];
+    if(a>0.10) seg.textContent='v='+V[i]+' ('+Math.round(a*100)+'%)';
+    stackedEl.appendChild(seg);
+  });
+  document.getElementById('breakdown').textContent=
+    alphas.map((a,i)=>a.toFixed(2)+' × '+V[i]).join('  +  ')+'  =  '+out.toFixed(1);
+
+  const q0=parseFloat(document.getElementById('q0').value),q1v=parseFloat(document.getElementById('q1').value);
+  let mi=scenarios.findIndex(s=>Math.abs(s.q[0]-q0)<0.06&&Math.abs(s.q[1]-q1v)<0.06);
+  if(mi!==activePreset){activePreset=mi;hlP();}
+  document.getElementById('narration').textContent = mi>=0 ? scenarios[mi].txt : 'Déplacez les curseurs q₁ et q₂ pour explorer. L\'attention se concentre sur les clés dont la direction est proche de q.';
+
+  drawVec(q,alphas,scores);
+}
+
+function drawVec(q,alphas,scores){
+  const svg=document.getElementById('vsv');
+  const ox=150,oy=200,sc=140;
+  const tC=isDk?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.28)';
+  const aC=isDk?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.05)';
+  const qC=isDk?'#e0e0e0':'#1a1a1a';
+
+  let h='';
+  h+='<line x1="'+(ox-sc*1.2)+'" y1="'+oy+'" x2="'+(ox+sc*1.2)+'" y2="'+oy+'" stroke="'+aC+'" stroke-width="0.5"/>';
+  h+='<line x1="'+ox+'" y1="'+(oy+20)+'" x2="'+ox+'" y2="'+(oy-sc*1.2)+'" stroke="'+aC+'" stroke-width="0.5"/>';
+  h+='<text x="'+(ox+sc*1.2+6)+'" y="'+(oy+4)+'" font-size="11" fill="'+tC+'" font-family="monospace">d₁</text>';
+  h+='<text x="'+(ox+4)+'" y="'+(oy-sc*1.2-6)+'" font-size="11" fill="'+tC+'" font-family="monospace">d₂</text>';
+
+  const qLen=Math.sqrt(q[0]*q[0]+q[1]*q[1]);
+
+  for(let i=0;i<3;i++){
+    const kx=ox+K[i][0]*sc, ky=oy-K[i][1]*sc;
+    const kLen=Math.sqrt(K[i][0]*K[i][0]+K[i][1]*K[i][1]);
+
+    if(qLen>0.05&&kLen>0){
+      const projS=scores[i]/(kLen*kLen);
+      const px=ox+K[i][0]*projS*sc, py=oy-K[i][1]*projS*sc;
+      const qx=ox+q[0]*sc, qy=oy-q[1]*sc;
+      h+='<line x1="'+qx+'" y1="'+qy+'" x2="'+px+'" y2="'+py+'" stroke="'+C[i]+'" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.35"/>';
+    }
+
+    const op=(0.2+alphas[i]*0.8).toFixed(2);
+    const sw=(1+alphas[i]*3.5).toFixed(1);
+    h+='<line x1="'+ox+'" y1="'+oy+'" x2="'+kx+'" y2="'+ky+'" stroke="'+C[i]+'" stroke-width="'+sw+'" opacity="'+op+'" stroke-linecap="round"/>';
+
+    const r=Math.max(16,16+alphas[i]*20);
+    const nudge=r+4;
+    const cx=kx+(kLen>0?K[i][0]*nudge/kLen:0);
+    const cy=ky-(kLen>0?K[i][1]*nudge/kLen:0);
+
+    h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r.toFixed(1)+'" fill="'+C[i]+'" opacity="'+op+'"/>';
+    h+='<text x="'+cx+'" y="'+(cy+1)+'" font-size="'+Math.max(12,12+alphas[i]*4).toFixed(0)+'" fill="#fff" font-weight="500" text-anchor="middle" dominant-baseline="central" font-family="monospace">v='+V[i]+'</text>';
+
+    const pctY=cy+r+14;
+    const pctOp=alphas[i]<0.02?'0':op;
+    h+='<text x="'+cx+'" y="'+pctY+'" font-size="12" fill="'+C[i]+'" opacity="'+pctOp+'" text-anchor="middle" font-weight="500" font-family="monospace">α='+(alphas[i]*100).toFixed(0)+'%</text>';
+  }
+
+  if(qLen>0.05){
+    const qx=ox+q[0]*sc, qy=oy-q[1]*sc;
+    h+='<line x1="'+ox+'" y1="'+oy+'" x2="'+qx+'" y2="'+qy+'" stroke="'+qC+'" stroke-width="2.5" stroke-linecap="round"/>';
+    const ang=Math.atan2(-q[1],q[0]),s=9,a1=ang+2.7,a2=ang-2.7;
+    h+='<polygon points="'+qx+','+qy+' '+(qx-Math.cos(a1)*s)+','+(qy+Math.sin(a1)*s)+' '+(qx-Math.cos(a2)*s)+','+(qy+Math.sin(a2)*s)+'" fill="'+qC+'"/>';
+    const tx=qx+(q[0]>=0?12:-12), ty=qy+(q[1]>0.3?-12:q[1]<-0.3?16:-12);
+    h+='<text x="'+tx+'" y="'+ty+'" font-size="14" fill="'+qC+'" font-weight="500" text-anchor="'+(q[0]>=0?'start':'end')+'">q</text>';
+  } else {
+    h+='<circle cx="'+ox+'" cy="'+oy+'" r="6" fill="none" stroke="'+qC+'" stroke-width="1.5" stroke-dasharray="3,3"/>';
+    h+='<text x="'+(ox+12)+'" y="'+(oy-10)+'" font-size="13" fill="'+qC+'" font-weight="500">q ≈ 0</text>';
+  }
+
+  svg.innerHTML=h;
+}
+
+document.getElementById('q0').addEventListener('input',update);
+document.getElementById('q1').addEventListener('input',update);
+document.getElementById('temp').addEventListener('input',update);
+update();
+</script>
+</body>
+</html>

@@ -16,6 +16,8 @@ kernelspec:
 - Décrire l'architecture d'un bloc transformeur (attention multi-têtes, réseau à propagation avant, connexions résiduelles, normalisation)
 - Expliquer le rôle de l'encodage positionnel
 - Distinguer les variantes encodeur, décodeur et encodeur-décodeur
+- Relier le mécanisme d'attention à l'estimateur de Nadaraya-Watson
+- Expliquer le compromis entre parallélisme et coût quadratique dans les transformeurs
 ```
 
 Le chapitre précédent a montré comment les réseaux récurrents traitent les séquences en maintenant un état caché mis à jour à chaque pas de temps. Cette approche a deux limitations: le traitement est séquentiel (on ne peut pas paralléliser le calcul des différentes positions), et toute l'information doit transiter par un vecteur de taille fixe $\mathbf{h}_t$.
@@ -44,6 +46,18 @@ Soit une séquence de représentations $(\mathbf{x}_1, \ldots, \mathbf{x}_T)$, c
 - les **clés** (*keys*) $\mathbf{k}_t \in \mathbb{R}^{d_k}$: ce que chaque position "annonce" contenir;
 - les **valeurs** (*values*) $\mathbf{v}_t \in \mathbb{R}^{d_v}$: l'information effectivement stockée à chaque position.
 
+Cette terminologie s'éclaire par analogie avec un dictionnaire Python. Un dictionnaire fait une consultation dure: `d[clé]` retourne exactement une valeur, ou échoue si la clé est absente. L'attention fait une consultation souple: la requête est comparée à toutes les clés simultanément, et la sortie est un mélange des valeurs pondéré par le degré de correspondance entre la requête et chaque clé.
+
+:::{figure} _static/attention_mechanism.svg
+:name: fig-attention-mechanism
+:align: center
+:width: 80%
+
+Le mécanisme d'attention: la requête est comparée à chaque clé, les scores sont normalisés par softmax, et la sortie est la somme pondérée des valeurs.
+:::
+
+Quand les poids sont concentrés sur une seule position, la consultation souple se rapproche d'une consultation dure; quand ils sont uniformes, la sortie est la moyenne de toutes les valeurs.
+
 L'attention calcule un score de similarité entre la requête et chaque clé, normalise ces scores en probabilités, puis retourne la moyenne pondérée des valeurs:
 
 $$
@@ -56,6 +70,8 @@ $$ (eq:attention-output)
 
 Le score $\mathbf{q}^\top \mathbf{k}_t$ mesure la compatibilité entre la requête et la clé à la position $t$. Le softmax {eq}`eq:attention-weight` transforme ces scores en poids positifs qui somment à 1. La sortie {eq}`eq:attention-output` est une combinaison convexe des valeurs, pondérée par la pertinence de chaque position.
 
+Prenons un exemple concret avec 3 positions et une requête $\mathbf{q} = (1, 0)$. Si les clés sont $\mathbf{k}_1 = (1, 0)$, $\mathbf{k}_2 = (0, 1)$, $\mathbf{k}_3 = (1, 1)$, les scores sont $1$, $0$ et $1$: la requête « sélectionne » les positions dont les clés ont une forte composante en première dimension. Après le softmax, les positions 1 et 3 reçoivent chacune environ 42% du poids, tandis que la position 2 n'en reçoit que 16%. La sortie est dominée par les valeurs des positions les plus compatibles avec la requête.
+
 La division par $\sqrt{d_k}$ est une normalisation. Sans elle, quand la dimension $d_k$ est grande, les produits scalaires tendent à avoir des magnitudes élevées, ce qui pousse le softmax vers des distributions très piquées (presque concentrées sur un seul élément). La normalisation par $\sqrt{d_k}$ maintient la variance des scores à une échelle raisonnable.
 
 En notation matricielle, si nous traitons toutes les requêtes simultanément ($Q \in \mathbb{R}^{T_q \times d_k}$ est la matrice des requêtes, $K \in \mathbb{R}^{T \times d_k}$ celle des clés, $V \in \mathbb{R}^{T \times d_v}$ celle des valeurs):
@@ -65,6 +81,36 @@ $$
 $$ (eq:attention-matrix)
 
 Le produit $Q K^\top \in \mathbb{R}^{T_q \times T}$ contient tous les scores de similarité. Le softmax est appliqué sur chaque ligne (chaque requête). La multiplication par $V$ produit la sortie $\in \mathbb{R}^{T_q \times d_v}$.
+
+L'animation interactive ci-dessous permet de manipuler la requête $\mathbf{q}$ et d'observer comment les poids d'attention et la sortie changent en temps réel. Les boutons de préréglage illustrent les scénarios clés: sélection d'une position, attention uniforme, ou mélange intermédiaire. Le curseur de température $\tau$ généralise la normalisation par $\sqrt{d_k}$: une valeur faible produit une consultation quasi dure, une valeur élevée adoucit la distribution.
+
+```{code-cell} python
+:tags: [remove-input]
+
+from IPython.display import HTML
+from pathlib import Path
+import html as _html
+
+_content = Path("_static/attention_explorer.html").read_text()
+_doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0">{_content}</body></html>'
+HTML(f'<iframe srcdoc="{_html.escape(_doc, quote=True)}" width="100%" height="900" style="border:none;" scrolling="no"></iframe>')
+```
+
+### Lien avec la régression à noyau
+
+L'attention par produit scalaire est un cas particulier d'une famille plus ancienne: la régression non paramétrique à noyau. L'estimateur de Nadaraya-Watson {cite}`nadaraya1964estimating,watson1964smooth` prédit la sortie pour un point $\mathbf{x}$ par une moyenne pondérée des observations:
+
+$$
+\hat{y}(\mathbf{x}) = \sum_{i=1}^n \frac{K_\lambda(\mathbf{x}, \mathbf{x}_i)}{\sum_{j=1}^n K_\lambda(\mathbf{x}, \mathbf{x}_j)}\, y_i
+$$
+
+Avec un noyau gaussien $K_\lambda(\mathbf{x}, \mathbf{x}_i) = \exp(-\|\mathbf{x} - \mathbf{x}_i\|^2 / 2\lambda^2)$, le lien avec l'attention est exact, pas seulement structurel. En développant $\|\mathbf{x} - \mathbf{x}_i\|^2 = \|\mathbf{x}\|^2 - 2\mathbf{x}^\top \mathbf{x}_i + \|\mathbf{x}_i\|^2$, le terme $\|\mathbf{x}\|^2$ est constant pour toutes les positions et disparaît dans le rapport du softmax. Si les clés ont des normes comparables, le score se réduit à $\mathbf{x}^\top \mathbf{x}_i / \lambda^2$: un produit scalaire mis à l'échelle, exactement la forme de l'attention avec $\sqrt{d_k}$ jouant le rôle de $\lambda$ (l'exercice 5 développe cette dérivation en détail).
+
+La correspondance devient plus révélatrice quand on examine ce que l'attention apprend. Dans Nadaraya-Watson, le noyau est fixé a priori. Dans l'attention, les projections $W_Q$ et $W_K$ induisent un noyau effectif $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \exp(\mathbf{x}_i^\top W_Q W_K^\top \mathbf{x}_j / \sqrt{d_k})$. La matrice $M = W_Q W_K^\top$ apprend quelles directions de l'espace d'entrée sont pertinentes pour la comparaison, de façon analogue à l'apprentissage de la forme et de la bande passante du noyau {cite}`tsai2019transformer`. Contrairement aux noyaux de Mercer, cette matrice est en général asymétrique ($M \neq M^\top$), ce qui permet à l'attention de traiter différemment la relation « sujet → verbe » et la relation « verbe → sujet » {cite}`wright2021transformers`.
+
+La divergence la plus profonde concerne $W_V$. Dans Nadaraya-Watson, les « valeurs » $y_i$ sont les observations brutes: l'estimateur ne peut retourner que des moyennes pondérées des données. Si l'on pose $W_V = I$, l'attention se réduit exactement à Nadaraya-Watson. Mais une projection $W_V$ apprise transforme ce que chaque position offre avant l'agrégation. L'attention apprend simultanément comment pondérer (via $W_Q$, $W_K$) et quoi retourner (via $W_V$). L'attention multi-têtes pousse cette idée plus loin: $H$ estimateurs à noyau indépendants, chacun avec ses propres projections $(W_Q^{(h)}, W_K^{(h)}, W_V^{(h)})$, combinés linéairement par $W_O$ — un ensemble de régresseurs à noyau spécialisés.
+
+Le lien avec la régression à noyau dépasse le cas gaussien. Santos et al. {cite}`santos2026sparse` montrent que remplacer le softmax par sparsemax produit exactement le noyau d'Epanechnikov (à support compact), et que $\alpha$-entmax avec $\alpha = 1 + 1/n$ engendre la hiérarchie classique des noyaux: Epanechnikov ($n = 1$), biweight ($n = 2$), triweight ($n = 3$), gaussien ($n \to \infty$). Le choix de la fonction de normalisation dans l'attention est équivalent au choix du noyau en régression non paramétrique, chacun avec son propre compromis biais-variance.
 
 ## Auto-attention
 
@@ -90,6 +136,22 @@ Une propriété importante de l'auto-attention est qu'elle est équivariante par
 
 La complexité de calcul de l'auto-attention est $O(T^2 d)$: le produit $Q K^\top$ a $T^2$ entrées. Pour de longues séquences, cette complexité quadratique peut devenir un goulot d'étranglement. C'est le principal inconvénient du mécanisme, et il existe des travaux sur des variantes plus efficaces (attention linéaire, attention éparse), que nous ne détaillerons pas ici.
 
+### Chemins directs entre positions
+
+Dans un RNN, l'information de la position 1 doit traverser la chaîne $\mathbf{h}_1 \to \mathbf{h}_2 \to \cdots \to \mathbf{h}_T$ pour atteindre la position $T$. À chaque transition, le signal est transformé et potentiellement atténué. Comme nous l'avons vu au chapitre 9, cette chaîne est précisément ce qui cause la dissolution du gradient: le gradient subit $T - 1$ multiplications matricielles successives, et sa norme tend à décroître exponentiellement avec la longueur de la séquence.
+
+:::{figure} _static/rnn_vs_attention.svg
+:name: fig-rnn-vs-attention
+:align: center
+:width: 90%
+
+À gauche, la chaîne séquentielle d'un RNN: l'information de $x_1$ doit traverser chaque état caché pour atteindre $h_4$. À droite, l'auto-attention connecte directement chaque position d'entrée à chaque position de sortie.
+:::
+
+L'auto-attention élimine ce goulot d'étranglement: chaque position de sortie est directement connectée à chaque position d'entrée en une seule couche, sans intermédiaire. Là où le RNN impose un chemin de longueur $T - 1$, l'auto-attention n'a besoin que d'un seul pas.
+
+La conséquence pour l'entraînement est directe: un chemin court entre deux positions signifie un chemin court pour le gradient. Les connexions résiduelles du bloc transformeur (section suivante) amplifient cet effet en ajoutant un chemin d'identité à travers chaque couche.
+
 ## Attention multi-têtes
 
 Un seul mécanisme d'attention ne peut capturer qu'un seul type de relation entre les positions. En pratique, différentes positions peuvent être reliées de multiples façons: en syntaxe (sujet-verbe), en sémantique (coréférence), en proximité, etc.
@@ -108,7 +170,17 @@ $$
 \text{MultiHead}(X) = \text{Concat}(\text{head}_1, \ldots, \text{head}_H)\, W_O
 $$ (eq:multihead)
 
-où $W_O \in \mathbb{R}^{Hd_v \times d}$ ramène la dimension à $d$. Chaque tête peut apprendre à capturer un type de relation différent: une tête peut se spécialiser dans les dépendances locales, une autre dans les dépendances à longue portée, une autre encore dans les relations syntaxiques.
+où $W_O \in \mathbb{R}^{Hd_v \times d}$ ramène la dimension à $d$.
+
+:::{figure} _static/multihead_attention.svg
+:name: fig-multihead-attention
+:align: center
+:width: 90%
+
+Attention multi-têtes: chaque tête apprend des projections distinctes et capture un type de relation différent. Ici, trois têtes sur la phrase « Le chat mange la souris » illustrent des spécialisations possibles.
+:::
+
+Chaque tête peut apprendre à capturer un type de relation différent: une tête peut se spécialiser dans les dépendances locales, une autre dans les dépendances à longue portée, une autre encore dans les relations syntaxiques.
 
 ## Le bloc transformeur
 
@@ -131,36 +203,13 @@ $$
 
 avec $W_1 \in \mathbb{R}^{d_{ff} \times d}$, $W_2 \in \mathbb{R}^{d \times d_{ff}}$, et $d_{ff}$ typiquement 4 fois $d$.
 
-```{mermaid}
-graph TB
-    input["Entrée X ∈ ℝ<sup>T×d</sup>"]
-    mha["Attention<br/>multi-têtes"]
-    add1["+ (résiduelle)"]
-    ln1["LayerNorm"]
-    ffn["FFN<br/>(MLP 2 couches)"]
-    add2["+ (résiduelle)"]
-    ln2["LayerNorm"]
-    output["Sortie ∈ ℝ<sup>T×d</sup>"]
+:::{figure} _static/transformer_block.svg
+:name: fig-transformer-block
+:align: center
+:width: 60%
 
-    input --> mha
-    mha --> add1
-    input --> add1
-    add1 --> ln1
-    ln1 --> ffn
-    ffn --> add2
-    ln1 --> add2
-    add2 --> ln2
-    ln2 --> output
-
-    style input fill:#dae8fc,stroke:#6c8ebf
-    style output fill:#d5e8d4,stroke:#82b366
-    style mha fill:#fff2cc,stroke:#d6b656
-    style ffn fill:#fff2cc,stroke:#d6b656
-    style add1 fill:#f5f5f5,stroke:#666666
-    style add2 fill:#f5f5f5,stroke:#666666
-    style ln1 fill:#f5f5f5,stroke:#666666
-    style ln2 fill:#f5f5f5,stroke:#666666
-```
+Un bloc transformeur. Le chemin résiduel (flèche verticale) transporte le signal sans transformation, tandis que l'attention multi-têtes et le réseau à propagation avant modifient ce signal par addition.
+:::
 
 Les connexions résiduelles ($X + \text{MultiHead}(X)$ au lieu de $\text{MultiHead}(X)$ seul) sont le même mécanisme que dans les réseaux résiduels (ResNets): elles permettent au gradient de circuler sans atténuation à travers les couches, ce qui rend possible l'entraînement de réseaux profonds.
 
@@ -170,7 +219,7 @@ Un transformeur complet empile $N$ de ces blocs (typiquement $N = 6$ à $N = 96$
 
 ## Encodage positionnel
 
-L'auto-attention est équivariante par permutation: elle produit le même résultat quelle que soit l'ordre des positions. Pour que le transformeur puisse distinguer "le chat mange la souris" de "la souris mange le chat", il faut injecter l'information de position dans les représentations d'entrée.
+L'auto-attention est équivariante par permutation: elle produit le même résultat quelle que soit l'ordre des positions. Considérons les mots [mange, le, chat, souris, la] et [le, chat, mange, la, souris]. Sans encodage positionnel, l'auto-attention produit les mêmes représentations de sortie (à permutation des lignes près), car elle opère sur un ensemble de vecteurs, pas sur une séquence ordonnée. L'encodage positionnel brise cette symétrie pour que le transformeur distingue l'ordre des mots.
 
 L'encodage positionnel ajoute un vecteur dépendant de la position à chaque représentation d'entrée:
 
@@ -191,54 +240,41 @@ Chaque dimension de l'encodage oscille à une fréquence différente. Les basses
 
 Une alternative courante est d'utiliser des encodages positionnels appris: chaque position $t$ a un vecteur $\mathbf{p}_t$ qui est un paramètre du modèle, optimisé pendant l'entraînement. Les deux approches fonctionnent bien en pratique.
 
+L'animation interactive ci-dessous permet d'explorer l'encodage positionnel sinusoïdal. La carte de chaleur montre l'encodage de chaque position: les dimensions basses oscillent rapidement (position fine), les dimensions hautes oscillent lentement (position grossière). Le visualiseur de vagues isole des paires sin/cos individuelles, et le graphique de similarité cosinus montre que deux positions proches ont des encodages similaires — une propriété approximativement invariante par translation.
+
 ```{code-cell} python
-:tags: [hide-input]
+:tags: [remove-input]
 
-import numpy as np
-import matplotlib.pyplot as plt
+from IPython.display import HTML
+from pathlib import Path
+import html as _html
 
-%config InlineBackend.figure_format = 'retina'
-
-d = 64
-T = 50
-PE = np.zeros((T, d))
-for t in range(T):
-    for i in range(d // 2):
-        freq = 1.0 / (10000 ** (2 * i / d))
-        PE[t, 2*i] = np.sin(t * freq)
-        PE[t, 2*i+1] = np.cos(t * freq)
-
-fig, ax = plt.subplots(figsize=(8, 4))
-im = ax.imshow(PE.T, aspect='auto', cmap='RdBu_r', vmin=-1, vmax=1)
-ax.set_xlabel('Position $t$')
-ax.set_ylabel('Dimension')
-ax.set_title('Encodage positionnel sinusoïdal ($d = 64$)')
-fig.colorbar(im, ax=ax, shrink=0.8)
-plt.tight_layout()
+_content = Path("_static/positional_encoding_explorer.html").read_text()
+_doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0">{_content}</body></html>'
+HTML(f'<iframe srcdoc="{_html.escape(_doc, quote=True)}" width="100%" height="700" style="border:none;" scrolling="no"></iframe>')
 ```
 
-Chaque colonne de cette carte de chaleur représente l'encodage d'une position. Les dimensions basses (en haut) oscillent rapidement, les dimensions hautes (en bas) oscillent lentement. Deux positions proches ont des encodages similaires; deux positions éloignées ont des encodages distincts.
+```{admonition} Lien avec l'encodage cyclique du projet
+:class: note
+
+Le projet sur la prédiction de consommation énergétique utilise $\sin(2\pi h / 24)$ et $\cos(2\pi h / 24)$ pour encoder l'heure du jour. Le principe est le même: représenter une quantité périodique par une paire sin/cos pour que des valeurs proches sur le cycle aient des représentations proches. L'heure 23 et l'heure 0 sont voisines en représentation sin/cos, alors qu'elles sont éloignées en valeur scalaire. L'encodage positionnel du transformeur généralise cette idée avec un spectre de fréquences: chaque paire de dimensions utilise une fréquence différente, ce qui permet d'encoder des relations de position à plusieurs échelles.
+```
 
 ## Variantes d'architecture
 
-Le mécanisme de base (auto-attention + FFN + résiduel + normalisation) s'assemble de différentes façons selon la tâche.
+Le mécanisme de base (auto-attention + FFN + résiduel + normalisation) s'assemble de différentes façons selon la tâche. La {numref}`fig-architecture-variants` illustre la structure interne de chaque variante.
+
+:::{figure} _static/architecture_variants.svg
+:name: fig-architecture-variants
+:align: center
+:width: 100%
+
+Les trois variantes d'architecture du transformeur. L'encodeur utilise l'auto-attention bidirectionnelle; le décodeur utilise l'auto-attention causale (masquée); l'encodeur-décodeur combine les deux avec une couche d'attention croisée.
+:::
 
 ### Encodeur seul
 
 L'encodeur traite la séquence d'entrée avec de l'auto-attention bidirectionnelle: chaque position peut consulter toutes les autres, y compris celles qui la suivent. La sortie est une séquence de représentations contextualisées.
-
-```{mermaid}
-graph LR
-    input["Entrée + pos."]
-    enc["Bloc × N<br/>(attention bidirectionnelle)"]
-    repr["Représentations<br/>contextualisées"]
-
-    input --> enc --> repr
-
-    style input fill:#dae8fc,stroke:#6c8ebf
-    style enc fill:#fff2cc,stroke:#d6b656
-    style repr fill:#d5e8d4,stroke:#82b366
-```
 
 BERT {cite}`devlin2019bert` est l'exemple le plus connu. On l'utilise pour la classification de texte (en ajoutant une tête de classification sur la représentation du premier jeton), la recherche d'information, ou l'extraction de caractéristiques pour d'autres modèles.
 
@@ -246,56 +282,35 @@ BERT {cite}`devlin2019bert` est l'exemple le plus connu. On l'utilise pour la cl
 
 Le décodeur génère une séquence un élément à la fois, de gauche à droite. Pour que le modèle ne puisse pas "tricher" en regardant les mots futurs, l'auto-attention est masquée: la position $t$ ne peut consulter que les positions $1, \ldots, t$. Cela se fait en mettant à $-\infty$ les entrées correspondantes dans $Q K^\top$ avant le softmax.
 
-```{mermaid}
-graph LR
-    input["Entrée + pos."]
-    dec["Bloc × N<br/>(attention causale)"]
-    output["Prédiction<br/>mot suivant"]
-
-    input --> dec --> output
-
-    style input fill:#dae8fc,stroke:#6c8ebf
-    style dec fill:#fff2cc,stroke:#d6b656
-    style output fill:#d5e8d4,stroke:#82b366
-```
-
 GPT {cite}`radford2018improving` et les grands modèles de langage (LLM) utilisent cette architecture. Le modèle est entraîné à prédire le prochain mot à chaque position, et la génération se fait de façon autorégressive: on échantillonne un mot, on l'ajoute à la séquence, et on prédit le suivant.
 
 ### Encodeur-décodeur
 
 L'architecture originale du transformeur {cite}`vaswani2017attention` combine un encodeur et un décodeur. L'encodeur traite la séquence source avec de l'auto-attention bidirectionnelle. Le décodeur génère la séquence cible avec de l'auto-attention causale, mais à chaque bloc, il inclut aussi une couche d'attention croisée: les requêtes viennent du décodeur, et les clés/valeurs viennent de l'encodeur. Cela permet au décodeur de consulter la séquence source à chaque étape de la génération.
 
-```{mermaid}
-graph LR
-    src["Séquence<br/>source"]
-    enc["Encodeur<br/>(attention bidirectionnelle)"]
-    tgt["Séquence<br/>cible"]
-    dec["Décodeur<br/>(attention causale<br/>+ attention croisée)"]
-    output["Sortie"]
-
-    src --> enc
-    enc --> dec
-    tgt --> dec
-    dec --> output
-
-    style src fill:#dae8fc,stroke:#6c8ebf
-    style tgt fill:#dae8fc,stroke:#6c8ebf
-    style enc fill:#fff2cc,stroke:#d6b656
-    style dec fill:#fff2cc,stroke:#d6b656
-    style output fill:#d5e8d4,stroke:#82b366
-```
-
 Cette architecture est naturelle pour les tâches de transduction (traduction, résumé, réponse à une question), où l'entrée et la sortie sont des séquences de nature différente.
 
 ## Pourquoi les transformeurs dominent
 
-Les transformeurs ont remplacé les RNN comme architecture dominante pour le traitement des séquences, et ils se sont étendus bien au-delà (vision, audio, protéines, etc.). Trois propriétés expliquent cette domination.
+Les transformeurs ont remplacé les RNN comme architecture dominante pour le traitement des séquences, et ils se sont étendus bien au-delà (vision, audio, protéines, etc.). Cette domination repose sur un avantage structurel lié au matériel moderne, mais elle s'accompagne d'un coût que les RNN n'avaient pas.
 
-Le parallélisme est la première. Dans un RNN, le calcul de $\mathbf{h}_t$ attend $\mathbf{h}_{t-1}$: les positions sont traitées séquentiellement. Dans un transformeur, toutes les positions sont traitées simultanément par l'auto-attention. Sur GPU ou TPU, cette parallélisation massive réduit considérablement le temps d'entraînement.
+### Parallélisme et matériel moderne
 
-Les connexions directes à longue portée sont la deuxième. Dans un RNN, l'information entre la position 1 et la position $T$ doit traverser $T - 1$ transitions d'état. Dans un transformeur, une seule couche d'attention suffit pour connecter n'importe quelle paire de positions. Le chemin du gradient est court, ce qui facilite l'apprentissage de dépendances à longue portée.
+L'auto-attention calcule $QK^\top$ comme un produit matriciel: exactement l'opération pour laquelle les GPU sont conçus. Un GPU contient des milliers de cœurs qui exécutent la même opération arithmétique sur des données différentes, et la multiplication matricielle exploite pleinement ce parallélisme.
 
-La mise à l'échelle est la troisième. L'architecture du transformeur s'est révélée remarquablement stable quand on augmente le nombre de paramètres, la taille des données, et la quantité de calcul. Des lois de puissance (*scaling laws*) relient ces trois quantités à la performance du modèle de façon prévisible. Cette propriété a conduit aux grands modèles de langage (LLM) qui comptent des milliards de paramètres et sont entraînés sur des quantités massives de texte.
+Dans un RNN, le calcul de $\mathbf{h}_t$ attend $\mathbf{h}_{t-1}$: les $T$ pas de temps sont séquentiels. Sur un GPU avec des milliers de cœurs, la plupart restent inactifs pendant que le RNN traite un pas à la fois. L'attention, elle, traite toutes les paires de positions en une seule opération matricielle. Sur une séquence de 512 positions, un RNN exécute 512 pas séquentiels, tandis que l'attention calcule toutes les interactions en un seul produit $QK^\top$.
+
+### Le coût quadratique de l'attention
+
+Cet avantage a une contrepartie. La matrice $QK^\top$ contient $T^2$ entrées: une pour chaque paire de positions. Pour une séquence de $T = 4096$ positions avec 16 têtes et $d_k = 64$, la matrice d'attention d'une seule tête contient $4096^2 \approx 16{,}8$ millions d'entrées, soit environ 268 millions pour l'ensemble des têtes d'une seule couche. La mémoire et le temps de calcul croissent quadratiquement avec la longueur de la séquence.
+
+C'est pourquoi les premiers transformeurs étaient limités à environ 512 jetons. L'adoption du transformeur n'est pas une victoire pure sur les RNN: on échange une profondeur séquentielle $O(T)$ contre un coût mémoire $O(T^2)$. Pour de courtes séquences, un RNN peut être plus économe. Pour de longues séquences, des variantes d'attention sous-quadratique (attention linéaire, attention éparse) tentent de retrouver le meilleur des deux régimes.
+
+### Mise à l'échelle
+
+Au-delà du parallélisme, les transformeurs possèdent une propriété empirique remarquable: leur performance s'améliore de façon prévisible quand on augmente le nombre de paramètres, la taille des données, et la quantité de calcul. Des lois de puissance (*scaling laws*) relient ces trois quantités à la perte du modèle. Cette prévisibilité permet de planifier les ressources nécessaires pour atteindre un niveau de performance donné.
+
+Les chemins de gradient courts (une seule couche d'attention suffit pour connecter deux positions quelconques) facilitent l'entraînement de modèles très profonds. Combinée au parallélisme sur GPU, cette propriété a conduit aux grands modèles de langage (LLM) qui comptent des centaines de milliards de paramètres. La domination des transformeurs est donc indissociable du matériel sur lequel ils s'exécutent: sur des processeurs séquentiels, leur avantage sur les RNN serait bien moindre.
 
 ## Résumé
 
@@ -303,7 +318,7 @@ Le mécanisme d'attention permet à chaque position d'une séquence de consulter
 
 Le transformeur empile des blocs composés d'attention multi-têtes et de réseaux à propagation avant, stabilisés par des connexions résiduelles et la normalisation de couche. L'encodage positionnel injecte la notion d'ordre, absente de l'auto-attention elle-même.
 
-Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décodeur) correspondent à des familles de tâches différentes. Le parallélisme, les connexions directes à longue portée, et les propriétés de mise à l'échelle expliquent la domination actuelle des transformeurs.
+Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décodeur) correspondent à des familles de tâches différentes. Le parallélisme, les connexions directes à longue portée, et les propriétés de mise à l'échelle expliquent la domination actuelle des transformeurs, au prix d'un coût quadratique en la longueur de la séquence.
 
 ```{admonition} Ce que vous devez retenir
 :class: tip
@@ -320,7 +335,9 @@ Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décode
 
 6. Encodeur (bidirectionnel, BERT), décodeur (causal, GPT), encodeur-décodeur (traduction): trois variantes d'une même architecture.
 
-7. Parallélisme, connexions directes à longue portée, et propriétés de mise à l'échelle expliquent pourquoi les transformeurs ont remplacé les RNN.
+7. L'attention par produit scalaire est une généralisation paramétrique de Nadaraya-Watson: les projections $W_Q$, $W_K$ apprennent la forme du noyau, $W_V$ apprend une transformation des valeurs absente de l'estimateur classique, et le choix de la fonction de normalisation (softmax, sparsemax) détermine la famille de noyaux.
+
+8. Les transformeurs échangent la profondeur séquentielle $O(T)$ des RNN contre un coût mémoire $O(T^2)$. Leur domination repose sur le parallélisme massif des GPU et les propriétés de mise à l'échelle.
 ```
 
 ## Exercices
@@ -432,4 +449,37 @@ Soit $\Pi$ une matrice de permutation ($\Pi$ réarrange les lignes de $X$).
 2. Sans encodage positionnel, le transformeur traite "le chat mange la souris" et "la souris mange le chat" de façon identique (à permutation près). Il ne peut pas distinguer l'ordre des mots. L'encodage positionnel brise cette symétrie.
 
 3. Le RNN traite les positions séquentiellement: $\mathbf{h}_t$ dépend de $\mathbf{h}_{t-1}$, qui dépend de $\mathbf{h}_{t-2}$, etc. La récurrence impose un ordre de traitement, ce qui rend le réseau sensible à l'ordre des entrées sans encodage positionnel explicite.
+````
+
+````{admonition} Exercice 5: Nadaraya-Watson et attention ★★
+:class: hint dropdown
+
+L'estimateur de Nadaraya-Watson avec un noyau gaussien prédit:
+
+$$
+\hat{y}(\mathbf{x}) = \sum_{i=1}^n \frac{\exp\!\left(-\frac{\|\mathbf{x} - \mathbf{x}_i\|^2}{2\lambda^2}\right)}{\sum_{j=1}^n \exp\!\left(-\frac{\|\mathbf{x} - \mathbf{x}_j\|^2}{2\lambda^2}\right)}\, y_i
+$$
+
+1. Montrez que cette formule a la même structure que le mécanisme d'attention: identifiez ce qui joue le rôle de la requête, des clés, des valeurs et du score de similarité.
+2. Développez $\|\mathbf{x} - \mathbf{x}_i\|^2$ et montrez que, sous certaines simplifications, le score se réduit à un produit scalaire entre $\mathbf{x}$ et $\mathbf{x}_i$.
+3. Qu'est-ce qu'il faudrait changer dans Nadaraya-Watson pour obtenir exactement l'attention par produit scalaire utilisée dans les transformeurs?
+````
+
+````{admonition} Solution Exercice 5
+:class: dropdown
+
+1. La formule de Nadaraya-Watson est une moyenne pondérée normalisée, exactement comme l'attention. Les correspondances sont:
+   - La requête est le point $\mathbf{x}$ pour lequel on prédit.
+   - Les clés sont les points d'entraînement $\mathbf{x}_i$.
+   - Les valeurs sont les observations $y_i$.
+   - Le score de similarité est $-\|\mathbf{x} - \mathbf{x}_i\|^2 / (2\lambda^2)$, qui est grand (proche de 0) quand $\mathbf{x}$ et $\mathbf{x}_i$ sont proches.
+   - La normalisation par la somme des exponentielles est le softmax.
+
+2. En développant: $\|\mathbf{x} - \mathbf{x}_i\|^2 = \|\mathbf{x}\|^2 - 2\mathbf{x}^\top \mathbf{x}_i + \|\mathbf{x}_i\|^2$. Le terme $\|\mathbf{x}\|^2$ est constant pour toutes les positions $i$ et disparaît après le softmax (il s'annule dans le rapport). Si les données sont normalisées de sorte que $\|\mathbf{x}_i\|^2$ est approximativement constant pour tout $i$, ce terme disparaît aussi. Le score se réduit alors à $\mathbf{x}^\top \mathbf{x}_i / \lambda^2$, un produit scalaire mis à l'échelle.
+
+3. Deux modifications sont nécessaires:
+   - Remplacer la similarité fixe (noyau gaussien) par des projections linéaires apprises: $\mathbf{q} = W_Q \mathbf{x}$, $\mathbf{k}_i = W_K \mathbf{x}_i$, avec un score $\mathbf{q}^\top \mathbf{k}_i / \sqrt{d_k}$.
+   - Remplacer les valeurs brutes $y_i$ par des projections apprises: $\mathbf{v}_i = W_V \mathbf{x}_i$.
+
+   Nadaraya-Watson utilise des similarités et des valeurs fixées par les données; l'attention apprend les trois projections ($W_Q$, $W_K$, $W_V$), ce qui lui permet d'adapter simultanément ce qu'elle cherche, comment elle compare, et ce qu'elle retourne.
 ````

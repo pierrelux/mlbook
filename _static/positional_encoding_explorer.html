@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encodage positionnel sinusoïdal</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666666;
+    --text-tertiary: #999999;
+    --border-light: rgba(0,0,0,0.1);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    --color-sin: #378ADD;
+    --color-cos: #A32D2D;
+    --color-sim: #0F6E56;
+    --axis-color: rgba(0,0,0,0.06);
+    --axis-text: rgba(0,0,0,0.3);
+    --grid-color: rgba(0,0,0,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2a2a28;
+      --text-primary: #e0e0e0;
+      --text-secondary: #999999;
+      --text-tertiary: #666666;
+      --border-light: rgba(255,255,255,0.1);
+      --color-sin: #85B7EB;
+      --color-cos: #F09595;
+      --color-sim: #5DCAA5;
+      --axis-color: rgba(255,255,255,0.08);
+      --axis-text: rgba(255,255,255,0.4);
+      --grid-color: rgba(255,255,255,0.08);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    padding: 1.5rem;
+    line-height: 1.5;
+  }
+  .sec { margin-bottom: 1.5rem; }
+  .sec-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
+  .params-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 12px; }
+  .param-group { display: flex; align-items: center; gap: 8px; }
+  .param-group label { font-size: 13px; color: var(--text-secondary); }
+  .param-group .val { font-size: 13px; font-weight: 500; min-width: 32px; font-family: var(--font-mono); }
+  canvas { width: 100%; border-radius: var(--radius-md); display: block; }
+  .wave-label { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 4px; }
+  .pos-select-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .pos-select-row label { font-size: 13px; color: var(--text-secondary); }
+  .pos-select-row .val { font-size: 13px; font-weight: 500; min-width: 24px; font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+
+<div class="sec">
+  <div class="sec-label">Paramètres</div>
+  <div class="params-row">
+    <div class="param-group">
+      <label>Dimension d =</label>
+      <input type="range" min="8" max="128" step="8" value="64" id="dim-slider" style="width:120px;">
+      <span class="val" id="dim-val">64</span>
+    </div>
+    <div class="param-group">
+      <label>Positions T =</label>
+      <input type="range" min="10" max="200" step="10" value="50" id="pos-slider" style="width:120px;">
+      <span class="val" id="pos-val">50</span>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Carte des encodages positionnels (dimensions × positions)</div>
+  <canvas id="heatmap" height="280"></canvas>
+  <div class="wave-label">Position t →</div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Ondes individuelles — paire sin/cos sélectionnée</div>
+  <canvas id="waves" height="180"></canvas>
+  <div class="params-row" style="margin-top:8px; justify-content:center;">
+    <div class="param-group">
+      <label>Dim:</label>
+      <input type="range" min="0" max="62" step="2" value="0" id="wave-dim" style="width:180px;">
+      <span class="val" id="wave-dim-val">0</span>
+      <span style="font-size:11px; color:var(--text-secondary); font-family:var(--font-mono);" id="wave-freq"></span>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Similarité cosinus entre la position de référence et toutes les autres</div>
+  <div class="pos-select-row">
+    <label>Position de référence:</label>
+    <input type="range" min="0" max="49" step="1" value="10" id="ref-pos" style="width:200px;">
+    <span class="val" id="ref-pos-val">10</span>
+  </div>
+  <canvas id="sim-chart" height="200"></canvas>
+  <div class="wave-label">Les positions proches ont des encodages similaires ; les positions éloignées divergent</div>
+</div>
+
+<script>
+const cs = getComputedStyle(document.documentElement);
+const sinC = cs.getPropertyValue('--color-sin').trim();
+const cosC = cs.getPropertyValue('--color-cos').trim();
+const simC = cs.getPropertyValue('--color-sim').trim();
+const axC = cs.getPropertyValue('--axis-color').trim();
+const axT = cs.getPropertyValue('--axis-text').trim();
+const gridC = cs.getPropertyValue('--grid-color').trim();
+const isDk = matchMedia('(prefers-color-scheme:dark)').matches;
+
+function computePE(T,d){
+  const PE=[];
+  for(let t=0;t<T;t++){
+    PE[t]=new Float64Array(d);
+    for(let i=0;i<d/2;i++){
+      const freq=1.0/Math.pow(10000,2*i/d);
+      PE[t][2*i]=Math.sin(t*freq);
+      PE[t][2*i+1]=Math.cos(t*freq);
+    }
+  }
+  return PE;
+}
+
+function cosineSim(a,b){
+  let dot=0,na=0,nb=0;
+  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}
+  return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-12);
+}
+
+function drawHeatmap(PE,T,d){
+  const canvas=document.getElementById('heatmap');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.clientWidth;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=280*dpr;
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,280);
+  const padL=40,padR=10,padT=5,padB=24;
+  const cw=(W-padL-padR)/T;
+  const ch=(280-padT-padB)/d;
+  for(let dim=0;dim<d;dim++){
+    for(let t=0;t<T;t++){
+      const v=PE[t][dim];
+      if(isDk){
+        const intensity=Math.abs(v);
+        ctx.fillStyle=v>0?'rgba(133,183,235,'+(0.15+intensity*0.85)+')':'rgba(240,149,149,'+(0.15+intensity*0.85)+')';
+      } else {
+        if(v>0) ctx.fillStyle='rgb('+(255-Math.round(190*v))+','+(255-Math.round(100*v))+','+(255-Math.round(20*v))+')';
+        else ctx.fillStyle='rgb('+(255+Math.round(20*v))+','+(255+Math.round(100*v))+','+(255+Math.round(190*v))+')';
+      }
+      ctx.fillRect(padL+t*cw,padT+dim*ch,Math.ceil(cw),Math.ceil(ch));
+    }
+  }
+  ctx.fillStyle=axT; ctx.font='10px system-ui'; ctx.textAlign='right';
+  for(let dim=0;dim<d;dim+=Math.max(1,Math.floor(d/8)))
+    ctx.fillText(dim,padL-4,padT+dim*ch+ch/2+3);
+  ctx.textAlign='center';
+  for(let t=0;t<T;t+=Math.max(1,Math.floor(T/10)))
+    ctx.fillText(t,padL+t*cw+cw/2,280-4);
+}
+
+function drawWaves(PE,T,d,selDim){
+  const canvas=document.getElementById('waves');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.clientWidth;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=180*dpr;
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,180);
+  const padL=40,padR=10,padT=10,padB=24;
+  const plotW=W-padL-padR,plotH=180-padT-padB;
+  ctx.strokeStyle=axC; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.moveTo(padL,padT+plotH/2); ctx.lineTo(padL+plotW,padT+plotH/2); ctx.stroke();
+  ctx.fillStyle=axT; ctx.font='10px system-ui'; ctx.textAlign='right';
+  ctx.fillText('+1',padL-4,padT+4);
+  ctx.fillText('0',padL-4,padT+plotH/2+3);
+  ctx.fillText('-1',padL-4,padT+plotH-1);
+  const drawOne=(dimIdx,color,lw)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.beginPath();
+    for(let t=0;t<T;t++){
+      const x=padL+(t/(T-1))*plotW;
+      const y=padT+plotH/2-PE[t][dimIdx]*(plotH/2-5);
+      t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  };
+  drawOne(selDim,sinC,2);
+  drawOne(selDim+1,cosC,1.5);
+  ctx.fillStyle=sinC; ctx.font='11px system-ui'; ctx.textAlign='left';
+  ctx.fillText('sin (dim '+selDim+')',padL+8,padT+14);
+  ctx.fillStyle=cosC;
+  ctx.fillText('cos (dim '+(selDim+1)+')',padL+8,padT+28);
+}
+
+function drawSimilarity(PE,T,d,refPos){
+  const canvas=document.getElementById('sim-chart');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.clientWidth;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=200*dpr;
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,200);
+  const padL=40,padR=10,padT=10,padB=24;
+  const plotW=W-padL-padR,plotH=200-padT-padB;
+  const sims=[];
+  for(let t=0;t<T;t++) sims.push(cosineSim(PE[refPos],PE[t]));
+  ctx.strokeStyle=gridC; ctx.lineWidth=0.5;
+  for(let v of [-0.5,0,0.5,1]){
+    const y=padT+plotH-(v+0.5)/1.5*plotH;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y); ctx.stroke();
+  }
+  ctx.fillStyle=axT; ctx.font='10px system-ui'; ctx.textAlign='right';
+  for(let v of [-0.5,0,0.5,1]){
+    const y=padT+plotH-(v+0.5)/1.5*plotH;
+    ctx.fillText(v.toFixed(1),padL-4,y+3);
+  }
+  ctx.strokeStyle=simC; ctx.lineWidth=2; ctx.beginPath();
+  for(let t=0;t<T;t++){
+    const x=padL+(t/(T-1))*plotW;
+    const y=padT+plotH-(sims[t]+0.5)/1.5*plotH;
+    t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  const rx=padL+(refPos/(T-1))*plotW;
+  ctx.strokeStyle=isDk?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.25)';
+  ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(rx,padT); ctx.lineTo(rx,padT+plotH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=isDk?'rgba(255,255,255,0.6)':'rgba(0,0,0,0.5)';
+  ctx.font='11px system-ui'; ctx.textAlign='center';
+  ctx.fillText('t='+refPos,rx,padT+plotH+16);
+}
+
+let PE,T,d;
+function fullUpdate(){
+  d=parseInt(document.getElementById('dim-slider').value);
+  T=parseInt(document.getElementById('pos-slider').value);
+  document.getElementById('dim-val').textContent=d;
+  document.getElementById('pos-val').textContent=T;
+  const waveDim=document.getElementById('wave-dim');
+  waveDim.max=d-2;
+  if(parseInt(waveDim.value)>d-2) waveDim.value=0;
+  const refPos=document.getElementById('ref-pos');
+  refPos.max=T-1;
+  if(parseInt(refPos.value)>=T) refPos.value=Math.floor(T/5);
+  PE=computePE(T,d);
+  drawHeatmap(PE,T,d);
+  drawWaves(PE,T,d,parseInt(waveDim.value));
+  drawSimilarity(PE,T,d,parseInt(refPos.value));
+  updateWaveLabel();
+}
+
+function updateWaveLabel(){
+  const selDim=parseInt(document.getElementById('wave-dim').value);
+  const dd=parseInt(document.getElementById('dim-slider').value);
+  document.getElementById('wave-dim-val').textContent=selDim;
+  const freq=1.0/Math.pow(10000,selDim/dd);
+  document.getElementById('wave-freq').textContent='(freq = '+(freq<0.001?freq.toExponential(1):freq.toFixed(4))+')';
+}
+
+document.getElementById('dim-slider').addEventListener('input',fullUpdate);
+document.getElementById('pos-slider').addEventListener('input',fullUpdate);
+document.getElementById('wave-dim').addEventListener('input',()=>{
+  drawWaves(PE,T,d,parseInt(document.getElementById('wave-dim').value));
+  updateWaveLabel();
+});
+document.getElementById('ref-pos').addEventListener('input',()=>{
+  const r=parseInt(document.getElementById('ref-pos').value);
+  document.getElementById('ref-pos-val').textContent=r;
+  drawSimilarity(PE,T,d,r);
+});
+
+fullUpdate();
+window.addEventListener('resize',()=>{
+  drawHeatmap(PE,T,d);
+  drawWaves(PE,T,d,parseInt(document.getElementById('wave-dim').value));
+  drawSimilarity(PE,T,d,parseInt(document.getElementById('ref-pos').value));
+});
+</script>
+</body>
+</html>
