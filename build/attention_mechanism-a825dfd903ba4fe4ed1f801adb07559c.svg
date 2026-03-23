@@ -1,0 +1,112 @@
+<svg width="100%" viewBox="0 0 680 500" xmlns="http://www.w3.org/2000/svg" style="font-family: system-ui, -apple-system, sans-serif;">
+<style>
+  text { fill: #333333; }
+  .label { font-size: 14px; font-weight: 500; }
+  .sub { font-size: 12px; fill: #737373; }
+  @media (prefers-color-scheme: dark) {
+    text { fill: #c2c0b6; }
+    .sub { fill: #9c9a92; }
+    .score-circle { fill: #2C2C2A; }
+    .weight-bg { fill: #2C2C2A; }
+  }
+</style>
+
+<!-- === QUERY (y=30..74) === -->
+<rect x="40" y="30" width="120" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="label" x="100" y="46" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Requête q</text>
+<text class="sub" x="100" y="62" text-anchor="middle" dominant-baseline="central" fill="#534AB7">(1, 0)</text>
+
+<!-- === KEYS (y=30..74) === -->
+<rect x="250" y="30" width="100" height="44" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="300" y="46" text-anchor="middle" dominant-baseline="central" fill="#0C447C">Clé k₁</text>
+<text class="sub" x="300" y="62" text-anchor="middle" dominant-baseline="central" fill="#185FA5">(1, 0)</text>
+
+<rect x="390" y="30" width="100" height="44" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="440" y="46" text-anchor="middle" dominant-baseline="central" fill="#0C447C">Clé k₂</text>
+<text class="sub" x="440" y="62" text-anchor="middle" dominant-baseline="central" fill="#185FA5">(0, 1)</text>
+
+<rect x="530" y="30" width="100" height="44" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="580" y="46" text-anchor="middle" dominant-baseline="central" fill="#0C447C">Clé k₃</text>
+<text class="sub" x="580" y="62" text-anchor="middle" dominant-baseline="central" fill="#185FA5">(1, 1)</text>
+
+<!-- === FAN-OUT lines: query to score circles (thickness = score) === -->
+<!-- Lines go from query right edge (x=160) down to score circles (cy=140) -->
+<line x1="160" y1="52" x2="278" y2="134" stroke="#7F77DD" stroke-width="2.5" opacity="0.8"/>
+<line x1="160" y1="52" x2="418" y2="134" stroke="#7F77DD" stroke-width="1" opacity="0.35"/>
+<line x1="160" y1="52" x2="558" y2="134" stroke="#7F77DD" stroke-width="2.5" opacity="0.8"/>
+
+<!-- Score label row (y=104, well above circles at cy=140) -->
+<text class="sub" x="300" y="104" text-anchor="middle">q·k₁</text>
+<text class="sub" x="440" y="104" text-anchor="middle">q·k₂</text>
+<text class="sub" x="580" y="104" text-anchor="middle">q·k₃</text>
+
+<!-- Score circles (cy=140, r=22 → spans 118..162) -->
+<circle cx="300" cy="140" r="22" fill="white" stroke="#7F77DD" stroke-width="1" class="score-circle"/>
+<text class="label" x="300" y="140" text-anchor="middle" dominant-baseline="central" fill="#534AB7">1.0</text>
+
+<circle cx="440" cy="140" r="22" fill="white" stroke="#7F77DD" stroke-width="1" class="score-circle"/>
+<text class="label" x="440" y="140" text-anchor="middle" dominant-baseline="central" fill="#534AB7">0.0</text>
+
+<circle cx="580" cy="140" r="22" fill="white" stroke="#7F77DD" stroke-width="1" class="score-circle"/>
+<text class="label" x="580" y="140" text-anchor="middle" dominant-baseline="central" fill="#534AB7">1.0</text>
+
+<!-- === SOFTMAX arrows (circles bottom at 162, weight bars at y=240) === -->
+<line x1="300" y1="162" x2="300" y2="236" stroke="#B0B0B0" stroke-width="0.5"/>
+<polygon points="300,232 296,222 304,222" fill="#B0B0B0"/>
+<line x1="440" y1="162" x2="440" y2="236" stroke="#B0B0B0" stroke-width="0.5"/>
+<polygon points="440,232 436,222 444,222" fill="#B0B0B0"/>
+<line x1="580" y1="162" x2="580" y2="236" stroke="#B0B0B0" stroke-width="0.5"/>
+<polygon points="580,232 576,222 584,222" fill="#B0B0B0"/>
+
+<!-- Softmax label (y=200, centered in the gap) -->
+<text class="label" x="440" y="200" text-anchor="middle" fill="#B0B0B0">softmax</text>
+
+<!-- Weight bars (y=240..262) -->
+<rect x="275" y="240" width="50" height="22" rx="4" fill="#F0F0F0" stroke="#D4D4D4" stroke-width="0.5" class="weight-bg"/>
+<rect x="275" y="240" width="21" height="22" rx="4" fill="#EF9F27" opacity="0.6"/>
+<text x="300" y="255" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#854F0B">0.42</text>
+
+<rect x="415" y="240" width="50" height="22" rx="4" fill="#F0F0F0" stroke="#D4D4D4" stroke-width="0.5" class="weight-bg"/>
+<rect x="415" y="240" width="8" height="22" rx="4" fill="#EF9F27" opacity="0.35"/>
+<text x="440" y="255" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#854F0B">0.16</text>
+
+<rect x="555" y="240" width="50" height="22" rx="4" fill="#F0F0F0" stroke="#D4D4D4" stroke-width="0.5" class="weight-bg"/>
+<rect x="555" y="240" width="21" height="22" rx="4" fill="#EF9F27" opacity="0.6"/>
+<text x="580" y="255" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#854F0B">0.42</text>
+
+<!-- Alpha labels (y=280) -->
+<text class="sub" x="300" y="280" text-anchor="middle">α₁</text>
+<text class="sub" x="440" y="280" text-anchor="middle">α₂</text>
+<text class="sub" x="580" y="280" text-anchor="middle">α₃</text>
+
+<!-- === FAN-IN: weight lines down to values (y=290 to y=390) === -->
+<line x1="300" y1="290" x2="300" y2="388" stroke="#1D9E75" stroke-width="2.5" opacity="0.7"/>
+<line x1="440" y1="290" x2="440" y2="388" stroke="#1D9E75" stroke-width="1" opacity="0.3"/>
+<line x1="580" y1="290" x2="580" y2="388" stroke="#1D9E75" stroke-width="2.5" opacity="0.7"/>
+
+<!-- === VALUES (y=390..434) === -->
+<rect x="250" y="390" width="100" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="label" x="300" y="406" text-anchor="middle" dominant-baseline="central" fill="#085041">Valeur v₁</text>
+<text class="sub" x="300" y="422" text-anchor="middle" dominant-baseline="central" fill="#0F6E56">10</text>
+
+<rect x="390" y="390" width="100" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="label" x="440" y="406" text-anchor="middle" dominant-baseline="central" fill="#085041">Valeur v₂</text>
+<text class="sub" x="440" y="422" text-anchor="middle" dominant-baseline="central" fill="#0F6E56">20</text>
+
+<rect x="530" y="390" width="100" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="label" x="580" y="406" text-anchor="middle" dominant-baseline="central" fill="#085041">Valeur v₃</text>
+<text class="sub" x="580" y="422" text-anchor="middle" dominant-baseline="central" fill="#0F6E56">30</text>
+
+<!-- Converging lines from values to output (y=434 to y=466) -->
+<line x1="300" y1="434" x2="420" y2="470" stroke="#1D9E75" stroke-width="2.5" opacity="0.7"/>
+<line x1="440" y1="434" x2="440" y2="464" stroke="#1D9E75" stroke-width="1" opacity="0.3"/>
+<line x1="580" y1="434" x2="460" y2="470" stroke="#1D9E75" stroke-width="2.5" opacity="0.7"/>
+
+<!-- Σ label (y=458, above the output box) -->
+<text class="sub" x="440" y="458" text-anchor="middle">Σ αₜ vₜ</text>
+
+<!-- Output box (y=466..500) -->
+<rect x="390" y="466" width="100" height="34" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="440" y="483" text-anchor="middle" dominant-baseline="central" fill="#27500A">≈ 20</text>
+
+</svg>
