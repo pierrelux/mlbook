@@ -1,0 +1,410 @@
+<iframe srcdoc="&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:0&quot;&gt;&lt;style&gt;
+.ad-wrap {
+  --bg1: #ffffff;
+  --bg2: #f5f5f4;
+  --bg3: #eeeeec;
+  --tx1: #1a1a1a;
+  --tx2: #6b6b6b;
+  --tx3: #999;
+  --bd: rgba(0,0,0,.12);
+  --bd2: rgba(0,0,0,.22);
+  --info-bg: #e6f1fb; --info-tx: #185fa5; --info-bd: #85b7eb;
+  --danger-bg: #fcebeb; --danger-tx: #a32d2d; --danger-bd: #f09595;
+  --success-bg: #eaf3de; --success-tx: #3b6d11; --success-bd: #97c459;
+  --warn-bg: #faeeda; --warn-tx: #854f0b; --warn-bd: #ef9f27;
+  --font-sans: system-ui, -apple-system, &#x27;Segoe UI&#x27;, sans-serif;
+  --font-mono: &#x27;SF Mono&#x27;, &#x27;Fira Code&#x27;, &#x27;Consolas&#x27;, monospace;
+  --radius: 8px;
+  --c-gray: rgba(0,0,0,.35);
+  --c-fwd: #185fa5;
+  --c-rev: #a32d2d;
+
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: var(--font-sans);
+  color: var(--tx1);
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .ad-wrap {
+    --bg1: #1a1a1a; --bg2: #2a2a28; --bg3: #333331;
+    --tx1: #e8e6e0; --tx2: #a0a09a; --tx3: #707068;
+    --bd: rgba(255,255,255,.1); --bd2: rgba(255,255,255,.2);
+    --info-bg: #0c447c; --info-tx: #b5d4f4; --info-bd: #378add;
+    --danger-bg: #501313; --danger-tx: #f7c1c1; --danger-bd: #e24b4a;
+    --success-bg: #173404; --success-tx: #c0dd97; --success-bd: #639922;
+    --warn-bg: #412402; --warn-tx: #fac775; --warn-bd: #ef9f27;
+    --c-gray: rgba(255,255,255,.3);
+    --c-fwd: #b5d4f4;
+    --c-rev: #f7c1c1;
+  }
+}
+.ad-wrap svg { overflow: visible !important; }
+.ad-wrap .se { stroke: var(--bd2); stroke-width: 1; fill: none }
+.ad-wrap .nd rect { rx: 8; transition: fill .3s, stroke .3s, stroke-width .3s }
+.ad-wrap .nd.idle rect  { fill: var(--bg2); stroke: var(--bd); stroke-width: .5 }
+.ad-wrap .nd.af rect    { fill: var(--info-bg); stroke: var(--info-tx); stroke-width: 2 }
+.ad-wrap .nd.ar rect    { fill: var(--danger-bg); stroke: var(--danger-tx); stroke-width: 2 }
+.ad-wrap .nd.done rect  { fill: var(--success-bg); stroke: var(--success-tx); stroke-width: 1 }
+.ad-wrap .nd.acc rect   { fill: var(--warn-bg); stroke: var(--warn-tx); stroke-width: 2.2 }
+.ad-wrap .nm  { font-size: 13px; font-weight: 500; fill: var(--tx1) }
+.ad-wrap .nv  { font-size: 11px; fill: var(--tx2); font-family: var(--font-mono) }
+.ad-wrap .ndr { font-size: 11px; font-weight: 500; font-family: var(--font-mono) }
+.ad-wrap .ndr.cf { fill: var(--info-tx) }
+.ad-wrap .ndr.cr { fill: var(--danger-tx) }
+.ad-wrap .ndr.cs { fill: var(--success-tx) }
+.ad-wrap .ndr.ca { fill: var(--warn-tx) }
+.ad-wrap .opl { font-size: 10.5px; fill: var(--tx3); font-style: italic; font-family: var(--font-mono) }
+.ad-wrap .fline { fill: none; stroke-width: 2.2; stroke-linecap: round }
+.ad-wrap .fline.fl-f { stroke: var(--info-tx); stroke-dasharray: 6 4 }
+.ad-wrap .fline.fl-r { stroke: var(--danger-tx); stroke-dasharray: 6 4 }
+@keyframes ad-dashF { to { stroke-dashoffset: -20 } }
+@keyframes ad-dashR { to { stroke-dashoffset: 20 } }
+.ad-wrap .fline.fl-f { animation: ad-dashF .5s linear infinite }
+.ad-wrap .fline.fl-r { animation: ad-dashR .5s linear infinite }
+.ad-wrap .badge { font-size: 11px; font-family: var(--font-mono); font-weight: 500; opacity: 0; transition: opacity .4s .15s }
+.ad-wrap .badge.show { opacity: 1 }
+.ad-wrap .elbl { font-size: 10px; font-family: var(--font-mono); font-weight: 600; opacity: 0; transition: opacity .3s .1s }
+.ad-wrap .elbl.show { opacity: 1 }
+.ad-tabs { display: flex; gap: 6px; margin-bottom: 10px }
+.ad-tab {
+  padding: 6px 16px; font-size: 13px;
+  border-radius: var(--radius); cursor: pointer;
+  border: .5px solid var(--bd2);
+  background: var(--bg1); color: var(--tx2);
+  transition: all .15s; font-family: var(--font-sans);
+}
+.ad-tab:hover { background: var(--bg2) }
+.ad-tab.on {
+  background: var(--tx1); color: var(--bg1);
+  border-color: var(--tx1);
+}
+.ad-tab.on:hover { opacity: .9 }
+.ad-info {
+  min-height: 80px; margin: 8px 0; padding: 12px 16px;
+  border-radius: var(--radius); background: var(--bg2);
+}
+.ad-info h3 { font-size: 14px; font-weight: 500; margin: 0 0 5px; color: var(--tx1) }
+.ad-info .fm { font-size: 12.5px; line-height: 1.7; color: var(--tx2); font-family: var(--font-mono) }
+.ad-info .fm b { font-weight: 600; color: var(--tx1) }
+.ad-wrap .pill {
+  display: inline-block; margin-top: 4px; padding: 2px 8px;
+  border-radius: 4px; font-size: 11.5px;
+}
+.ad-wrap .pill.pf { background: var(--info-bg); color: var(--info-tx) }
+.ad-wrap .pill.pr { background: var(--danger-bg); color: var(--danger-tx) }
+.ad-wrap .pill.pa { background: var(--warn-bg); color: var(--warn-tx) }
+.ad-wrap .pill.ps { background: var(--success-bg); color: var(--success-tx) }
+.ad-nav { display: flex; align-items: center; gap: 8px }
+.ad-nav button {
+  font-family: var(--font-sans); font-size: 13px;
+  padding: 5px 12px; border-radius: var(--radius);
+  border: .5px solid var(--bd2); background: var(--bg1);
+  color: var(--tx1); cursor: pointer; transition: all .15s;
+}
+.ad-nav button:hover:not(:disabled) { background: var(--bg2) }
+.ad-nav button:disabled { opacity: .35; cursor: default }
+.ad-dots { display: flex; gap: 5px; flex: 1; justify-content: center }
+.ad-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bd2); transition: all .2s; cursor: pointer;
+}
+.ad-dot.on { background: var(--tx1); transform: scale(1.3) }
+&lt;/style&gt;
+
+&lt;div class=&quot;ad-wrap&quot;&gt;
+
+&lt;div class=&quot;ad-tabs&quot;&gt;
+  &lt;button class=&quot;ad-tab on&quot; id=&quot;ad-tb-f&quot;&gt;Mode avant (JVP)&lt;/button&gt;
+  &lt;button class=&quot;ad-tab&quot; id=&quot;ad-tb-r&quot;&gt;Mode arrière (VJP)&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;svg id=&quot;ad-G&quot; width=&quot;100%&quot; viewBox=&quot;0 0 680 290&quot; style=&quot;overflow:visible&quot;&gt;
+
+&lt;g id=&quot;ad-SE&quot;&gt;
+  &lt;line class=&quot;se&quot; x1=&quot;148&quot; y1=&quot;62&quot; x2=&quot;232&quot; y2=&quot;62&quot;/&gt;
+  &lt;line class=&quot;se&quot; x1=&quot;148&quot; y1=&quot;82&quot; x2=&quot;232&quot; y2=&quot;196&quot;/&gt;
+  &lt;line class=&quot;se&quot; x1=&quot;148&quot; y1=&quot;222&quot; x2=&quot;232&quot; y2=&quot;222&quot;/&gt;
+  &lt;line class=&quot;se&quot; x1=&quot;388&quot; y1=&quot;62&quot; x2=&quot;486&quot; y2=&quot;112&quot;/&gt;
+  &lt;line class=&quot;se&quot; x1=&quot;388&quot; y1=&quot;222&quot; x2=&quot;486&quot; y2=&quot;148&quot;/&gt;
+&lt;/g&gt;
+
+&lt;g id=&quot;ad-FL&quot;&gt;&lt;/g&gt;
+&lt;g id=&quot;ad-PL&quot;&gt;&lt;/g&gt;
+
+&lt;g class=&quot;nd idle&quot; id=&quot;ad-Nx&quot;&gt;
+  &lt;rect x=&quot;32&quot; y=&quot;26&quot; width=&quot;116&quot; height=&quot;72&quot;/&gt;
+  &lt;text class=&quot;nm&quot; x=&quot;90&quot; y=&quot;46&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;x&lt;/text&gt;
+  &lt;text class=&quot;nv&quot; id=&quot;ad-Nx-v&quot; x=&quot;90&quot; y=&quot;64&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+  &lt;text class=&quot;ndr&quot; id=&quot;ad-Nx-d&quot; x=&quot;90&quot; y=&quot;82&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+&lt;/g&gt;
+&lt;g class=&quot;nd idle&quot; id=&quot;ad-Ny&quot;&gt;
+  &lt;rect x=&quot;32&quot; y=&quot;186&quot; width=&quot;116&quot; height=&quot;72&quot;/&gt;
+  &lt;text class=&quot;nm&quot; x=&quot;90&quot; y=&quot;206&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;y&lt;/text&gt;
+  &lt;text class=&quot;nv&quot; id=&quot;ad-Ny-v&quot; x=&quot;90&quot; y=&quot;224&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+  &lt;text class=&quot;ndr&quot; id=&quot;ad-Ny-d&quot; x=&quot;90&quot; y=&quot;242&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+&lt;/g&gt;
+&lt;g class=&quot;nd idle&quot; id=&quot;ad-Nv1&quot;&gt;
+  &lt;rect x=&quot;232&quot; y=&quot;26&quot; width=&quot;156&quot; height=&quot;72&quot;/&gt;
+  &lt;text class=&quot;nm&quot; x=&quot;310&quot; y=&quot;44&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;v₁ = sin(x)&lt;/text&gt;
+  &lt;text class=&quot;nv&quot; id=&quot;ad-Nv1-v&quot; x=&quot;310&quot; y=&quot;63&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+  &lt;text class=&quot;ndr&quot; id=&quot;ad-Nv1-d&quot; x=&quot;310&quot; y=&quot;82&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+&lt;/g&gt;
+&lt;g class=&quot;nd idle&quot; id=&quot;ad-Nv2&quot;&gt;
+  &lt;rect x=&quot;232&quot; y=&quot;186&quot; width=&quot;156&quot; height=&quot;72&quot;/&gt;
+  &lt;text class=&quot;nm&quot; x=&quot;310&quot; y=&quot;204&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;v₂ = x + y&lt;/text&gt;
+  &lt;text class=&quot;nv&quot; id=&quot;ad-Nv2-v&quot; x=&quot;310&quot; y=&quot;223&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+  &lt;text class=&quot;ndr&quot; id=&quot;ad-Nv2-d&quot; x=&quot;310&quot; y=&quot;242&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+&lt;/g&gt;
+&lt;g class=&quot;nd idle&quot; id=&quot;ad-Nf&quot;&gt;
+  &lt;rect x=&quot;486&quot; y=&quot;82&quot; width=&quot;168&quot; height=&quot;86&quot;/&gt;
+  &lt;text class=&quot;nm&quot; x=&quot;570&quot; y=&quot;105&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;f = v₁ · v₂&lt;/text&gt;
+  &lt;text class=&quot;nv&quot; id=&quot;ad-Nf-v&quot; x=&quot;570&quot; y=&quot;126&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+  &lt;text class=&quot;ndr&quot; id=&quot;ad-Nf-d&quot; x=&quot;570&quot; y=&quot;147&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;central&quot;&gt;&lt;/text&gt;
+&lt;/g&gt;
+
+&lt;text class=&quot;opl&quot; x=&quot;310&quot; y=&quot;20&quot; text-anchor=&quot;middle&quot;&gt;φ₁(x) = sin(x)&lt;/text&gt;
+&lt;text class=&quot;opl&quot; x=&quot;310&quot; y=&quot;180&quot; text-anchor=&quot;middle&quot;&gt;φ₂(x, y) = x + y&lt;/text&gt;
+&lt;text class=&quot;opl&quot; x=&quot;570&quot; y=&quot;76&quot; text-anchor=&quot;middle&quot;&gt;φ₃(v₁, v₂) = v₁ · v₂&lt;/text&gt;
+
+&lt;g id=&quot;ad-BL&quot;&gt;&lt;/g&gt;
+&lt;/svg&gt;
+
+&lt;div class=&quot;ad-info&quot;&gt;
+  &lt;h3 id=&quot;ad-stitle&quot;&gt;&lt;/h3&gt;
+  &lt;div class=&quot;fm&quot; id=&quot;ad-sform&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;div class=&quot;ad-nav&quot;&gt;
+  &lt;button id=&quot;ad-bp&quot;&gt;&amp;#8592; Préc.&lt;/button&gt;
+  &lt;div class=&quot;ad-dots&quot; id=&quot;ad-dots&quot;&gt;&lt;/div&gt;
+  &lt;button id=&quot;ad-bn&quot;&gt;Suiv. &amp;#8594;&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;/div&gt;
+
+&lt;script&gt;
+(function() {
+var P = &#x27;ad-&#x27;;
+function $(id) { return document.getElementById(P + id); }
+
+var X0 = 0.5, Y0 = 1.2;
+var V1 = Math.sin(X0), V2 = X0 + Y0, VF = V1 * V2, CX = Math.cos(X0);
+var v1_bar = V2, v2_bar = V1;
+var xbar_via_phi2 = v2_bar, ybar_via_phi2 = v2_bar;
+var xbar_via_phi1 = CX * v1_bar;
+var xbar_tot = xbar_via_phi2 + xbar_via_phi1;
+var v1_dot = CX, v2_dot = 1, f_dot = V2 * v1_dot + V1 * v2_dot;
+function R(v) { return v.toFixed(3); }
+
+var E = [
+  [148,62,232,62],[148,82,232,196],[148,222,232,222],
+  [388,62,486,112],[388,222,486,148]
+];
+var mode = &#x27;f&#x27;, step = 0, pulseFrames = [];
+
+// Resolve CSS variable colors for arrowheads (avoids context-isolation issues)
+function getColor(v) {
+  return getComputedStyle(document.querySelector(&#x27;.ad-wrap&#x27;)).getPropertyValue(v).trim();
+}
+
+// Build static edge arrowheads once
+function buildStaticArrows() {
+  var ns = &#x27;http://www.w3.org/2000/svg&#x27;;
+  var seGroup = document.getElementById(&#x27;ad-SE&#x27;);
+  var lines = seGroup.querySelectorAll(&#x27;line.se&#x27;);
+  var color = getColor(&#x27;--bd2&#x27;) || &#x27;rgba(0,0,0,.22)&#x27;;
+  lines.forEach(function(ln) {
+    var x1=+ln.getAttribute(&#x27;x1&#x27;), y1=+ln.getAttribute(&#x27;y1&#x27;);
+    var x2=+ln.getAttribute(&#x27;x2&#x27;), y2=+ln.getAttribute(&#x27;y2&#x27;);
+    var ang = Math.atan2(y2-y1, x2-x1), aLen=7, aSpread=0.45;
+    var p = document.createElementNS(ns, &#x27;polygon&#x27;);
+    var ax1=x2-aLen*Math.cos(ang-aSpread), ay1=y2-aLen*Math.sin(ang-aSpread);
+    var ax2=x2-aLen*Math.cos(ang+aSpread), ay2=y2-aLen*Math.sin(ang+aSpread);
+    p.setAttribute(&#x27;points&#x27;, ax1+&#x27;,&#x27;+ay1+&#x27; &#x27;+x2+&#x27;,&#x27;+y2+&#x27; &#x27;+ax2+&#x27;,&#x27;+ay2);
+    // Use inline styles to override any external CSS
+    p.style.fill = &#x27;none&#x27;;
+    p.style.stroke = color;
+    p.style.strokeWidth = &#x27;1.2&#x27;;
+    p.style.strokeLinecap = &#x27;round&#x27;;
+    p.style.strokeLinejoin = &#x27;round&#x27;;
+    seGroup.appendChild(p);
+  });
+}
+
+var fwd = [
+  { t:&#x27;Initialiser les tangentes&#x27;,
+    fm:&#x27;Seed : &lt;b&gt;ẋ = 1&lt;/b&gt;, ẏ = 0&lt;br&gt;Calcule la dérivée directionnelle ∂f/∂x&lt;br&gt;&lt;span class=&quot;pill pf&quot;&gt;Une passe = un produit Jacobien-vecteur J&lt;sub&gt;f&lt;/sub&gt; ẋ&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;af&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;ẋ = 1&#x27;,dc:&#x27;cf&#x27;},y:{c:&#x27;af&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ẏ = 0&#x27;,dc:&#x27;cf&#x27;},v1:{c:&#x27;idle&#x27;},v2:{c:&#x27;idle&#x27;},f:{c:&#x27;idle&#x27;}},
+    fl:[],bd:[]},
+  { t:&#x27;v₁ = φ₁(x) : propager la tangente&#x27;,
+    fm:&#x27;&lt;b&gt;v̇₁&lt;/b&gt; = D&lt;sub&gt;x&lt;/sub&gt;φ₁ · ẋ = cos(&#x27;+R(X0)+&#x27;) × 1 = &lt;b&gt;&#x27;+R(v1_dot)+&#x27;&lt;/b&gt;&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;ẋ = 1&#x27;,dc:&#x27;cf&#x27;},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ẏ = 0&#x27;,dc:&#x27;cf&#x27;},v1:{c:&#x27;af&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̇₁ = &#x27;+R(v1_dot),dc:&#x27;cf&#x27;},v2:{c:&#x27;idle&#x27;},f:{c:&#x27;idle&#x27;}},
+    fl:[{e:0,d:&#x27;f&#x27;,lbl:&#x27;ẋ&#x27;}],bd:[]},
+  { t:&#x27;v₂ = φ₂(x, y) : accumuler deux contributions&#x27;,
+    fm:&#x27;&lt;b&gt;v̇₂&lt;/b&gt; = D&lt;sub&gt;x&lt;/sub&gt;φ₂ · ẋ + D&lt;sub&gt;y&lt;/sub&gt;φ₂ · ẏ = 1×1 + 1×0 = &lt;b&gt;1.000&lt;/b&gt;&lt;br&gt;&lt;span class=&quot;pill pf&quot;&gt;v₂ reçoit de deux prédécesseurs : x et y&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;ẋ = 1&#x27;,dc:&#x27;cf&#x27;},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ẏ = 0&#x27;,dc:&#x27;cf&#x27;},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̇₁ = &#x27;+R(v1_dot),dc:&#x27;cf&#x27;},v2:{c:&#x27;af&#x27;,v:&#x27;= &#x27;+R(V2),d:&#x27;v̇₂ = 1.000&#x27;,dc:&#x27;cf&#x27;},f:{c:&#x27;idle&#x27;}},
+    fl:[{e:1,d:&#x27;f&#x27;,lbl:&#x27;ẋ&#x27;},{e:2,d:&#x27;f&#x27;,lbl:&#x27;ẏ&#x27;}],bd:[{x:195,y:196,t:&#x27;+1&#x27;,cl:&#x27;pf&#x27;},{x:195,y:230,t:&#x27;+0&#x27;,cl:&#x27;pf&#x27;}]},
+  { t:&#x27;f = φ₃(v₁, v₂) : accumuler les deux branches&#x27;,
+    fm:&#x27;&lt;b&gt;ḟ&lt;/b&gt; = D&lt;sub&gt;v₁&lt;/sub&gt;φ₃ · v̇₁ + D&lt;sub&gt;v₂&lt;/sub&gt;φ₃ · v̇₂ = v₂·v̇₁ + v₁·v̇₂&lt;br&gt;= &#x27;+R(V2)+&#x27; × &#x27;+R(v1_dot)+&#x27; + &#x27;+R(V1)+&#x27; × 1.000&lt;br&gt;= &lt;b&gt;&#x27;+R(V2*v1_dot)+&#x27;&lt;/b&gt; + &lt;b&gt;&#x27;+R(V1)+&#x27;&lt;/b&gt; = &lt;b&gt;&#x27;+R(f_dot)+&#x27;&lt;/b&gt;&lt;br&gt;&lt;span class=&quot;pill ps&quot;&gt;ḟ = ∂f/∂x = &#x27;+R(f_dot)+&#x27;, une direction par passe&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;ẋ = 1&#x27;,dc:&#x27;cs&#x27;},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ẏ = 0&#x27;,dc:&#x27;cs&#x27;},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̇₁ = &#x27;+R(v1_dot),dc:&#x27;cs&#x27;},v2:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V2),d:&#x27;v̇₂ = 1.000&#x27;,dc:&#x27;cs&#x27;},f:{c:&#x27;af&#x27;,v:&#x27;= &#x27;+R(VF),d:&#x27;ḟ = &#x27;+R(f_dot),dc:&#x27;cf&#x27;}},
+    fl:[{e:3,d:&#x27;f&#x27;,lbl:&#x27;v̇₁&#x27;},{e:4,d:&#x27;f&#x27;,lbl:&#x27;v̇₂&#x27;}],bd:[{x:454,y:112,t:&#x27;+&#x27;+R(V2*v1_dot),cl:&#x27;pf&#x27;},{x:454,y:148,t:&#x27;+&#x27;+R(V1),cl:&#x27;pf&#x27;}]}
+];
+
+var rev = [
+  { t:&#x27;Passe avant terminée, valeurs stockées&#x27;,
+    fm:&#x27;Toutes les valeurs intermédiaires sont en mémoire.&lt;br&gt;&lt;span class=&quot;pill pr&quot;&gt;La passe arrière propage les adjoints de droite à gauche.&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0)},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0)},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1)},v2:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V2)},f:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(VF)}},
+    fl:[],bd:[]},
+  { t:&#x27;Initialiser f̄ = 1&#x27;,
+    fm:&#x27;&lt;b&gt;f̄&lt;/b&gt; = ∂f/∂f = &lt;b&gt;1&lt;/b&gt;&lt;br&gt;Point de départ de la passe arrière.&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0)},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0)},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1)},v2:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V2)},f:{c:&#x27;ar&#x27;,v:&#x27;= &#x27;+R(VF),d:&#x27;f̄ = 1.000&#x27;,dc:&#x27;cr&#x27;}},
+    fl:[],bd:[]},
+  { t:&#x27;Traiter φ₃ (mul) → envoyer v̄₁ et v̄₂&#x27;,
+    fm:&#x27;&lt;b&gt;v̄₁&lt;/b&gt; += f̄ · D&lt;sub&gt;v₁&lt;/sub&gt;φ₃ = 1 × v₂ = &lt;b&gt;&#x27;+R(v1_bar)+&#x27;&lt;/b&gt;&lt;br&gt;&lt;b&gt;v̄₂&lt;/b&gt; += f̄ · D&lt;sub&gt;v₂&lt;/sub&gt;φ₃ = 1 × v₁ = &lt;b&gt;&#x27;+R(v2_bar)+&#x27;&lt;/b&gt;&lt;br&gt;&lt;span class=&quot;pill pr&quot;&gt;Le gradient se divise en deux flux : un par prédécesseur&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(X0)},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0)},v1:{c:&#x27;ar&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̄₁ = &#x27;+R(v1_bar),dc:&#x27;cr&#x27;},v2:{c:&#x27;ar&#x27;,v:&#x27;= &#x27;+R(V2),d:&#x27;v̄₂ = &#x27;+R(v2_bar),dc:&#x27;cr&#x27;},f:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(VF),d:&#x27;f̄ = 1.000&#x27;,dc:&#x27;cs&#x27;}},
+    fl:[{e:3,d:&#x27;r&#x27;,lbl:&#x27;f̄&#x27;},{e:4,d:&#x27;r&#x27;,lbl:&#x27;f̄&#x27;}],bd:[{x:442,y:56,t:&#x27;+&#x27;+R(v1_bar),cl:&#x27;pr&#x27;},{x:442,y:228,t:&#x27;+&#x27;+R(v2_bar),cl:&#x27;pr&#x27;}]},
+  { t:&#x27;Traiter φ₂ (add) → envoyer x̄ et ȳ&#x27;,
+    fm:&#x27;&lt;b&gt;x̄&lt;/b&gt; += v̄₂ · D&lt;sub&gt;x&lt;/sub&gt;φ₂ = &#x27;+R(v2_bar)+&#x27; × 1 = &lt;b&gt;&#x27;+R(xbar_via_phi2)+&#x27;&lt;/b&gt; ← chemin 1&lt;br&gt;&lt;b&gt;ȳ&lt;/b&gt; += v̄₂ · D&lt;sub&gt;y&lt;/sub&gt;φ₂ = &#x27;+R(v2_bar)+&#x27; × 1 = &lt;b&gt;&#x27;+R(ybar_via_phi2)+&#x27;&lt;/b&gt;&lt;br&gt;&lt;span class=&quot;pill pa&quot;&gt;x a reçu &#x27;+R(xbar_via_phi2)+&#x27;, mais il reste un chemin via φ₁&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;ar&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;x̄ = &#x27;+R(xbar_via_phi2),dc:&#x27;cr&#x27;},y:{c:&#x27;ar&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ȳ = &#x27;+R(ybar_via_phi2),dc:&#x27;cr&#x27;},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̄₁ = &#x27;+R(v1_bar),dc:&#x27;cs&#x27;},v2:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V2),d:&#x27;v̄₂ = &#x27;+R(v2_bar),dc:&#x27;cs&#x27;},f:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(VF),d:&#x27;f̄ = 1.000&#x27;,dc:&#x27;cs&#x27;}},
+    fl:[{e:1,d:&#x27;r&#x27;,lbl:&#x27;v̄₂&#x27;},{e:2,d:&#x27;r&#x27;,lbl:&#x27;v̄₂&#x27;}],bd:[{x:100,y:110,t:&#x27;+&#x27;+R(xbar_via_phi2),cl:&#x27;pr&#x27;},{x:100,y:172,t:&#x27;via φ₂&#x27;,cl:&#x27;pr&#x27;,sm:1}]},
+  { t:&#x27;Traiter φ₁ (sin) → accumulation sur x̄ !&#x27;,
+    fm:&#x27;&lt;b&gt;x̄&lt;/b&gt; += v̄₁ · D&lt;sub&gt;x&lt;/sub&gt;φ₁ = &#x27;+R(v1_bar)+&#x27; × cos(x) = &#x27;+R(v1_bar)+&#x27; × &#x27;+R(CX)+&#x27; = &lt;b&gt;&#x27;+R(xbar_via_phi1)+&#x27;&lt;/b&gt; ← chemin 2&lt;br&gt;&lt;br&gt;&lt;span class=&quot;pill pa&quot;&gt;x̄ = &#x27;+R(xbar_via_phi2)+&#x27; + &#x27;+R(xbar_via_phi1)+&#x27; = &#x27;+R(xbar_tot)+&#x27;&lt;/span&gt; somme des deux chemins&lt;br&gt;&lt;span class=&quot;pill ps&quot;&gt;∇f = (&#x27;+R(xbar_tot)+&#x27;, &#x27;+R(ybar_via_phi2)+&#x27;), gradient complet, une seule passe&lt;/span&gt;&#x27;,
+    n:{x:{c:&#x27;acc&#x27;,v:&#x27;= &#x27;+R(X0),d:&#x27;x̄ = &#x27;+R(xbar_tot),dc:&#x27;ca&#x27;},y:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(Y0),d:&#x27;ȳ = &#x27;+R(ybar_via_phi2),dc:&#x27;cs&#x27;},v1:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V1),d:&#x27;v̄₁ = &#x27;+R(v1_bar),dc:&#x27;cs&#x27;},v2:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(V2),d:&#x27;v̄₂ = &#x27;+R(v2_bar),dc:&#x27;cs&#x27;},f:{c:&#x27;done&#x27;,v:&#x27;= &#x27;+R(VF),d:&#x27;f̄ = 1.000&#x27;,dc:&#x27;cs&#x27;}},
+    fl:[{e:0,d:&#x27;r&#x27;,lbl:&#x27;v̄₁&#x27;}],bd:[{x:100,y:110,t:R(xbar_via_phi2)+&#x27; + &#x27;+R(xbar_via_phi1),cl:&#x27;pa&#x27;},{x:100,y:172,t:&#x27;via φ₂ + via φ₁&#x27;,cl:&#x27;pa&#x27;,sm:1}]}
+];
+
+var nkeys = [&#x27;x&#x27;,&#x27;y&#x27;,&#x27;v1&#x27;,&#x27;v2&#x27;,&#x27;f&#x27;];
+var nels  = {x:&#x27;Nx&#x27;,y:&#x27;Ny&#x27;,v1:&#x27;Nv1&#x27;,v2:&#x27;Nv2&#x27;,f:&#x27;Nf&#x27;};
+function steps() { return mode === &#x27;f&#x27; ? fwd : rev; }
+
+function clearLayers() {
+  $(&#x27;FL&#x27;).innerHTML = &#x27;&#x27;; $(&#x27;PL&#x27;).innerHTML = &#x27;&#x27;; $(&#x27;BL&#x27;).innerHTML = &#x27;&#x27;;
+  pulseFrames.forEach(function(id) { cancelAnimationFrame(id); });
+  pulseFrames = [];
+}
+
+function mkLine(ei, dir) {
+  var e=E[ei], ns=&#x27;http://www.w3.org/2000/svg&#x27;;
+  var sx,sy,tx,ty;
+  if(dir===&#x27;f&#x27;){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}
+  else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var ln=document.createElementNS(ns,&#x27;line&#x27;);
+  ln.setAttribute(&#x27;x1&#x27;,sx);ln.setAttribute(&#x27;y1&#x27;,sy);ln.setAttribute(&#x27;x2&#x27;,tx);ln.setAttribute(&#x27;y2&#x27;,ty);
+  ln.setAttribute(&#x27;class&#x27;,&#x27;fline fl-&#x27;+dir);
+  $(&#x27;FL&#x27;).appendChild(ln);
+  // Arrowhead via polygon with inline styles (immune to external CSS)
+  var color = getColor(dir===&#x27;f&#x27;?&#x27;--c-fwd&#x27;:&#x27;--c-rev&#x27;) || (dir===&#x27;f&#x27;?&#x27;#185fa5&#x27;:&#x27;#a32d2d&#x27;);
+  var ang=Math.atan2(ty-sy,tx-sx), aLen=9, aSpread=0.4;
+  var p=document.createElementNS(ns,&#x27;polygon&#x27;);
+  var x1=tx-aLen*Math.cos(ang-aSpread), y1=ty-aLen*Math.sin(ang-aSpread);
+  var x2=tx-aLen*Math.cos(ang+aSpread), y2=ty-aLen*Math.sin(ang+aSpread);
+  p.setAttribute(&#x27;points&#x27;,x1+&#x27;,&#x27;+y1+&#x27; &#x27;+tx+&#x27;,&#x27;+ty+&#x27; &#x27;+x2+&#x27;,&#x27;+y2);
+  p.style.fill = color;
+  p.style.stroke = &#x27;none&#x27;;
+  p.style.opacity = &#x27;1&#x27;;
+  $(&#x27;FL&#x27;).appendChild(p);
+}
+
+function mkPulse(ei, dir, delay) {
+  var e = E[ei], ns = &#x27;http://www.w3.org/2000/svg&#x27;;
+  var sx,sy,tx,ty;
+  if (dir===&#x27;f&#x27;){sx=e[0];sy=e[1];tx=e[2];ty=e[3];}else{sx=e[2];sy=e[3];tx=e[0];ty=e[1];}
+  var c = document.createElementNS(ns,&#x27;circle&#x27;);
+  c.setAttribute(&#x27;r&#x27;,&#x27;6&#x27;);
+  c.setAttribute(&#x27;fill&#x27;,dir===&#x27;f&#x27;?&#x27;var(--info-tx)&#x27;:&#x27;var(--danger-tx)&#x27;);
+  c.setAttribute(&#x27;opacity&#x27;,&#x27;0&#x27;);
+  $(&#x27;PL&#x27;).appendChild(c);
+  var start=null,dur=600,dl=delay||0;
+  function tick(ts){
+    if(!start)start=ts; var elapsed=ts-start-dl;
+    if(elapsed&lt;0){pulseFrames.push(requestAnimationFrame(tick));return;}
+    var t=Math.min(1,elapsed/dur);
+    var ease=t&lt;0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    c.setAttribute(&#x27;cx&#x27;,sx+(tx-sx)*ease);c.setAttribute(&#x27;cy&#x27;,sy+(ty-sy)*ease);
+    c.setAttribute(&#x27;opacity&#x27;,t&lt;0.1?t/0.1:(t&gt;0.85?(1-t)/0.15:0.85));
+    if(t&lt;1)pulseFrames.push(requestAnimationFrame(tick));else c.remove();
+  }
+  pulseFrames.push(requestAnimationFrame(tick));
+}
+
+function mkBadge(bx,by,txt,cl,sm){
+  var ns=&#x27;http://www.w3.org/2000/svg&#x27;;
+  var g=document.createElementNS(ns,&#x27;g&#x27;);g.setAttribute(&#x27;class&#x27;,&#x27;badge&#x27;);
+  var te=document.createElementNS(ns,&#x27;text&#x27;);
+  te.setAttribute(&#x27;x&#x27;,bx);te.setAttribute(&#x27;y&#x27;,by);
+  te.setAttribute(&#x27;text-anchor&#x27;,&#x27;middle&#x27;);te.setAttribute(&#x27;dominant-baseline&#x27;,&#x27;central&#x27;);
+  te.setAttribute(&#x27;font-size&#x27;,sm?&#x27;9.5px&#x27;:&#x27;11px&#x27;);
+  te.setAttribute(&#x27;font-family&#x27;,&#x27;var(--font-mono)&#x27;);te.setAttribute(&#x27;font-weight&#x27;,&#x27;500&#x27;);
+  var colors={pf:&#x27;var(--info-tx)&#x27;,pr:&#x27;var(--danger-tx)&#x27;,pa:&#x27;var(--warn-tx)&#x27;,ps:&#x27;var(--success-tx)&#x27;};
+  te.style.fill=colors[cl]||&#x27;var(--tx2)&#x27;;te.textContent=txt;
+  g.appendChild(te);$(&#x27;BL&#x27;).appendChild(g);
+  setTimeout(function(){g.classList.add(&#x27;show&#x27;);},50);
+}
+
+// Edge label: perpendicular offsets (hand-tuned per edge)
+var EL_OFF = [
+  {dx:0,dy:-13},{dx:-16,dy:-6},{dx:0,dy:13},{dx:0,dy:-13},{dx:0,dy:13}
+];
+function mkEdgeLabel(ei,dir,text){
+  var e=E[ei],ns=&#x27;http://www.w3.org/2000/svg&#x27;;
+  var mx=(e[0]+e[2])/2,my=(e[1]+e[3])/2;
+  var o=EL_OFF[ei];
+  var g=document.createElementNS(ns,&#x27;g&#x27;);g.setAttribute(&#x27;class&#x27;,&#x27;elbl&#x27;);
+  // background pill
+  var r=document.createElementNS(ns,&#x27;rect&#x27;);
+  var tw=text.length*6+8,th=15;
+  r.setAttribute(&#x27;x&#x27;,mx+o.dx-tw/2);r.setAttribute(&#x27;y&#x27;,my+o.dy-th/2);
+  r.setAttribute(&#x27;width&#x27;,tw);r.setAttribute(&#x27;height&#x27;,th);
+  r.setAttribute(&#x27;rx&#x27;,&#x27;3&#x27;);
+  r.style.fill=dir===&#x27;f&#x27;?&#x27;var(--info-bg)&#x27;:&#x27;var(--danger-bg)&#x27;;
+  r.style.stroke=dir===&#x27;f&#x27;?&#x27;var(--info-bd)&#x27;:&#x27;var(--danger-bd)&#x27;;
+  r.style.strokeWidth=&#x27;0.5&#x27;;
+  g.appendChild(r);
+  var t=document.createElementNS(ns,&#x27;text&#x27;);
+  t.setAttribute(&#x27;x&#x27;,mx+o.dx);t.setAttribute(&#x27;y&#x27;,my+o.dy);
+  t.setAttribute(&#x27;text-anchor&#x27;,&#x27;middle&#x27;);t.setAttribute(&#x27;dominant-baseline&#x27;,&#x27;central&#x27;);
+  t.style.fill=dir===&#x27;f&#x27;?&#x27;var(--info-tx)&#x27;:&#x27;var(--danger-tx)&#x27;;
+  t.textContent=text;
+  g.appendChild(t);$(&#x27;FL&#x27;).appendChild(g);
+  setTimeout(function(){g.classList.add(&#x27;show&#x27;);},50);
+}
+
+function render(){
+  clearLayers();
+  var S=steps(),st=S[step];
+  nkeys.forEach(function(k){
+    var nd=st.n[k]||{c:&#x27;idle&#x27;};
+    var g=$(nels[k]);g.setAttribute(&#x27;class&#x27;,&#x27;nd &#x27;+(nd.c||&#x27;idle&#x27;));
+    $(nels[k]+&#x27;-v&#x27;).textContent=nd.v||&#x27;&#x27;;
+    var dt=$(nels[k]+&#x27;-d&#x27;);dt.textContent=nd.d||&#x27;&#x27;;dt.setAttribute(&#x27;class&#x27;,&#x27;ndr &#x27;+(nd.dc||&#x27;&#x27;));
+  });
+  st.fl.forEach(function(f,i){mkLine(f.e,f.d);mkPulse(f.e,f.d,i*120);if(f.lbl)mkEdgeLabel(f.e,f.d,f.lbl);});
+  st.bd.forEach(function(b){mkBadge(b.x,b.y,b.t,b.cl,b.sm);});
+  $(&#x27;stitle&#x27;).textContent=st.t;
+  $(&#x27;sform&#x27;).innerHTML=st.fm;
+  var dots=$(&#x27;dots&#x27;);dots.innerHTML=&#x27;&#x27;;
+  for(var k=0;k&lt;S.length;k++){
+    var d=document.createElement(&#x27;div&#x27;);
+    d.className=&#x27;ad-dot&#x27;+(k===step?&#x27; on&#x27;:&#x27;&#x27;);
+    d.setAttribute(&#x27;data-i&#x27;,k);
+    d.onclick=function(){step=+this.getAttribute(&#x27;data-i&#x27;);render();};
+    dots.appendChild(d);
+  }
+  $(&#x27;bp&#x27;).disabled=step===0;
+  $(&#x27;bn&#x27;).disabled=step===S.length-1;
+}
+
+function go(d){var S=steps();step=Math.max(0,Math.min(S.length-1,step+d));render();}
+
+$(&#x27;tb-f&#x27;).onclick=function(){mode=&#x27;f&#x27;;step=0;$(&#x27;tb-f&#x27;).className=&#x27;ad-tab on&#x27;;$(&#x27;tb-r&#x27;).className=&#x27;ad-tab&#x27;;render();};
+$(&#x27;tb-r&#x27;).onclick=function(){mode=&#x27;r&#x27;;step=0;$(&#x27;tb-f&#x27;).className=&#x27;ad-tab&#x27;;$(&#x27;tb-r&#x27;).className=&#x27;ad-tab on&#x27;;render();};
+$(&#x27;bp&#x27;).onclick=function(){go(-1);};
+$(&#x27;bn&#x27;).onclick=function(){go(1);};
+
+buildStaticArrows();
+render();
+})();
+&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;" width="100%" height="580" style="border:none;" scrolling="no"></iframe>

@@ -1,0 +1,178 @@
+<svg width="100%" viewBox="0 0 680 370" xmlns="http://www.w3.org/2000/svg" style="font-family: system-ui, -apple-system, sans-serif;">
+<style>
+  text { fill: #333333; }
+  .label { font-size: 14px; font-weight: 500; }
+  .sub { font-size: 12px; fill: #737373; }
+  .tiny { font-size: 10px; fill: #737373; }
+  @media (prefers-color-scheme: dark) {
+    text { fill: #c2c0b6; }
+    .sub { fill: #9c9a92; }
+    .tiny { fill: #9c9a92; }
+    .grid-border { stroke: #5F5E5A; }
+    .concat-box { fill: #444441; stroke: #B4B2A9; }
+    .concat-text { fill: #D4D4D4; }
+  }
+</style>
+
+<!-- Sentence title -->
+<text class="label" x="340" y="24" text-anchor="middle">« Le chat mange la souris »</text>
+
+<!-- === HEAD 1: Proximity === -->
+<text class="sub" x="110" y="56" text-anchor="middle" font-weight="500" fill="#3C3489">Tête 1: proximité</text>
+
+<!-- Row labels -->
+<text class="sub" x="36" y="96" text-anchor="end">Le</text>
+<text class="sub" x="36" y="124" text-anchor="end">chat</text>
+<text class="sub" x="36" y="152" text-anchor="end">mange</text>
+<text class="sub" x="36" y="180" text-anchor="end">la</text>
+<text class="sub" x="36" y="208" text-anchor="end">souris</text>
+<!-- Col labels -->
+<text class="tiny" x="54" y="78" text-anchor="middle">Le</text>
+<text class="tiny" x="82" y="78" text-anchor="middle">ch</text>
+<text class="tiny" x="110" y="78" text-anchor="middle">ma</text>
+<text class="tiny" x="138" y="78" text-anchor="middle">la</text>
+<text class="tiny" x="166" y="78" text-anchor="middle">so</text>
+
+<!-- Proximity pattern: strong diagonal -->
+<rect x="40" y="84" width="28" height="28" fill="#7F77DD" opacity="0.7" rx="2"/>
+<rect x="68" y="84" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="96" y="84" width="28" height="28" fill="#7F77DD" opacity="0.05" rx="2"/>
+<rect x="124" y="84" width="28" height="28" fill="#7F77DD" opacity="0.02" rx="2"/>
+<rect x="152" y="84" width="28" height="28" fill="#7F77DD" opacity="0.01" rx="2"/>
+
+<rect x="40" y="112" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="68" y="112" width="28" height="28" fill="#7F77DD" opacity="0.7" rx="2"/>
+<rect x="96" y="112" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="124" y="112" width="28" height="28" fill="#7F77DD" opacity="0.02" rx="2"/>
+<rect x="152" y="112" width="28" height="28" fill="#7F77DD" opacity="0.01" rx="2"/>
+
+<rect x="40" y="140" width="28" height="28" fill="#7F77DD" opacity="0.05" rx="2"/>
+<rect x="68" y="140" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="96" y="140" width="28" height="28" fill="#7F77DD" opacity="0.7" rx="2"/>
+<rect x="124" y="140" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="152" y="140" width="28" height="28" fill="#7F77DD" opacity="0.05" rx="2"/>
+
+<rect x="40" y="168" width="28" height="28" fill="#7F77DD" opacity="0.01" rx="2"/>
+<rect x="68" y="168" width="28" height="28" fill="#7F77DD" opacity="0.02" rx="2"/>
+<rect x="96" y="168" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="124" y="168" width="28" height="28" fill="#7F77DD" opacity="0.7" rx="2"/>
+<rect x="152" y="168" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+
+<rect x="40" y="196" width="28" height="28" fill="#7F77DD" opacity="0.01" rx="2"/>
+<rect x="68" y="196" width="28" height="28" fill="#7F77DD" opacity="0.01" rx="2"/>
+<rect x="96" y="196" width="28" height="28" fill="#7F77DD" opacity="0.05" rx="2"/>
+<rect x="124" y="196" width="28" height="28" fill="#7F77DD" opacity="0.3" rx="2"/>
+<rect x="152" y="196" width="28" height="28" fill="#7F77DD" opacity="0.7" rx="2"/>
+
+<rect x="40" y="84" width="140" height="140" fill="none" stroke="#B4B2A9" stroke-width="0.5" rx="2" class="grid-border"/>
+
+
+<!-- === HEAD 2: Subject-verb === -->
+<text class="sub" x="340" y="56" text-anchor="middle" font-weight="500" fill="#854F0B">Tête 2: sujet-verbe</text>
+
+<text class="sub" x="266" y="96" text-anchor="end">Le</text>
+<text class="sub" x="266" y="124" text-anchor="end">chat</text>
+<text class="sub" x="266" y="152" text-anchor="end">mange</text>
+<text class="sub" x="266" y="180" text-anchor="end">la</text>
+<text class="sub" x="266" y="208" text-anchor="end">souris</text>
+<text class="tiny" x="284" y="78" text-anchor="middle">Le</text>
+<text class="tiny" x="312" y="78" text-anchor="middle">ch</text>
+<text class="tiny" x="340" y="78" text-anchor="middle">ma</text>
+<text class="tiny" x="368" y="78" text-anchor="middle">la</text>
+<text class="tiny" x="396" y="78" text-anchor="middle">so</text>
+
+<!-- Subject-verb: chat->mange and mange->chat strong -->
+<rect x="270" y="84" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+<rect x="298" y="84" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+<rect x="326" y="84" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="354" y="84" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="382" y="84" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+
+<rect x="270" y="112" width="28" height="28" fill="#EF9F27" opacity="0.1" rx="2"/>
+<rect x="298" y="112" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+<rect x="326" y="112" width="28" height="28" fill="#EF9F27" opacity="0.75" rx="2"/>
+<rect x="354" y="112" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="382" y="112" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+
+<rect x="270" y="140" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="298" y="140" width="28" height="28" fill="#EF9F27" opacity="0.7" rx="2"/>
+<rect x="326" y="140" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+<rect x="354" y="140" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="382" y="140" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+
+<rect x="270" y="168" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="298" y="168" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="326" y="168" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="354" y="168" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+<rect x="382" y="168" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+
+<rect x="270" y="196" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="298" y="196" width="28" height="28" fill="#EF9F27" opacity="0.05" rx="2"/>
+<rect x="326" y="196" width="28" height="28" fill="#EF9F27" opacity="0.7" rx="2"/>
+<rect x="354" y="196" width="28" height="28" fill="#EF9F27" opacity="0.1" rx="2"/>
+<rect x="382" y="196" width="28" height="28" fill="#EF9F27" opacity="0.15" rx="2"/>
+
+<rect x="270" y="84" width="140" height="140" fill="none" stroke="#B4B2A9" stroke-width="0.5" rx="2" class="grid-border"/>
+
+
+<!-- === HEAD 3: Verb-object === -->
+<text class="sub" x="570" y="56" text-anchor="middle" font-weight="500" fill="#085041">Tête 3: verbe-objet</text>
+
+<text class="sub" x="496" y="96" text-anchor="end">Le</text>
+<text class="sub" x="496" y="124" text-anchor="end">chat</text>
+<text class="sub" x="496" y="152" text-anchor="end">mange</text>
+<text class="sub" x="496" y="180" text-anchor="end">la</text>
+<text class="sub" x="496" y="208" text-anchor="end">souris</text>
+<text class="tiny" x="514" y="78" text-anchor="middle">Le</text>
+<text class="tiny" x="542" y="78" text-anchor="middle">ch</text>
+<text class="tiny" x="570" y="78" text-anchor="middle">ma</text>
+<text class="tiny" x="598" y="78" text-anchor="middle">la</text>
+<text class="tiny" x="626" y="78" text-anchor="middle">so</text>
+
+<!-- Verb-object: mange->souris and souris->mange strong -->
+<rect x="500" y="84" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="528" y="84" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="556" y="84" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="584" y="84" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="612" y="84" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+
+<rect x="500" y="112" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="528" y="112" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="556" y="112" width="28" height="28" fill="#1D9E75" opacity="0.1" rx="2"/>
+<rect x="584" y="112" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="612" y="112" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+
+<rect x="500" y="140" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="528" y="140" width="28" height="28" fill="#1D9E75" opacity="0.1" rx="2"/>
+<rect x="556" y="140" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="584" y="140" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="612" y="140" width="28" height="28" fill="#1D9E75" opacity="0.75" rx="2"/>
+
+<rect x="500" y="168" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="528" y="168" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="556" y="168" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="584" y="168" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="612" y="168" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+
+<rect x="500" y="196" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="528" y="196" width="28" height="28" fill="#1D9E75" opacity="0.05" rx="2"/>
+<rect x="556" y="196" width="28" height="28" fill="#1D9E75" opacity="0.7" rx="2"/>
+<rect x="584" y="196" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+<rect x="612" y="196" width="28" height="28" fill="#1D9E75" opacity="0.15" rx="2"/>
+
+<rect x="500" y="84" width="140" height="140" fill="none" stroke="#B4B2A9" stroke-width="0.5" rx="2" class="grid-border"/>
+
+
+<!-- === CONCAT + Wₒ === -->
+<path d="M110 230 L110 270 L340 290" fill="none" stroke="#B4B2A9" stroke-width="0.5"/>
+<path d="M340 230 L340 290" fill="none" stroke="#B4B2A9" stroke-width="0.5"/>
+<path d="M570 230 L570 270 L340 290" fill="none" stroke="#B4B2A9" stroke-width="0.5"/>
+
+<rect x="270" y="290" width="140" height="34" rx="8" fill="#F0F0F0" stroke="#B4B2A9" stroke-width="0.5" class="concat-box"/>
+<text class="label" x="340" y="307" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Concat + Wₒ</text>
+
+<line x1="340" y1="324" x2="340" y2="348" stroke="#888780" stroke-width="0.5"/>
+<polygon points="340,344 336,334 344,334" fill="#888780"/>
+<text class="sub" x="340" y="362" text-anchor="middle">Sortie ∈ ℝᵀˣᵈ</text>
+
+</svg>

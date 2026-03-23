@@ -1,0 +1,141 @@
+<svg width="100%" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style="font-family: system-ui, -apple-system, sans-serif;">
+<style>
+  text { fill: #3d3d3a; }
+  .label { font-size: 14px; font-weight: 500; }
+  .sub { font-size: 12px; fill: #73726c; }
+  @media (prefers-color-scheme: dark) {
+    text { fill: #c2c0b6; }
+    .sub { fill: #9c9a92; }
+    .divider { stroke: #5F5E5A; }
+    .box-input { fill: #0C447C; stroke: #85B7EB; }
+    .box-input text { fill: #B5D4F4; }
+    .box-hidden { fill: #444441; stroke: #B4B2A9; }
+    .box-hidden text { fill: #D3D1C7; }
+    .box-output { fill: #27500A; stroke: #97C459; }
+    .box-output text { fill: #C0DD97; }
+    .chain { stroke: #9c9a92; }
+    .muted-conn { stroke: #5F5E5A; }
+  }
+</style>
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- Section titles -->
+<text class="label" x="160" y="24" text-anchor="middle">RNN</text>
+<text class="label" x="510" y="24" text-anchor="middle">Auto-attention</text>
+
+<!-- Divider -->
+<line x1="335" y1="10" x2="335" y2="310" stroke="#D3D1C7" stroke-width="0.5" stroke-dasharray="4 4" class="divider"/>
+
+<!-- ===== LEFT: RNN ===== -->
+<!-- Input tokens -->
+<rect x="40" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="68" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₁</text>
+
+<rect x="112" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="140" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₂</text>
+
+<rect x="184" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="212" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₃</text>
+
+<rect x="256" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="284" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₄</text>
+
+<!-- Hidden states -->
+<rect x="40" y="120" width="56" height="34" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text class="label" x="68" y="137" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">h₁</text>
+
+<rect x="112" y="120" width="56" height="34" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text class="label" x="140" y="137" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">h₂</text>
+
+<rect x="184" y="120" width="56" height="34" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text class="label" x="212" y="137" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">h₃</text>
+
+<rect x="256" y="120" width="56" height="34" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text class="label" x="284" y="137" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">h₄</text>
+
+<!-- x -> h arrows -->
+<line x1="68" y1="84" x2="68" y2="118" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+<line x1="140" y1="84" x2="140" y2="118" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+<line x1="212" y1="84" x2="212" y2="118" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+<line x1="284" y1="84" x2="284" y2="118" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+
+<!-- h -> h chain -->
+<line x1="96" y1="137" x2="110" y2="137" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+<line x1="168" y1="137" x2="182" y2="137" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+<line x1="240" y1="137" x2="254" y2="137" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+
+<!-- Highlighted path x1 -> h4 -->
+<path d="M68 154 L68 180 L284 180 L284 156" fill="none" stroke="#E24B4A" stroke-width="2" stroke-dasharray="5 3"/>
+<polygon points="284,158 280,168 288,168" fill="#E24B4A"/>
+<text x="176" y="200" text-anchor="middle" font-size="12" fill="#E24B4A">Chemin: T − 1 = 3 étapes</text>
+
+<!-- Output -->
+<rect x="256" y="220" width="56" height="34" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="284" y="237" text-anchor="middle" dominant-baseline="central" fill="#27500A">y₄</text>
+<line x1="284" y1="154" x2="284" y2="218" stroke="#888780" stroke-width="0.5" marker-end="url(#arr)"/>
+
+<!-- Bottom labels -->
+<text class="sub" x="160" y="276" text-anchor="middle">Séquentiel: O(T) en profondeur</text>
+<text class="sub" x="160" y="292" text-anchor="middle">Gradient traverse T−1 matrices</text>
+
+
+<!-- ===== RIGHT: Self-attention ===== -->
+<!-- Input tokens -->
+<rect x="380" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="408" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₁</text>
+
+<rect x="452" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="480" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₂</text>
+
+<rect x="524" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="552" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₃</text>
+
+<rect x="596" y="50" width="56" height="34" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="label" x="624" y="67" text-anchor="middle" dominant-baseline="central" fill="#0C447C">x₄</text>
+
+<!-- Output tokens -->
+<rect x="380" y="220" width="56" height="34" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="408" y="237" text-anchor="middle" dominant-baseline="central" fill="#27500A">y₁</text>
+
+<rect x="452" y="220" width="56" height="34" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="480" y="237" text-anchor="middle" dominant-baseline="central" fill="#27500A">y₂</text>
+
+<rect x="524" y="220" width="56" height="34" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="552" y="237" text-anchor="middle" dominant-baseline="central" fill="#27500A">y₃</text>
+
+<rect x="596" y="220" width="56" height="34" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text class="label" x="624" y="237" text-anchor="middle" dominant-baseline="central" fill="#27500A">y₄</text>
+
+<!-- All muted connections -->
+<line x1="408" y1="84" x2="408" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="408" y1="84" x2="480" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="408" y1="84" x2="552" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="480" y1="84" x2="408" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="480" y1="84" x2="480" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="480" y1="84" x2="552" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="480" y1="84" x2="624" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="552" y1="84" x2="408" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="552" y1="84" x2="480" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="552" y1="84" x2="552" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="552" y1="84" x2="624" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="624" y1="84" x2="408" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="624" y1="84" x2="480" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="624" y1="84" x2="552" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="624" y1="84" x2="624" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+<line x1="408" y1="84" x2="624" y2="218" stroke="#D3D1C7" stroke-width="0.5" opacity="0.5"/>
+
+<!-- Highlighted direct path x1 -> y4 -->
+<line x1="408" y1="84" x2="624" y2="218" stroke="#1D9E75" stroke-width="2.5"/>
+<circle cx="408" cy="84" r="4" fill="#1D9E75"/>
+<circle cx="624" cy="218" r="4" fill="#1D9E75"/>
+<text x="550" y="196" text-anchor="end" font-size="12" fill="#1D9E75">Chemin: 1 étape</text>
+
+<!-- Bottom labels -->
+<text class="sub" x="510" y="276" text-anchor="middle">Parallèle: O(1) en profondeur</text>
+<text class="sub" x="510" y="292" text-anchor="middle">Gradient traverse 1 couche</text>
+
+</svg>
