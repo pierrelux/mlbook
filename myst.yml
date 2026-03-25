@@ -59,6 +59,8 @@ project:
         - file: exercises/autodiff_graphe.ipynb
         - file: exercises/tp7_traceur.ipynb
         - file: exercises/projet_energie.ipynb
+        - file: exercises/devoir2.md
+        - file: exercises/devoir2_starter.ipynb
     # - title: "Présentations"
     #   children:
     #     - file: slides/linear_models.md
