@@ -70,4 +70,10 @@
   <url>
     <loc>http://localhost:3003/projet-energie</loc>
   </url>
+  <url>
+    <loc>http://localhost:3003/devoir2</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3003/devoir2-starter</loc>
+  </url>
 </urlset>
