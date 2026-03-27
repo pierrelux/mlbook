@@ -1,0 +1,76 @@
+<svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" style="font-family: system-ui, -apple-system, sans-serif;">
+<style>
+  text { fill: #333333; }
+  .label { font-size: 14px; font-weight: 500; }
+  .sub { font-size: 12px; fill: #737373; }
+  .title { font-size: 13px; font-weight: 600; fill: #555555; }
+  @media (prefers-color-scheme: dark) {
+    text { fill: #c2c0b6; }
+    .sub { fill: #9c9a92; }
+    .title { fill: #b0afa6; }
+    .add-circle { fill: #2C2C2A; }
+    .fn-box { fill: #3a3a38; stroke: #B0B0B0; }
+    .fn-label { fill: #c2c0b6; }
+  }
+</style>
+
+<!-- ===== Left: Couche standard ===== -->
+<text class="title" x="120" y="30" text-anchor="middle">Couche standard</text>
+
+<!-- Input -->
+<text class="sub" x="120" y="380" text-anchor="middle">z</text>
+
+<!-- Vertical line input to box -->
+<line x1="120" y1="365" x2="120" y2="260" stroke="#888780" stroke-width="2.5" stroke-linecap="round"/>
+
+<!-- f box -->
+<rect x="55" y="200" width="130" height="50" rx="8" fill="#F5F5F5" stroke="#999999" stroke-width="0.5" class="fn-box"/>
+<text class="label fn-label" x="120" y="225" text-anchor="middle" dominant-baseline="central">f(z ; &#x3B8;)</text>
+
+<!-- Vertical line box to output -->
+<line x1="120" y1="200" x2="120" y2="100" stroke="#888780" stroke-width="2.5" stroke-linecap="round"/>
+
+<!-- Arrow tip -->
+<polygon points="114,104 120,88 126,104" fill="#888780"/>
+
+<!-- Output -->
+<text class="sub" x="120" y="78" text-anchor="middle">z' = f(z ; &#x3B8;)</text>
+
+
+<!-- ===== Right: Bloc residuel ===== -->
+<text class="title" x="480" y="30" text-anchor="middle">Bloc r&#xe9;siduel</text>
+
+<!-- Input label -->
+<text class="sub" x="440" y="380" text-anchor="middle">z</text>
+
+<!-- Residual stream: bottom to top -->
+<line x1="440" y1="365" x2="440" y2="100" stroke="#888780" stroke-width="3" stroke-linecap="round"/>
+
+<!-- Arrow tip on residual stream -->
+<polygon points="434,104 440,88 446,104" fill="#888780"/>
+
+<!-- Output label -->
+<text class="sub" x="440" y="78" text-anchor="middle">z + f(z ; &#x3B8;)</text>
+
+<!-- Branch dot from stream to f box -->
+<circle cx="440" cy="300" r="4" fill="#888780"/>
+<path d="M440 300 L540 300 L540 260" fill="none" stroke="#888780" stroke-width="1.5"/>
+
+<!-- f box -->
+<rect x="480" y="200" width="130" height="50" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5" class="fn-box"/>
+<text class="label" x="545" y="225" text-anchor="middle" dominant-baseline="central" fill="#085041" class="fn-label">f(z ; &#x3B8;)</text>
+
+<!-- Return line from f box to addition circle -->
+<path d="M540 200 L540 156 L454 156" fill="none" stroke="#888780" stroke-width="1.5"/>
+<polygon points="454,152 444,156 454,160" fill="#888780"/>
+
+<!-- Addition circle -->
+<circle cx="440" cy="156" r="12" fill="white" stroke="#888780" stroke-width="1" class="add-circle"/>
+<text x="440" y="156" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="500" fill="#333333">+</text>
+
+<!-- Annotation: identite -->
+<text class="sub" x="400" y="240" text-anchor="end">identit&#xe9;</text>
+<line x1="404" y1="240" x2="430" y2="240" stroke="#B0B0B0" stroke-width="0.5" stroke-dasharray="3 3"/>
+<polygon points="430,237 440,240 430,243" fill="#B0B0B0"/>
+
+</svg>
