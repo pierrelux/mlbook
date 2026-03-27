@@ -32,6 +32,9 @@
     <loc>http://localhost:3003/ch8-optimization</loc>
   </url>
   <url>
+    <loc>http://localhost:3003/ch9-autoencoders</loc>
+  </url>
+  <url>
     <loc>http://localhost:3003/ch9-rnn</loc>
   </url>
   <url>
