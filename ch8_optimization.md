@@ -14,10 +14,21 @@ kernelspec:
 - Expliquer pourquoi les méthodes du premier ordre dominent l'apprentissage profond
 - Identifier les problèmes de stabilité du gradient dans les réseaux profonds et les solutions (initialisation, normalisation, connexions résiduelles)
 - Expliquer le lien entre saturation des fonctions d'activation et dissolution du gradient
-- Appliquer les techniques de régularisation (décroissance des poids, dropout) pour réduire le surapprentissage
+- Appliquer les techniques de régularisation (arrêt précoce, décroissance des poids, dropout) pour réduire le surapprentissage
+- Expliquer le rôle du pré-entraînement et du transfert de représentations dans l'entraînement des réseaux profonds
 ```
 
-Le chapitre précédent a défini l'architecture des réseaux de neurones et montré comment la différentiation automatique calcule leurs gradients. Il reste à décider comment utiliser ces gradients pour entraîner le réseau, et comment s'assurer que le réseau entraîné généralise bien. Ce chapitre couvre les algorithmes d'optimisation, les techniques de stabilisation de l'entraînement en profondeur, et la régularisation.
+```{admonition} Prérequis
+:class: hint
+
+- Descente de gradient et régularisation L2 (chapitre 3)
+- Architecture des réseaux de neurones et fonctions d'activation (chapitre 7)
+- Différentiation automatique et rétropropagation (chapitre 7)
+```
+
+Le chapitre précédent a défini l'architecture des réseaux de neurones et montré comment la différentiation automatique calcule leurs gradients. Il reste à décider comment utiliser ces gradients pour entraîner le réseau, et comment s'assurer que le réseau entraîné généralise bien.
+
+Nous commençons par les algorithmes d'optimisation: la descente de gradient stochastique par mini-lots, le momentum et Adam. Nous examinons ensuite pourquoi les méthodes du second ordre, malgré leur convergence plus rapide en théorie, sont rarement utilisées en pratique. La troisième section aborde les problèmes de stabilité du gradient en profondeur et les techniques pour y remédier (initialisation, normalisation, connexions résiduelles). Nous présentons ensuite les méthodes de régularisation, puis nous terminons par le pré-entraînement et le transfert de représentations, une approche qui transforme l'initialisation en un levier d'optimisation.
 
 ## Optimisation par gradient stochastique
 
@@ -84,12 +95,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 %config InlineBackend.figure_format = 'retina'
 
-def grad_f(t): return np.array([2*t[0], 20*t[1]])
+# f(θ) = 0.1 θ₁² + 2 θ₂² : vallée allongée (condition number 20)
+def grad_f(t): return np.array([0.2*t[0], 4*t[1]])
 
-theta0 = np.array([-0.9, 0.85])
-eta    = 0.08
+theta0 = np.array([-5.0, 2.0])
+eta    = 0.4
 beta   = 0.5
-n_steps = 40
+n_steps = 30
 
 # SGD
 traj_sgd = [theta0.copy()]
@@ -108,22 +120,21 @@ for _ in range(n_steps):
     traj_mom.append(t.copy())
 traj_mom = np.array(traj_mom)
 
-t1 = np.linspace(-1.1, 1.1, 300)
-t2 = np.linspace(-1.0, 1.0, 300)
+t1 = np.linspace(-5.5, 1.0, 300)
+t2 = np.linspace(-2.5, 2.5, 300)
 T1, T2 = np.meshgrid(t1, t2)
-Z = T1**2 + 10*T2**2
+Z = 0.1*T1**2 + 2*T2**2
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
-plt.suptitle(r'SGD vs momentum sur $f(\theta) = \theta_1^2 + 10\theta_2^2$', fontsize=11)
+plt.suptitle(r'SGD vs momentum sur $f(\theta) = 0{,}1\,\theta_1^2 + 2\,\theta_2^2$', fontsize=11)
 
 trajs  = [traj_sgd, traj_mom]
-titles = ['SGD (zigzags)', r'SGD + Momentum ($\beta=0{,}5$)']
+titles = ['SGD', r'SGD + Momentum ($\beta=0{,}5$)']
 colors = ['#1f77b4', '#d62728']
 
 for ax, traj, title, color in zip(axes, trajs, titles, colors):
     ax.contourf(T1, T2, Z, levels=20, cmap='Greys', alpha=0.5)
     ax.contour( T1, T2, Z, levels=20, colors='gray', linewidths=0.4, alpha=0.6)
-    # Trajectoire complète avec dégradé d'opacité (début → fin)
     n = len(traj) - 1
     for i in range(n):
         alpha = 0.25 + 0.75 * (i / n)
@@ -134,14 +145,14 @@ for ax, traj, title, color in zip(axes, trajs, titles, colors):
     ax.set_xlabel(r'$\theta_1$')
     ax.set_title(title, fontsize=10)
     ax.legend(fontsize=8, loc='upper right')
-    ax.set_xlim(-1.1, 1.1); ax.set_ylim(-1.0, 1.0)
+    ax.set_xlim(-5.5, 1.0); ax.set_ylim(-2.5, 2.5)
     ax.grid(True, alpha=0.2)
 
 axes[0].set_ylabel(r'$\theta_2$')
 plt.tight_layout()
 ```
 
-Sur cette surface allongée, SGD zigzague entre les parois de la vallée et progresse lentement vers le minimum. Le momentum ($\beta=0{,}5$) accumule de la vitesse dans la direction $\theta_1$ (la direction de la vallée) et amortit les oscillations dans la direction $\theta_2$ (perpendiculaire aux parois).
+La surface de perte forme une vallée allongée: la courbure est 20 fois plus forte dans la direction $\theta_2$ que dans la direction $\theta_1$. SGD zigzague perpendiculairement à la vallée (le gradient pointe vers les parois) et progresse lentement le long de l'axe $\theta_1$. Avec le momentum, les oscillations en $\theta_2$ se compensent partiellement dans la moyenne mobile (les gradients alternent de signe), tandis que les gradients en $\theta_1$ s'accumulent dans une direction cohérente. Le résultat est une trajectoire plus directe vers le minimum.
 
 ### Taux d'apprentissage adaptatifs: RMSProp
 
@@ -157,7 +168,7 @@ où $g_{t,j} = [\hat{\mathbf{g}}_t]_j$ est la $j$-ème composante du gradient, $
 
 ### Adam
 
-**Adam** (*Adaptive Moment Estimation*) {cite}`kingma2014adam` combine le momentum (premier moment du gradient) et RMSProp (deuxième moment du gradient):
+Adam peut être vu comme une combinaison de momentum et de RMSProp. **Adam** (*Adaptive Moment Estimation*) {cite}`kingma2014adam` maintient à la fois une moyenne mobile du gradient (premier moment, comme le momentum) et une moyenne mobile du carré du gradient (deuxième moment, comme RMSProp):
 
 $$
 \mathbf{m}_{t+1} = \beta_1 \mathbf{m}_t + (1-\beta_1) \hat{\mathbf{g}}_t \qquad \text{(premier moment)}
@@ -184,21 +195,21 @@ Les valeurs par défaut sont $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$, $\epsilon =
 ```{prf:algorithm} Adam
 :label: ch8-adam
 
-**Entrée**: Taux $\eta$, paramètres $\beta_1, \beta_2, \epsilon$, nombre d'itérations $T$
+**Entrée**: Taux $\eta$, paramètres $\beta_1, \beta_2, \epsilon$, nombre d'itérations $T_{\text{iter}}$
 
 **Initialiser**: $\boldsymbol{\theta}_0$, $\mathbf{m}_0 = \mathbf{0}$, $\mathbf{s}_0 = \mathbf{0}$
 
-1. Pour $t = 0, 1, \ldots, T-1$:
+1. Pour $t = 0, 1, \ldots, T_{\text{iter}}-1$:
    - Calculer $\hat{\mathbf{g}}_t = \nabla_{\boldsymbol{\theta}} \hat{\mathcal{L}}(\boldsymbol{\theta}_t)$ sur un mini-lot
    - $\mathbf{m}_{t+1} \leftarrow \beta_1 \mathbf{m}_t + (1-\beta_1)\hat{\mathbf{g}}_t$
    - $\mathbf{s}_{t+1} \leftarrow \beta_2 \mathbf{s}_t + (1-\beta_2)\hat{\mathbf{g}}_t^2$
    - $\hat{\mathbf{m}} \leftarrow \mathbf{m}_{t+1} / (1 - \beta_1^{t+1})$
    - $\hat{\mathbf{s}} \leftarrow \mathbf{s}_{t+1} / (1 - \beta_2^{t+1})$
    - $\boldsymbol{\theta}_{t+1} \leftarrow \boldsymbol{\theta}_t - \eta\, \hat{\mathbf{m}} / (\sqrt{\hat{\mathbf{s}}} + \epsilon)$
-2. Retourner $\boldsymbol{\theta}_T$
+2. Retourner $\boldsymbol{\theta}_{T_{\text{iter}}}$
 ```
 
-Adam est actuellement l'optimiseur le plus utilisé pour les réseaux de neurones. Il converge généralement plus vite que SGD ou momentum grâce à la normalisation adaptative, et il est moins sensible au choix du taux d'apprentissage initial.
+Adam et sa variante AdamW (voir la section sur la décroissance des poids) sont souvent les premiers choix en pratique pour entraîner des réseaux de neurones. Adam converge généralement plus vite que SGD ou momentum grâce à la normalisation adaptative, et il est moins sensible au choix du taux d'apprentissage initial.
 
 La figure ci-dessous compare les courbes de convergence des trois algorithmes sur un MLP entraîné à classer deux spirales enchevêtrées.
 
@@ -312,11 +323,21 @@ Adam converge plus rapidement et de façon plus régulière grâce à la normali
 
 En pratique, **Adam** est un bon point de départ pour la plupart des architectures. SGD avec momentum peut surpasser Adam sur certains problèmes de vision (comme l'entraînement de réseaux convolutifs sur CIFAR-10 ou ImageNet) si l'on prend le temps d'ajuster le taux d'apprentissage et un calendrier de décroissance. Pour la recherche, il est courant d'essayer les deux et de comparer.
 
-Le **taux d'apprentissage** est l'hyperparamètre le plus important pour tous ces algorithmes. Un $\eta$ trop grand provoque des oscillations ou une divergence; un $\eta$ trop petit converge lentement. Les bibliothèques modernes offrent des **calendriers de taux d'apprentissage** (*learning rate schedules*): décroissance linéaire, décroissance cosinus, ou réchauffement (*warmup*) suivi d'une décroissance.
+Le **taux d'apprentissage** est l'hyperparamètre le plus important pour tous ces algorithmes. Un $\eta$ trop grand provoque des oscillations ou une divergence; un $\eta$ trop petit converge lentement.
+
+### Calendriers de taux d'apprentissage
+
+Un taux d'apprentissage constant n'est pas toujours optimal. En début d'entraînement, un taux élevé accélère la convergence, mais en fin d'entraînement, un taux plus faible permet de se rapprocher du minimum sans osciller. Les **calendriers de taux d'apprentissage** (*learning rate schedules*) font varier $\eta$ au cours de l'entraînement. Les plus courants sont:
+
+- **Décroissance linéaire**: $\eta_t = \eta_0 (1 - t/T)$, où $T$ est le nombre total d'itérations. Le taux diminue uniformément jusqu'à zéro.
+
+- **Décroissance cosinus** {cite}`loshchilov2017sgdr`: $\eta_t = \frac{\eta_0}{2}\left(1 + \cos\left(\frac{\pi t}{T}\right)\right)$. La décroissance est lente au début et à la fin, plus rapide au milieu. C'est le calendrier le plus utilisé pour l'entraînement de grands modèles.
+
+- **Réchauffement (*warmup*) suivi d'une décroissance**: le taux augmente linéairement de 0 à $\eta_0$ pendant les premières itérations, puis décroît. Le réchauffement stabilise les premières mises à jour, quand les moments d'Adam ne sont pas encore fiables.
 
 ## Pourquoi les méthodes du premier ordre dominent
 
-Les algorithmes présentés ci-dessus (SGD, momentum, Adam) n'utilisent que le gradient, c'est-à-dire l'information du premier ordre sur la surface de perte. En optimisation classique, les méthodes du second ordre, qui exploitent aussi la courbure, convergent beaucoup plus vite. Pourtant, elles sont rarement utilisées pour entraîner des réseaux de neurones. Cette section explique pourquoi.
+Les algorithmes présentés ci-dessus (SGD, momentum, Adam) n'utilisent que le gradient, c'est-à-dire l'information du premier ordre sur la surface de perte. En optimisation classique, les méthodes du second ordre, qui exploitent aussi la courbure, convergent beaucoup plus vite. Pourtant, elles sont rarement utilisées pour entraîner des réseaux de neurones. Cette section explique pourquoi. Si les notions de hessien ou de courbure ne vous sont pas familières, concentrez-vous sur la conclusion: les méthodes du premier ordre suffisent en pratique, et nous y reviendrons dans les exercices avec des exemples concrets.
 
 ### Méthodes du second ordre: Newton et L-BFGS
 
@@ -348,7 +369,7 @@ $$
 \text{Var}[\hat{\mathbf{g}}] = \frac{\sigma^2}{B}
 $$
 
-où $\sigma^2$ est la variance du gradient sur les exemples individuels. L'amplitude du bruit dans la mise à jour est donc proportionnelle à $\eta / B$: un taux d'apprentissage élevé ou un petit lot augmentent le bruit.
+où $\sigma^2$ est la variance du gradient sur les exemples individuels. L'écart-type du bruit dans la mise à jour $\eta\hat{\mathbf{g}}$ est donc proportionnel à $\eta\sigma / \sqrt{B}$: un taux d'apprentissage élevé ou un petit lot augmentent le bruit.
 
 Ce bruit agit comme un **régularisateur implicite**: il empêche l'optimiseur de se stabiliser dans des minima étroits de la surface de perte. Des expériences {cite}`keskar2017large` montrent qu'en augmentant la taille des lots (réduisant le bruit), la perte d'entraînement diminue plus vite, mais la performance en généralisation se dégrade. Ce phénomène suggère que le bruit de SGD est bénéfique, pas seulement toléré.
 
@@ -401,15 +422,17 @@ ax.set_xlim(-4, 4)
 plt.tight_layout()
 ```
 
-Un minimum plat est plus robuste aux perturbations. Quand on passe de la distribution d'entraînement à la distribution de test, les paramètres ne changent pas, mais la surface de perte se déforme légèrement. Un minimum plat reste un bon point même après cette déformation; un minimum étroit peut devenir un mauvais point si la surface se décale.
+L'intuition est qu'un minimum plat est plus robuste aux perturbations. Quand on passe de la distribution d'entraînement à la distribution de test, les paramètres ne changent pas, mais la surface de perte se déforme légèrement. Un minimum plat reste un bon point même après cette déformation; un minimum étroit peut devenir un mauvais point si la surface se décale.
 
-Le bruit de SGD favorise les minima plats: dans un minimum étroit, les fluctuations stochastiques poussent l'optimiseur hors du bassin d'attraction, tandis qu'un minimum plat est assez large pour absorber ces fluctuations. Les méthodes du second ordre, qui convergent rapidement et avec peu de bruit, n'ont pas ce mécanisme de sélection. Elles trouvent le minimum le plus proche, qu'il soit plat ou étroit.
+Une interprétation influente {cite}`keskar2017large` est que le bruit de SGD favorise les minima plats: dans un minimum étroit, les fluctuations stochastiques pousseraient l'optimiseur hors du bassin d'attraction, tandis qu'un minimum plat serait assez large pour absorber ces fluctuations. Cette hypothèse reste un sujet de recherche actif; la notion même de "platitude" d'un minimum dépend de la paramétrisation et n'est pas toujours un prédicteur fiable de la généralisation. Elle fournit néanmoins une intuition utile pour comprendre pourquoi les petits lots généralisent souvent mieux que les grands.
 
-En résumé, les méthodes du premier ordre dominent l'apprentissage profond pour deux raisons complémentaires: leur coût par itération est compatible avec les modèles de grande taille, et leur bruit intrinsèque agit comme un régularisateur qui favorise des solutions qui généralisent mieux.
+En résumé, les méthodes du premier ordre dominent la pratique courante de l'apprentissage profond pour deux raisons complémentaires: leur coût par itération est compatible avec les modèles de grande taille, et le bruit intrinsèque de l'estimation par mini-lots semble jouer un rôle bénéfique pour la généralisation. Des méthodes exploitant la courbure existent et font l'objet de recherches actives, mais elles ne se sont pas imposées comme alternatives standard.
 
 ## Saturation et stabilité du gradient
 
-*Cette section suppose que vous avez compris le mécanisme général de la différentiation automatique en mode arrière (le gradient se propage de la sortie vers l'entrée), mais pas nécessairement les détails des jacobiennes.*
+Les algorithmes d'optimisation de la section précédente supposent que le gradient parvient de façon fiable à toutes les couches du réseau. En pratique, ce n'est pas garanti: dans les réseaux profonds, le signal de gradient peut se dissoudre ou exploser en traversant les couches. Cette section décrit le problème et les techniques qui le résolvent.
+
+*Cette section suppose que vous avez compris le mécanisme général de la différentiation automatique en mode arrière (le gradient se propage de la sortie vers l'entrée), mais pas nécessairement les détails des jacobiennes. La partie mathématique (produits de jacobiennes, rayon spectral) est plus technique; l'essentiel à retenir est le phénomène qualitatif et les solutions pratiques.*
 
 ### Instabilité du gradient en profondeur
 
@@ -419,19 +442,57 @@ $$
 \frac{\partial \mathcal{L}}{\partial \mathbf{z}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{z}_L} \prod_{\ell=2}^{L} \frac{\partial \mathbf{z}_\ell}{\partial \mathbf{z}_{\ell-1}}
 $$
 
-Si les jacobiennes ont un rayon spectral inférieur à 1 (ce qui arrive avec la sigmoïde, dont la dérivée est au plus 0,25), le produit décroît exponentiellement avec la profondeur: le gradient se dissout (*vanishing gradient*). Les premières couches reçoivent des signaux de gradient négligeables et cessent d'apprendre.
+Le gradient à la couche 1 est donc le gradient à la sortie, multiplié successivement par $L-1$ matrices jacobiennes en traversant le réseau de la sortie vers l'entrée. Chaque facteur $\frac{\partial \mathbf{z}_\ell}{\partial \mathbf{z}_{\ell-1}}$ mesure comment une perturbation infinitésimale à la couche $\ell-1$ se répercute sur la couche $\ell$.
 
-Inversement, si le rayon spectral est supérieur à 1, le gradient explose (*exploding gradient*). Les mises à jour deviennent instables et l'entraînement diverge.
+Pour saisir l'enjeu de ce produit, considérons d'abord le cas scalaire: un réseau où chaque couche a un seul neurone. Le gradient devient alors un produit de $L-1$ nombres réels. Si chaque facteur vaut $\alpha = 0{,}9$, le produit après 50 couches est $0{,}9^{49} \approx 0{,}005$: le signal a presque disparu. Si chaque facteur vaut $\alpha = 1{,}1$, le produit est $1{,}1^{49} \approx 117$: il a explosé. Seul le cas $\alpha = 1$ maintient un signal stable. Quand chaque facteur est une matrice plutôt qu'un scalaire, la quantité qui joue le rôle de $\alpha$ est le rayon spectral.
 
-Ces deux problèmes ont longtemps limité la profondeur des réseaux. Plusieurs solutions ont été développées.
+#### Structure de la jacobienne locale
+
+En reprenant la notation du chapitre 7, la couche $\ell$ calcule $\mathbf{z}_\ell = \varphi(\mathbf{a}_\ell)$ avec $\mathbf{a}_\ell = W_\ell \mathbf{z}_{\ell-1} + \mathbf{b}_\ell$. Par la règle de chaîne:
+
+$$
+\frac{\partial \mathbf{z}_\ell}{\partial \mathbf{z}_{\ell-1}} = \operatorname{diag}\bigl(\varphi'(\mathbf{a}_\ell)\bigr)\, W_\ell
+$$
+
+Cette jacobienne est le produit de deux facteurs. La matrice diagonale $\operatorname{diag}(\varphi'(\mathbf{a}_\ell))$ contient les dérivées de la fonction d'activation évaluées aux pré-activations courantes: chaque entrée diagonale agit comme un portillon qui laisse passer ou atténue le gradient pour le neurone correspondant. La matrice $W_\ell$ est la matrice de poids de la couche, qui mélange les composantes du gradient entre neurones.
+
+#### Rayon spectral et instabilité exponentielle
+
+Le **rayon spectral** d'une matrice $A$ est la plus grande valeur absolue de ses valeurs propres: $\rho(A) = \max_i |\lambda_i(A)|$. Pour un produit de matrices, le rayon spectral gouverne le taux de croissance ou de décroissance de la norme du produit. Si les jacobiennes $J_\ell = \operatorname{diag}(\varphi'(\mathbf{a}_\ell))\, W_\ell$ étaient toutes identiques avec un rayon spectral $\rho$, la norme du produit croîtrait comme $\rho^{L-1}$. En pratique, les jacobiennes varient d'une couche à l'autre et dépendent de l'entrée, mais le comportement qualitatif est le même:
+
+- si $\rho(J_\ell) < 1$ pour la plupart des couches, le produit décroît exponentiellement avec la profondeur;
+- si $\rho(J_\ell) > 1$, le produit croît exponentiellement;
+- seul le régime $\rho \approx 1$ maintient un gradient stable à travers la profondeur.
+
+Quand le gradient décroît exponentiellement, on parle de dissolution du gradient (*vanishing gradient*). Les premières couches reçoivent des mises à jour négligeables par rapport aux dernières: elles restent proches de leur initialisation pendant que les couches de sortie s'adaptent. Le réseau ne peut alors pas apprendre de représentations utiles dans ses premières couches, ce qui limite sa capacité.
+
+Quand le gradient croît exponentiellement, on parle d'explosion du gradient (*exploding gradient*). Les mises à jour de paramètres deviennent si grandes que la perte oscille violemment ou diverge. Dans les cas extrêmes, les valeurs numériques débordent.
+
+Le rayon spectral de $\operatorname{diag}(\varphi'(\mathbf{a}_\ell))\, W_\ell$ dépend de deux facteurs: la fonction d'activation, qui détermine les entrées diagonales, et la matrice de poids $W_\ell$. La sous-section suivante examine comment le choix de l'activation affecte le premier facteur; la sous-section sur l'initialisation traite le second.
 
 ### Saturation des fonctions d'activation
 
-La **saturation** est le mécanisme principal de la dissolution du gradient. Rappelons les fonctions d'activation vues au chapitre 7. La dérivée de la sigmoïde est $\sigma'(a) = \sigma(a)(1 - \sigma(a))$, bornée par 0,25 (atteinte en $a = 0$). Pour les grandes valeurs de $|a|$, la dérivée est proche de zéro: la fonction est saturée et le gradient s'annule.
+La **saturation** est le mécanisme principal de la dissolution du gradient. Pour comprendre pourquoi, examinons les dérivées des fonctions d'activation vues au chapitre 7.
 
-Dans un réseau de $L$ couches sigmoïdes, chaque couche multiplie le gradient par un facteur d'au plus 0,25. Après $L$ couches, la norme du gradient est au plus $0{,}25^L$ fois sa valeur initiale. Pour $L = 20$, cela donne $(0{,}25)^{20} \approx 10^{-12}$: le gradient est essentiellement nul.
+**Sigmoïde.** La dérivée de la sigmoïde est $\sigma'(a) = \sigma(a)(1 - \sigma(a))$. Puisque $\sigma(a) \in (0, 1)$, le produit $\sigma(a)(1 - \sigma(a))$ est borné par 0,25 (atteint en $a = 0$, où $\sigma(0) = 0{,}5$). Pour les grandes valeurs de $|a|$, $\sigma(a)$ est proche de 0 ou 1, et la dérivée est proche de zéro: la fonction est saturée et le gradient s'annule.
 
-ReLU résout ce problème. Pour les entrées positives, $\text{ReLU}'(a) = 1$: le gradient passe sans atténuation. Le coût est le problème des **neurones morts**: un neurone dont la pré-activation est toujours négative a un gradient nul et cesse d'apprendre. Les variantes Leaky ReLU et GELU (définies au chapitre 7) atténuent ce problème en maintenant un gradient non nul pour les entrées négatives.
+**Tanh.** La dérivée est $\tanh'(a) = 1 - \tanh^2(a)$, bornée par 1 (en $a = 0$). Tanh sature moins vite que la sigmoïde ($\tanh'(0) = 1$ contre $\sigma'(0) = 0{,}25$), mais le problème persiste pour les grandes valeurs de $|a|$.
+
+Dans un réseau de $L$ couches avec activation sigmoïde, la jacobienne locale de chaque couche est $\operatorname{diag}(\sigma'(\mathbf{a}_\ell))\, W_\ell$. La norme de chaque facteur est bornée par $\|\sigma'(\mathbf{a}_\ell)\|_\infty \|W_\ell\|$. Même avec des poids bien calibrés, le facteur $\sigma'$ plafonne à 0,25. Entre la sortie et la première couche, il y a $L-1$ jacobiennes, donc la norme du gradient est au plus $0{,}25^{L-1}$ fois sa valeur initiale. Pour $L = 20$, cela donne $(0{,}25)^{19} \approx 3{,}6 \times 10^{-12}$: le gradient est pratiquement nul.
+
+**ReLU.** La dérivée de ReLU est:
+
+$$
+\text{ReLU}'(a) = \begin{cases} 1 & \text{si } a > 0 \\ 0 & \text{si } a < 0 \end{cases}
+$$
+
+Pour les entrées positives, $\text{ReLU}'(a) = 1$: le gradient passe sans aucune atténuation. Il n'y a pas de saturation. La jacobienne de la couche pour les neurones actifs est $W_\ell$ lui-même, sans facteur réducteur. Avec une initialisation appropriée (section suivante), la norme du gradient reste stable en traversant les couches.
+
+ReLU n'est pas différentiable en $a = 0$. En pratique, cela ne pose pas de problème. La probabilité qu'une pré-activation soit exactement zéro est nulle (les poids et les entrées sont des nombres à virgule flottante). Les bibliothèques de différentiation automatique adoptent la convention $\text{ReLU}'(0) = 0$ (ou parfois $1$): ce choix n'affecte pas l'entraînement, car il ne concerne qu'un ensemble de mesure nulle dans l'espace des entrées. Plus généralement, pour que la rétropropagation fonctionne, il suffit que la fonction d'activation soit différentiable *presque partout*, c'est-à-dire partout sauf en un nombre fini de points. ReLU, Leaky ReLU et les fonctions linéaires par morceaux satisfont cette condition.
+
+Le coût de cette propriété est le problème des **neurones morts**: un neurone dont la pré-activation $a$ est toujours négative a un gradient nul ($\text{ReLU}'(a) = 0$) et cesse d'apprendre. Une fois mort, le neurone ne peut pas être réactivé par le gradient seul.
+
+**Leaky ReLU et GELU.** Pour atténuer le problème des neurones morts, Leaky ReLU maintient un petit gradient pour les entrées négatives: $\text{Leaky ReLU}'(a) = \alpha$ pour $a < 0$ (typiquement $\alpha = 0{,}01$). Le neurone ne meurt jamais complètement. GELU, utilisé dans les transformeurs modernes (chapitre 10), est une variante lisse de ReLU dont la dérivée est continue et non nulle partout, ce qui améliore la stabilité de l'optimisation.
 
 La figure ci-dessous simule la norme du gradient en fonction de la profondeur pour des réseaux sigmoïdes et ReLU. La décroissance exponentielle avec la sigmoïde illustre pourquoi les réseaux profonds étaient difficiles à entraîner avant l'adoption de ReLU.
 
@@ -448,7 +509,7 @@ n_trials = 50
 d = 50  # dimension des couches
 
 def simulate_gradient_norm(activation_deriv, n_layers, n_trials, d):
-    """Simule la norme du gradient à la première couche."""
+    """Simule la norme d'un signal rétropropagé à travers n_layers couches."""
     norms = []
     for _ in range(n_trials):
         g = np.ones(d) / np.sqrt(d)  # gradient normalisé en sortie
@@ -480,15 +541,15 @@ ax.semilogy(layers, norms_sigmoid, 'C0-o', markersize=4, linewidth=2, label='Sig
 ax.semilogy(layers, norms_relu,    'C2-s', markersize=4, linewidth=2, label='ReLU')
 ax.axhspan(0, 1e-8, alpha=0.1, color='C0', label='Zone de disparition')
 ax.set_xlabel('Profondeur (nombre de couches)')
-ax.set_ylabel('Norme du gradient $\\|\\nabla_{W_1}\\mathcal{L}\\|$')
-ax.set_title('Dissolution du gradient: sigmoïde vs ReLU')
+ax.set_ylabel('Norme du signal rétropropagé')
+ax.set_title('Atténuation du signal de gradient avec la profondeur')
 ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3, which='both')
 ax.set_xlim(1, n_layers)
 plt.tight_layout()
 ```
 
-Avec la sigmoïde, la norme du gradient décroît de façon essentiellement exponentielle: à 20 couches de profondeur, le signal est réduit de plusieurs ordres de grandeur. ReLU maintient un gradient plus stable grâce à sa dérivée égale à 1 pour les activations positives.
+Avec la sigmoïde, la norme du gradient décroît de façon quasi exponentielle: à 20 couches de profondeur, le signal est réduit de plusieurs ordres de grandeur. ReLU maintient un gradient plus stable grâce à sa dérivée égale à 1 pour les activations positives.
 
 ### Initialisation des poids
 
@@ -560,7 +621,7 @@ plt.suptitle("Distribution des activations (tanh) selon l'initialisation", fonts
 plt.tight_layout()
 ```
 
-Avec une variance trop petite, les activations tanh se concentrent autour de zéro dès les premières couches (zone de gradient quasi nul). Avec une variance trop grande, elles saturent à $\pm 1$. L'initialisation de Glorot maintient des distributions stables, ce qui préserve le signal des gradients à travers la profondeur.
+Avec une variance trop petite, les pré-activations se contractent vers zéro à chaque couche. Dans cette zone, tanh est quasi linéaire ($\tanh(a) \approx a$ pour $a$ petit), ce qui signifie que les couches successives n'ajoutent presque pas de non-linéarité: le réseau profond se comporte comme un modèle linéaire peu expressif. Avec une variance trop grande, les pré-activations sont grandes et les activations saturent à $\pm 1$, où la dérivée de tanh est proche de zéro: c'est le régime de dissolution du gradient. L'initialisation de Glorot maintient les pré-activations dans une plage intermédiaire, ce qui préserve à la fois l'expressivité et le signal des gradients à travers la profondeur.
 
 ### Normalisation par lots
 
@@ -572,7 +633,9 @@ $$
 
 où $\bar{a}_j$ et $s_j^2$ sont la moyenne et la variance empiriques de la pré-activation $j$ sur le mini-lot, et $\epsilon$ est une petite constante de stabilité. Des paramètres appris $\gamma_j$ et $\beta_j$ permettent ensuite de recalibrer: $\tilde{a}_j = \gamma_j \hat{a}_j + \beta_j$.
 
-Cette technique stabilise l'entraînement en réduisant la dépendance des gradients à l'échelle des activations. Elle permet d'utiliser des taux d'apprentissage plus élevés et agit comme un régularisateur implicite.
+Cette technique stabilise l'entraînement en réduisant la dépendance des gradients à l'échelle des activations. Elle permet d'utiliser des taux d'apprentissage plus élevés et agit comme un régularisateur implicite. À l'inférence, on n'utilise pas les statistiques du mini-lot courant (qui peut être de taille 1): on les remplace par des moyennes glissantes de $\bar{a}_j$ et $s_j^2$ accumulées pendant l'entraînement.
+
+La normalisation par lots dépend des statistiques du mini-lot, ce qui pose des problèmes quand les lots sont petits ou quand le modèle traite des séquences de longueurs variables. La **normalisation de couche** (*layer normalization*) {cite}`ba2016layer` calcule plutôt la moyenne et la variance sur les dimensions d'un seul exemple (sur les neurones d'une couche plutôt que sur les exemples d'un lot). Elle ne dépend pas de la taille du mini-lot et est le choix standard pour les transformeurs (chapitre 10).
 
 ### Connexions résiduelles
 
@@ -588,34 +651,17 @@ $$
 \frac{\partial \mathbf{z}_{\ell+1}}{\partial \mathbf{z}_\ell} = I + \frac{\partial f}{\partial \mathbf{z}_\ell}
 $$
 
-La présence du terme identité $I$ garantit que le gradient ne peut pas s'annuler complètement, même si $\frac{\partial f}{\partial \mathbf{z}_\ell}$ est petit. Cette architecture a permis d'entraîner des réseaux de plus de 100 couches.
+La présence du terme identité $I$ crée un chemin direct pour le gradient: même si $\frac{\partial f}{\partial \mathbf{z}_\ell}$ est petit, le signal de gradient dispose d'un raccourci qui ne passe pas par la transformation $f$. En pratique, cette propriété atténue fortement la dissolution du gradient et a permis d'entraîner des réseaux de plus de 100 couches.
 
 Comparé à une couche standard, le bloc résiduel ajoute simplement une connexion directe (*skip connection*) dans le graphe de calcul:
 
-```{mermaid}
-graph LR
-    subgraph standard["Couche standard"]
-        direction LR
-        z_in("z") --> f("f(z ; θ)")
-        f --> z_out("z'")
-    end
+:::{figure} _static/residual_block.svg
+:name: fig-residual-block
+:align: center
+:width: 70%
 
-    subgraph residuel["Bloc résiduel"]
-        direction LR
-        z_in2("z") --> f2("f(z ; θ)")
-        f2 --> add("+")
-        z_in2 -- "identité" --> add
-        add --> z_out2("z + f(z)")
-    end
-
-    style f fill:#f5f5f5,stroke:#666666
-    style f2 fill:#f5f5f5,stroke:#666666
-    style add fill:#fff2cc,stroke:#d6b656
-    style z_in fill:#dae8fc,stroke:#6c8ebf
-    style z_out fill:#d5e8d4,stroke:#82b366
-    style z_in2 fill:#dae8fc,stroke:#6c8ebf
-    style z_out2 fill:#d5e8d4,stroke:#82b366
-```
+Couche standard (gauche) et bloc résiduel (droite). La connexion identité crée un chemin direct pour le signal: le bloc $f$ n'apprend que le résidu à ajouter.
+:::
 
 La connexion identité crée un **chemin direct** pour le gradient: lors de la passe arrière, le gradient peut contourner le bloc $f$ et se propager directement vers les couches précédentes, sans multiplication par les jacobiennes potentiellement petites de $f$.
 
@@ -631,21 +677,76 @@ Si $\|\mathbf{g}\| > c$, le gradient est réduit pour avoir une norme $c$. Cette
 
 ## Régularisation
 
-### Décroissance des poids
+Les sections précédentes ont couvert les algorithmes d'optimisation et les techniques pour stabiliser le gradient. Un réseau correctement entraîné peut atteindre une perte d'entraînement très faible, mais cela ne garantit pas qu'il généralisera bien à de nouvelles données. Comme nous l'avons vu au chapitre 4, un modèle trop expressif risque le surapprentissage. Cette section présente les techniques de régularisation spécifiques aux réseaux de neurones.
 
-Comme nous l'avons vu au chapitre 3, la **régularisation L2** ajoute une pénalité sur la norme des paramètres à la perte:
+### Arrêt précoce
+
+La technique de régularisation la plus simple est l'**arrêt précoce** (*early stopping*): on surveille la perte sur un ensemble de validation pendant l'entraînement, et on arrête dès qu'elle cesse de diminuer.
+
+En pratique, la perte de validation fluctue d'une époque à l'autre. On utilise donc un critère de **patience**: l'entraînement s'arrête si la perte de validation n'a pas diminué depuis $k$ époques consécutives (typiquement $k = 5$ à $20$). On conserve les paramètres correspondant à la meilleure perte de validation observée.
+
+```{prf:algorithm} Arrêt précoce
+:label: ch8-early-stopping
+
+**Entrée**: Patience $k$, nombre maximal d'époques $T_{\max}$
+
+**Initialiser**: $\boldsymbol{\theta}_{\text{best}} = \boldsymbol{\theta}_0$, $\mathcal{L}_{\text{best}} = \infty$, compteur $c = 0$
+
+1. Pour $t = 1, \ldots, T_{\max}$:
+   - Entraîner une époque (mini-lots)
+   - Évaluer $\mathcal{L}_{\text{val}}(\boldsymbol{\theta}_t)$
+   - Si $\mathcal{L}_{\text{val}} < \mathcal{L}_{\text{best}}$:
+     - $\mathcal{L}_{\text{best}} \leftarrow \mathcal{L}_{\text{val}}$, $\boldsymbol{\theta}_{\text{best}} \leftarrow \boldsymbol{\theta}_t$, $c \leftarrow 0$
+   - Sinon: $c \leftarrow c + 1$
+   - Si $c \geq k$: arrêter
+2. Retourner $\boldsymbol{\theta}_{\text{best}}$
+```
+
+L'arrêt précoce limite implicitement la complexité du modèle: un réseau entraîné pendant peu d'époques reste proche de son initialisation et n'a pas eu le temps de mémoriser les données. On peut montrer que, sous certaines conditions, l'arrêt précoce avec SGD a un effet similaire à la régularisation L2, le nombre d'époques jouant un rôle inversement proportionnel au coefficient de régularisation $\lambda$.
+
+L'arrêt précoce est presque toujours utilisé en pratique, souvent en combinaison avec les autres techniques décrites ci-dessous.
+
+### Décroissance des poids et régularisation L2
+
+Ces deux termes sont souvent utilisés de façon interchangeable, mais ils désignent des opérations distinctes qui ne coïncident que dans un cas particulier.
+
+**Régularisation L2.** Comme nous l'avons vu au chapitre 3, la régularisation L2 modifie la *fonction de perte* en ajoutant une pénalité sur la norme des paramètres:
 
 $$
 \mathcal{L}_{\text{rég}} = \mathcal{L} + \frac{\lambda}{2}\|\boldsymbol{\theta}\|^2
 $$
 
-Le gradient de la perte régularisée est $\nabla_{\boldsymbol{\theta}} \mathcal{L}_{\text{rég}} = \nabla_{\boldsymbol{\theta}} \mathcal{L} + \lambda \boldsymbol{\theta}$. La mise à jour de paramètres devient:
+L'optimiseur minimise ensuite cette perte modifiée. Le gradient devient $\nabla_{\boldsymbol{\theta}} \mathcal{L}_{\text{rég}} = \nabla_{\boldsymbol{\theta}} \mathcal{L} + \lambda \boldsymbol{\theta}$: le terme $\lambda\boldsymbol{\theta}$ est traité comme une composante du gradient et passe par toute la machinerie de l'optimiseur (moments, normalisation adaptative, etc.).
+
+**Décroissance des poids.** La décroissance des poids (*weight decay*) modifie la *règle de mise à jour*: à chaque pas, les paramètres sont contractés par un facteur $(1 - \eta\lambda)$, indépendamment du gradient:
 
 $$
-\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta(\nabla_{\boldsymbol{\theta}} \mathcal{L} + \lambda \boldsymbol{\theta}_t) = (1 - \eta\lambda)\boldsymbol{\theta}_t - \eta \nabla_{\boldsymbol{\theta}} \mathcal{L}
+\boldsymbol{\theta}_{t+1} = (1 - \eta\lambda)\boldsymbol{\theta}_t - \eta\, \Delta\boldsymbol{\theta}_t
 $$
 
-Le facteur $(1-\eta\lambda)$ contracte légèrement les poids à chaque pas, d'où le nom de **décroissance des poids** (*weight decay*). Comme au chapitre 3, cela correspond à un prior gaussien $p(\boldsymbol{\theta}) \propto \exp(-\frac{\lambda}{2}\|\boldsymbol{\theta}\|^2)$ sur les paramètres, et l'estimation MAP avec ce prior est équivalente à la régularisation L2.
+où $\Delta\boldsymbol{\theta}_t$ est la direction de descente calculée par l'optimiseur à partir du gradient de $\mathcal{L}$ seule (sans pénalité).
+
+**Équivalence pour SGD.** Avec SGD, $\Delta\boldsymbol{\theta}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}$. La mise à jour avec décroissance des poids est:
+
+$$
+\boldsymbol{\theta}_{t+1} = (1 - \eta\lambda)\boldsymbol{\theta}_t - \eta \nabla_{\boldsymbol{\theta}} \mathcal{L} = \boldsymbol{\theta}_t - \eta(\nabla_{\boldsymbol{\theta}} \mathcal{L} + \lambda\boldsymbol{\theta}_t)
+$$
+
+C'est exactement la mise à jour obtenue en minimisant $\mathcal{L}_{\text{rég}}$ par SGD. Les deux opérations sont donc équivalentes pour SGD. Du point de vue bayésien, cela correspond à un prior gaussien $p(\boldsymbol{\theta}) \propto \exp(-\frac{\lambda}{2}\|\boldsymbol{\theta}\|^2)$ sur les paramètres (chapitre 3).
+
+**Deux opérations distinctes avec Adam.** Avec un optimiseur adaptatif comme Adam, les deux opérations produisent des comportements différents, et il n'y a pas de raison de préférer l'une parce qu'elle "devrait" correspondre à l'autre: ce sont deux formes de régularisation à part entière.
+
+Avec la régularisation L2, le terme $\lambda\boldsymbol{\theta}$ est ajouté au gradient *avant* le calcul des moments et la normalisation adaptative. Il est donc traité comme n'importe quelle autre composante du gradient: divisé par $\sqrt{\hat{\mathbf{s}}}$, accumulé dans les moments, etc. La régularisation effective sur chaque paramètre dépend de l'historique de ses gradients.
+
+Avec la décroissance des poids, la contraction $(1 - \eta\lambda)\boldsymbol{\theta}_t$ s'applique directement sur les paramètres, sans passer par les moments:
+
+$$
+\boldsymbol{\theta}_{t+1} = (1 - \eta\lambda)\boldsymbol{\theta}_t - \eta\, \frac{\hat{\mathbf{m}}_{t+1}}{\sqrt{\hat{\mathbf{s}}_{t+1}} + \epsilon}
+$$
+
+Chaque paramètre est contracté par le même facteur, indépendamment de l'historique de ses gradients. C'est une opération plus simple et plus directe.
+
+Loshchilov et Hutter {cite}`loshchilov2019decoupled` ont observé que la décroissance des poids (et non la régularisation L2) donne de meilleurs résultats avec Adam, et ont proposé **AdamW**, qui sépare explicitement les deux: Adam gère l'optimisation, la contraction gère la régularisation. AdamW est devenu le choix standard pour l'entraînement de grands modèles.
 
 En pratique, la décroissance des poids ne s'applique généralement pas aux biais. La valeur $\lambda = 10^{-4}$ à $10^{-2}$ est courante.
 
@@ -654,10 +755,10 @@ En pratique, la décroissance des poids ne s'applique généralement pas aux bia
 La **décroissance des poids** pénalise les paramètres individuellement. Le **dropout** {cite}`srivastava2014dropout` agit différemment: il désactive aléatoirement des neurones à chaque passe avant pendant l'entraînement. Formellement, pour chaque couche cachée $\ell$, on applique un masque de Bernoulli:
 
 $$
-\boldsymbol{\epsilon} \sim \text{Ber}(1-p)^{\otimes m}, \qquad \tilde{\mathbf{z}}_\ell = \frac{1}{1-p}(\boldsymbol{\epsilon} \odot \mathbf{z}_\ell)
+\epsilon_j \sim \text{Ber}(1-p) \text{ indépendamment pour } j = 1, \ldots, m, \qquad \tilde{\mathbf{z}}_\ell = \frac{1}{1-p}(\boldsymbol{\epsilon} \odot \mathbf{z}_\ell)
 $$
 
-où $p \in [0, 1)$ est le **taux de dropout** (probabilité qu'un neurone soit désactivé), $\boldsymbol{\epsilon} \in \{0,1\}^m$ est le masque aléatoire, et le facteur $\frac{1}{1-p}$ est une **renormalisation inversée** (*inverted dropout*): il compense l'absence de neurones pendant l'entraînement, de sorte que l'espérance des activations reste inchangée:
+où $p \in [0, 1)$ est le **taux de dropout** (probabilité qu'un neurone soit désactivé), $\boldsymbol{\epsilon} \in \{0,1\}^m$ est le masque aléatoire (chaque composante vaut 1 avec probabilité $1-p$ et 0 sinon), et le facteur $\frac{1}{1-p}$ est une **renormalisation inversée** (*inverted dropout*): il compense l'absence de neurones pendant l'entraînement, de sorte que l'espérance des activations reste inchangée:
 
 $$
 \mathbb{E}\left[\frac{1}{1-p}\epsilon_j z_j\right] = \frac{1}{1-p}(1-p) z_j = z_j
@@ -748,7 +849,7 @@ import matplotlib.pyplot as plt
 
 np.random.seed(1)
 
-def make_moons(n=120, noise=0.2):
+def make_moons(n=200, noise=0.2):
     t = np.linspace(0, np.pi, n//2)
     x1 = np.column_stack([np.cos(t), np.sin(t)]) + noise*np.random.randn(n//2, 2)
     x2 = np.column_stack([1-np.cos(t), -np.sin(t)+0.5]) + noise*np.random.randn(n//2, 2)
@@ -756,76 +857,85 @@ def make_moons(n=120, noise=0.2):
     y = np.array([0]*(n//2) + [1]*(n//2))
     return X, y
 
-X_all, y_all = make_moons(120, 0.25)
-# Split: 40 train, 80 val
+X_all, y_all = make_moons(200, 0.2)
+np.random.seed(42)
 idx = np.random.permutation(len(y_all))
 X_tr, y_tr = X_all[idx[:40]], y_all[idx[:40]]
 X_val, y_val = X_all[idx[40:]], y_all[idx[40:]]
 
 def relu(x):    return np.maximum(0, x)
-def sigmoid(x): return 1/(1+np.exp(-np.clip(x,- 50,50)))
+def sigmoid(x): return 1/(1+np.exp(-np.clip(x,-50,50)))
 def ce(p, y):
     p = np.clip(p, 1e-7, 1-1e-7)
     return -np.mean(y*np.log(p)+(1-y)*np.log(1-p))
 
-def train_mlp(X_tr, y_tr, X_val, y_val, H=32, n_epochs=300,
-              eta=0.01, lam=0.0, p_drop=0.0):
+def train_mlp_2layer(X_tr, y_tr, X_val, y_val, H=64, n_epochs=600,
+                     eta=0.05, lam=0.0, p_drop=0.0):
     np.random.seed(0)
     W1 = np.random.randn(2, H)*np.sqrt(2/2)
     b1 = np.zeros(H)
-    W2 = np.random.randn(H,1)*np.sqrt(2/H)
-    b2 = np.zeros(1)
+    W2 = np.random.randn(H, H)*np.sqrt(2/H)
+    b2 = np.zeros(H)
+    W3 = np.random.randn(H, 1)*np.sqrt(2/H)
+    b3 = np.zeros(1)
+    N = len(y_tr)
     tr_losses, val_losses = [], []
     for _ in range(n_epochs):
-        # Forward + dropout
-        a1 = X_tr @ W1 + b1
-        z1 = relu(a1)
+        a1 = X_tr @ W1 + b1; z1 = relu(a1)
         if p_drop > 0:
-            mask = (np.random.rand(*z1.shape) > p_drop).astype(float)
-            z1_drop = z1 * mask / (1-p_drop)
+            m1 = (np.random.rand(*z1.shape) > p_drop).astype(float) / (1-p_drop)
+            z1d = z1 * m1
         else:
-            z1_drop = z1
-        a2 = z1_drop @ W2 + b2
-        p  = sigmoid(a2)
-        yb = y_tr.reshape(-1,1).astype(float)
-        # Backward
-        dp  = (p - yb) / len(y_tr)
-        dW2 = z1_drop.T @ dp + lam*W2/len(y_tr)
-        db2 = dp.sum(0)
-        dz1 = dp @ W2.T
+            z1d = z1; m1 = None
+        a2 = z1d @ W2 + b2; z2 = relu(a2)
         if p_drop > 0:
-            dz1 = dz1 * mask / (1-p_drop)
+            m2 = (np.random.rand(*z2.shape) > p_drop).astype(float) / (1-p_drop)
+            z2d = z2 * m2
+        else:
+            z2d = z2; m2 = None
+        a3 = z2d @ W3 + b3; p = sigmoid(a3)
+        yb = y_tr.reshape(-1,1).astype(float)
+        dp = (p - yb) / N
+        dW3 = z2d.T @ dp + lam*W3/N; db3 = dp.sum(0)
+        dz2 = dp @ W3.T
+        if m2 is not None: dz2 = dz2 * m2
+        da2 = dz2 * (a2 > 0)
+        dW2 = z1d.T @ da2 + lam*W2/N; db2 = da2.sum(0)
+        dz1 = da2 @ W2.T
+        if m1 is not None: dz1 = dz1 * m1
         da1 = dz1 * (a1 > 0)
-        dW1 = X_tr.T @ da1 + lam*W1/len(y_tr)
-        db1 = da1.sum(0)
+        dW1 = X_tr.T @ da1 + lam*W1/N; db1 = da1.sum(0)
         W1 -= eta*dW1; b1 -= eta*db1
         W2 -= eta*dW2; b2 -= eta*db2
-        # Losses
-        tr_losses.append(ce(sigmoid(relu(X_tr@W1+b1)@W2+b2), y_tr.reshape(-1,1)))
-        val_losses.append(ce(sigmoid(relu(X_val@W1+b1)@W2+b2), y_val.reshape(-1,1)))
-    return W1, b1, W2, b2, tr_losses, val_losses
+        W3 -= eta*dW3; b3 -= eta*db3
+        def fwd(X): return sigmoid(relu(relu(X@W1+b1)@W2+b2)@W3+b3)
+        tr_losses.append(ce(fwd(X_tr), y_tr.reshape(-1,1)))
+        val_losses.append(ce(fwd(X_val), y_val.reshape(-1,1)))
+    return W1, b1, W2, b2, W3, b3, tr_losses, val_losses
 
-W1a,b1a,W2a,b2a,tr_a,va_a = train_mlp(X_tr,y_tr,X_val,y_val, H=64, lam=0.0, p_drop=0.0)
-W1b,b1b,W2b,b2b,tr_b,va_b = train_mlp(X_tr,y_tr,X_val,y_val, H=64, lam=1e-2, p_drop=0.4)
+W1a,b1a,W2a,b2a,W3a,b3a,tr_a,va_a = train_mlp_2layer(
+    X_tr, y_tr, X_val, y_val, H=64, lam=0.0, p_drop=0.0)
+W1b,b1b,W2b,b2b,W3b,b3b,tr_b,va_b = train_mlp_2layer(
+    X_tr, y_tr, X_val, y_val, H=64, lam=5e-3, p_drop=0.5)
 
 xx, yy = np.meshgrid(np.linspace(-1.5, 2.5, 200), np.linspace(-1, 1.8, 200))
 Xg = np.column_stack([xx.ravel(), yy.ravel()])
 
-def predict(Xg, W1,b1,W2,b2):
-    return sigmoid(relu(Xg@W1+b1)@W2+b2).reshape(xx.shape)
+def predict(Xg, W1,b1,W2,b2,W3,b3):
+    return sigmoid(relu(relu(Xg@W1+b1)@W2+b2)@W3+b3).reshape(xx.shape)
 
-Za = predict(Xg, W1a,b1a,W2a,b2a)
-Zb = predict(Xg, W1b,b1b,W2b,b2b)
+Za = predict(Xg, W1a,b1a,W2a,b2a,W3a,b3a)
+Zb = predict(Xg, W1b,b1b,W2b,b2b,W3b,b3b)
 
 fig, axes = plt.subplots(2, 2, figsize=(11, 8))
-epochs = np.arange(1, 301)
+n_ep = len(tr_a)
+epochs = np.arange(1, n_ep+1)
 colors_cls = ['#4878CF', '#D65F5F']
 
-for col, (tr_l, va_l, Za_Zb, W1_,b1_,W2_,b2_, title) in enumerate([
-    (tr_a, va_a, Za, W1a,b1a,W2a,b2a, 'Sans régularisation'),
-    (tr_b, va_b, Zb, W1b,b1b,W2b,b2b, 'Avec dropout + décroissance des poids'),
+for col, (tr_l, va_l, Zp, title) in enumerate([
+    (tr_a, va_a, Za, 'Sans régularisation'),
+    (tr_b, va_b, Zb, 'Avec dropout + décroissance des poids'),
 ]):
-    # Courbes de convergence
     ax = axes[0, col]
     ax.plot(epochs, tr_l, 'C0-',  lw=2, label='Entraînement')
     ax.plot(epochs, va_l, 'C1--', lw=2, label='Validation')
@@ -833,14 +943,15 @@ for col, (tr_l, va_l, Za_Zb, W1_,b1_,W2_,b2_, title) in enumerate([
     ax.set_title(title, fontsize=10)
     ax.legend(fontsize=9);  ax.grid(True, alpha=0.3)
 
-    # Frontière de décision
     ax = axes[1, col]
-    ax.contourf(xx, yy, Za_Zb, levels=50, cmap='RdBu_r', alpha=0.65, vmin=0, vmax=1)
-    ax.contour(xx, yy, Za_Zb, levels=[0.5], colors='k', linewidths=1.5)
+    ax.contourf(xx, yy, Zp, levels=50, cmap='RdBu_r', alpha=0.65, vmin=0, vmax=1)
+    ax.contour(xx, yy, Zp, levels=[0.5], colors='k', linewidths=1.5)
     for cls in [0,1]:
-        m_tr  = y_tr  == cls;  m_val = y_val == cls
-        ax.scatter(X_tr[m_tr,0],  X_tr[m_tr,1],  c=colors_cls[cls], marker='o', s=60, edgecolors='k', lw=0.8, zorder=5)
-        ax.scatter(X_val[m_val,0],X_val[m_val,1], c=colors_cls[cls], marker='s', s=40, alpha=0.5, zorder=4)
+        m_tr = y_tr == cls; m_val = y_val == cls
+        ax.scatter(X_tr[m_tr,0], X_tr[m_tr,1], c=colors_cls[cls],
+                   marker='o', s=60, edgecolors='k', lw=0.8, zorder=5)
+        ax.scatter(X_val[m_val,0], X_val[m_val,1], c=colors_cls[cls],
+                   marker='s', s=40, alpha=0.5, zorder=4)
     ax.set_xlabel(r'$x_1$');  ax.set_ylabel(r'$x_2$')
     ax.set_title('Frontière de décision', fontsize=10)
     ax.grid(True, alpha=0.2)
@@ -854,7 +965,61 @@ plt.suptitle('Effet de la régularisation sur le surapprentissage', fontsize=12,
 plt.tight_layout()
 ```
 
-Sans régularisation, le réseau mémorise les 40 exemples d'entraînement et produit une frontière très irrégulière qui généralise mal (écart entre les pertes d'entraînement et de validation). Avec dropout et décroissance des poids, la frontière est plus lisse et la perte de validation reste proche de la perte d'entraînement.
+Sans régularisation, le réseau à deux couches cachées (64 neurones chacune, entraîné sur 40 exemples) mémorise les données d'entraînement: la perte d'entraînement descend vers zéro tandis que la perte de validation augmente, et la frontière de décision est très irrégulière. Avec dropout ($p = 0{,}5$) et décroissance des poids ($\lambda = 5 \times 10^{-3}$), la perte de validation est nettement plus basse et la frontière est plus lisse.
+
+## Pré-entraînement et transfert
+
+Les sections précédentes supposaient qu'on entraîne un réseau en partant de poids aléatoires. En pratique, il est souvent préférable de partir de poids déjà entraînés sur une autre tâche. Cette idée, le **pré-entraînement** suivi d'un **transfert**, est devenue centrale en apprentissage profond.
+
+### L'initialisation comme problème d'optimisation
+
+L'initialisation aléatoire (Glorot, He) garantit la stabilité du gradient, mais elle ne fournit aucune information sur la structure des données. L'optimiseur doit explorer la surface de perte depuis un point arbitraire, ce qui peut être lent et sensible aux minima locaux.
+
+Le pré-entraînement sur une tâche auxiliaire place les paramètres dans une région de l'espace qui encode déjà des régularités utiles. L'optimisation de la tâche cible démarre alors depuis un bassin d'attraction plus favorable. Ce gain n'est pas seulement empirique: historiquement, le pré-entraînement a été la première technique permettant d'entraîner des réseaux profonds.
+
+### Pré-entraînement couche par couche: perspective historique
+
+Avant l'adoption de ReLU et de la normalisation par lots, entraîner un réseau de plus de quelques couches avec une sigmoïde échouait à cause de la dissolution du gradient. En 2006, Hinton et al. {cite}`hinton2006reducing` ont montré qu'on pouvait contourner ce problème en pré-entraînant le réseau couche par couche, de façon non supervisée, avant de l'ajuster sur la tâche supervisée.
+
+L'idée est la suivante. On entraîne d'abord la première couche comme un auto-encodeur (chapitre 9) ou une machine de Boltzmann restreinte: elle apprend à reconstruire ses entrées, ce qui force les poids à capturer les régularités de la distribution d'entrée. Puis on fixe ces poids et on entraîne la deuxième couche de la même façon, en prenant les activations de la première couche comme entrées. On répète le processus pour chaque couche. Le réseau résultant, dont chaque couche a appris des représentations de complexité croissante, sert d'initialisation pour un entraînement supervisé classique (la phase d'**ajustement fin**, *fine-tuning*).
+
+Cette approche glouton couche par couche {cite}`bengio2007greedy` a eu un impact considérable: elle a démontré que les réseaux profonds pouvaient apprendre des représentations hiérarchiques, ouvrant la voie à l'apprentissage profond moderne. Avec les progrès des techniques de stabilisation (ReLU, batch normalization, connexions résiduelles), le pré-entraînement couche par couche est devenu moins nécessaire pour les réseaux à propagation avant. Mais le principe sous-jacent (une bonne initialisation facilite l'optimisation) reste au cœur des approches modernes de transfert.
+
+### Architecture tronc-tête
+
+Les réseaux profonds modernes se décomposent naturellement en deux parties:
+
+- Le **tronc** (*backbone*) est la partie principale du réseau. Il transforme l'entrée brute (pixels, mots, signaux) en une représentation de haut niveau. Dans un réseau convolutif pour la vision, le tronc est l'empilement de couches convolutives. Dans un transformeur (chapitre 10), c'est la pile de blocs d'attention.
+
+- La **tête** (*head*) est une couche (ou un petit sous-réseau) qui prend la représentation du tronc et produit la sortie pour la tâche spécifique: classification, régression, génération, etc. Elle est souvent réduite à une couche linéaire suivie d'un softmax.
+
+Cette décomposition est utile parce que le tronc apprend des caractéristiques générales (contours, textures, relations syntaxiques) qui sont transférables d'une tâche à l'autre, tandis que la tête est spécifique à chaque tâche.
+
+:::{figure} _static/trunk_head_architecture.svg
+:name: fig-trunk-head
+:align: center
+:width: 70%
+
+Architecture tronc-tête. Le tronc transforme l'entrée en une représentation de haut niveau. Différentes têtes se branchent sur cette représentation pour produire des sorties spécifiques à chaque tâche.
+:::
+
+### Transfert de représentations
+
+Le **transfert** (*transfer learning*) consiste à réutiliser un tronc pré-entraîné sur une tâche source (souvent avec beaucoup de données) pour résoudre une tâche cible (souvent avec peu de données). Les deux stratégies principales sont:
+
+**Extraction de caractéristiques.** On gèle les poids du tronc pré-entraîné et on n'entraîne que la tête sur la tâche cible. Le tronc sert de transformateur de caractéristiques fixe. Cette approche est rapide et fonctionne bien quand les données cibles sont rares.
+
+**Ajustement fin (*fine-tuning*).** On initialise le réseau avec les poids pré-entraînés, puis on entraîne le réseau entier (tronc + tête) sur la tâche cible, généralement avec un taux d'apprentissage plus faible que pour un entraînement depuis zéro. Le tronc s'adapte aux spécificités de la tâche cible tout en conservant les représentations utiles apprises lors du pré-entraînement.
+
+Une variante courante est le **gel progressif** (*gradual unfreezing*): on commence par geler le tronc et entraîner la tête, puis on dégèle progressivement les couches du tronc, des plus proches de la sortie vers les plus proches de l'entrée. Cette stratégie évite de détruire les représentations de bas niveau pendant les premières itérations, quand les gradients de la tête nouvellement initialisée sont encore bruités.
+
+### Représentations pré-entraînées
+
+Le pré-entraînement sur de grands jeux de données produit des représentations (aussi appelées **plongements**, *embeddings*) qui capturent la structure des données. Un réseau convolutif pré-entraîné sur ImageNet apprend des filtres de bas niveau (contours, couleurs) dans les premières couches et des détecteurs de parties d'objets dans les couches profondes. Un modèle de langue pré-entraîné (comme BERT ou GPT, chapitre 10) apprend des représentations contextualisées des mots qui encodent la syntaxe et la sémantique.
+
+Ces représentations sont utiles bien au-delà de la tâche de pré-entraînement. Un détecteur de contours appris sur ImageNet est utile pour la segmentation médicale. Un plongement de mots appris par prédiction du mot suivant est utile pour la classification de sentiments. C'est cette transférabilité qui rend le pré-entraînement si efficace: au lieu d'apprendre les régularités de base à partir de quelques centaines d'exemples étiquetés, on les importe d'un modèle entraîné sur des millions d'exemples.
+
+Du point de vue de l'optimisation, le pré-entraînement fournit une initialisation dans une région de l'espace des paramètres où la surface de perte de la tâche cible est plus lisse et mieux conditionnée. L'optimiseur converge plus vite et vers de meilleurs minima que depuis une initialisation aléatoire.
 
 ## Résumé
 
@@ -864,30 +1029,77 @@ Les méthodes du second ordre (Newton, L-BFGS) convergent plus vite en théorie,
 
 L'entraînement de réseaux profonds pose des défis spécifiques. La saturation des fonctions d'activation (sigmoïde, tanh) provoque la dissolution du gradient; ReLU y remédie en maintenant un gradient unitaire pour les entrées positives. L'initialisation soignée (Glorot, He), la normalisation par lots et les connexions résiduelles stabilisent l'entraînement en préservant les distributions d'activations et de gradients à travers la profondeur.
 
-Pour éviter le surapprentissage, la décroissance des poids pénalise les paramètres de grande norme, et le dropout désactive aléatoirement des neurones pendant l'entraînement, ce qui force le réseau à apprendre des caractéristiques robustes.
+Pour éviter le surapprentissage, l'arrêt précoce interrompt l'entraînement quand la perte de validation cesse de diminuer. La décroissance des poids pénalise les paramètres de grande norme, et le dropout désactive aléatoirement des neurones pendant l'entraînement, ce qui force le réseau à apprendre des caractéristiques robustes.
+
+Le pré-entraînement sur des tâches auxiliaires fournit une initialisation qui encode déjà des régularités utiles. Historiquement, le pré-entraînement couche par couche a été la première technique permettant d'entraîner des réseaux profonds. Aujourd'hui, le transfert de représentations (tronc pré-entraîné + tête spécifique) est la méthode standard quand les données étiquetées sont limitées.
 
 ```{admonition} Ce que vous devez retenir
 :class: tip
 
-1. **SGD par mini-lots** estime le gradient sur un sous-ensemble de données. Le bruit introduit par l'échantillonnage n'est pas seulement un inconvénient: il agit comme un régularisateur implicite.
+1. SGD par mini-lots estime le gradient sur un sous-ensemble de données. Le bruit introduit par l'échantillonnage n'est pas seulement un inconvénient: il agit comme un régularisateur implicite.
 
-2. **Adam est l'optimiseur par défaut.** Il combine momentum et taux adaptatifs par dimension, avec correction du biais pour les premières itérations.
+2. Adam est l'optimiseur par défaut. Il combine momentum et taux adaptatifs par dimension, avec correction du biais pour les premières itérations. AdamW y ajoute une décroissance des poids découplée.
 
-3. **Les méthodes du premier ordre dominent** parce que le coût du Hessien est prohibitif pour les grands modèles, et parce que le bruit de SGD favorise des minima qui généralisent mieux.
+3. Les méthodes du premier ordre dominent parce que le coût du hessien est prohibitif pour les grands modèles, et parce que le bruit de SGD favorise des minima qui généralisent mieux.
 
-4. **La saturation des activations cause la dissolution du gradient.** ReLU y remédie grâce à une dérivée unitaire pour les entrées positives, au prix des neurones morts.
+4. La saturation des activations cause la dissolution du gradient. ReLU y remédie grâce à une dérivée unitaire pour les entrées positives, au prix des neurones morts.
 
-5. **L'initialisation, la normalisation par lots et les connexions résiduelles** stabilisent l'entraînement des réseaux profonds en préservant la variance des activations et des gradients.
+5. L'initialisation (Glorot, He), la normalisation (par lots ou de couche) et les connexions résiduelles stabilisent l'entraînement des réseaux profonds en préservant la variance des activations et des gradients.
 
-6. **Dropout et décroissance des poids réduisent le surapprentissage.** Le dropout entraîne un ensemble implicite de sous-réseaux; la décroissance des poids correspond à un prior gaussien sur les paramètres.
+6. L'arrêt précoce, la décroissance des poids et le dropout sont les trois techniques de régularisation les plus courantes pour les réseaux de neurones. Elles sont souvent combinées.
+
+7. Le pré-entraînement fournit une initialisation dans une région favorable de l'espace des paramètres. Le transfert de représentations (extraction de caractéristiques ou ajustement fin) permet de réutiliser ces représentations pour de nouvelles tâches avec peu de données.
 ```
 
 ## Exercices
 
-````{admonition} Exercice 1: Dissolution du gradient ★★★
+````{admonition} Exercice 1: SGD avec momentum ★
 :class: hint dropdown
 
-Cet exercice explore la dissolution du gradient. Considérez un réseau de $L$ couches, chacune avec une seule unité sigmoïde et un poids $w_\ell$:
+Considérez la fonction $f(\theta) = \theta^2$ avec $\theta_0 = 2$, $\eta = 0{,}1$, $\beta = 0{,}9$ et $\mathbf{m}_0 = 0$.
+
+1. Calculez le gradient $g_0 = f'(\theta_0)$.
+2. Calculez la vitesse $m_1 = \beta m_0 + g_0$ et la mise à jour $\theta_1 = \theta_0 - \eta m_1$.
+3. Calculez la deuxième itération: $g_1$, $m_2$, $\theta_2$.
+4. Comparez $\theta_2$ avec le résultat qu'on obtiendrait avec SGD sans momentum ($\beta = 0$). Quel algorithme progresse plus vite vers le minimum?
+````
+
+````{admonition} Solution Exercice 1
+:class: dropdown
+
+1. $g_0 = 2\theta_0 = 4$.
+
+2. $m_1 = 0{,}9 \times 0 + 4 = 4$. $\theta_1 = 2 - 0{,}1 \times 4 = 1{,}6$.
+
+3. $g_1 = 2 \times 1{,}6 = 3{,}2$. $m_2 = 0{,}9 \times 4 + 3{,}2 = 6{,}8$. $\theta_2 = 1{,}6 - 0{,}1 \times 6{,}8 = 0{,}92$.
+
+4. Sans momentum: $\theta_1 = 2 - 0{,}1 \times 4 = 1{,}6$, $\theta_2 = 1{,}6 - 0{,}1 \times 3{,}2 = 1{,}28$. Avec momentum, $\theta_2 = 0{,}92$ est plus proche du minimum ($\theta^* = 0$). Le momentum accélère la convergence en accumulant de la vitesse dans la direction du gradient.
+````
+
+````{admonition} Exercice 2: Borne de dissolution ★
+:class: hint dropdown
+
+Pour un réseau de $L$ couches avec activation sigmoïde, la norme du gradient à la première couche est bornée par $(0{,}25)^{L-1}$ fois la norme du gradient à la sortie.
+
+1. Calculez cette borne pour $L = 5$, $L = 10$ et $L = 20$.
+2. Si le gradient à la sortie vaut 1, quel est l'ordre de grandeur du gradient à la première couche pour $L = 20$?
+3. Avec ReLU (dérivée égale à 1 pour les entrées positives), que devient cette borne?
+````
+
+````{admonition} Solution Exercice 2
+:class: dropdown
+
+1. $L = 5$: $(0{,}25)^4 \approx 3{,}9 \times 10^{-3}$. $L = 10$: $(0{,}25)^9 \approx 3{,}8 \times 10^{-6}$. $L = 20$: $(0{,}25)^{19} \approx 3{,}6 \times 10^{-12}$.
+
+2. Pour $L = 20$, le gradient est de l'ordre de $10^{-12}$: il est pratiquement nul. Les premières couches n'apprennent plus.
+
+3. Avec ReLU, la dérivée est 1 pour les entrées positives. Si toutes les pré-activations sont positives, le facteur multiplicatif est $1^{L-1} = 1$: il n'y a pas de dissolution. C'est l'avantage principal de ReLU pour les réseaux profonds.
+````
+
+````{admonition} Exercice 3: Dissolution du gradient (dérivation complète) ★★★ (optionnel pour IFT3395)
+:class: hint dropdown
+
+Cet exercice explore la dissolution du gradient en détail. Considérez un réseau de $L$ couches, chacune avec une seule unité sigmoïde et un poids $w_\ell$:
 
 $$
 z_\ell = \sigma(w_\ell z_{\ell-1}), \quad z_0 = x
@@ -902,7 +1114,7 @@ $$
 4. Répétez l'analyse avec ReLU. Que change-t-il?
 ````
 
-````{admonition} Solution Exercice 1
+````{admonition} Solution Exercice 3
 :class: dropdown
 
 1. Par la règle de la chaîne:
@@ -919,7 +1131,7 @@ $$
 \left|\frac{\partial z_L}{\partial w_1}\right| \leq (0{,}25)^{L-1} \cdot |x|
 $$
 
-3. Pour $L = 20$: $(0{,}25)^{19} \approx 3{,}6 \times 10^{-12}$. Le gradient est essentiellement nul.
+3. Pour $L = 20$: $(0{,}25)^{19} \approx 3{,}6 \times 10^{-12}$. Le gradient est pratiquement nul.
 
 4. Avec ReLU, $\text{ReLU}'(a) = 1$ pour $a > 0$. Si toutes les pré-activations sont positives:
 
@@ -930,7 +1142,7 @@ $$
 Il n'y a pas de dissolution du gradient (mais il peut exploser si $|w_\ell| > 1$). C'est l'une des raisons du succès de ReLU.
 ````
 
-````{admonition} Exercice 2: Adam à la main ★★
+````{admonition} Exercice 4: Adam à la main ★★
 :class: hint dropdown
 
 Considérez la fonction scalaire $f(\theta) = \theta^2$ et un gradient calculé à $\theta_0 = 1$ (soit $g_0 = 2$). Partez de $\theta_0 = 1$, $m_0 = 0$, $s_0 = 0$, avec $\eta = 0{,}1$, $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$, $\epsilon = 10^{-8}$.
@@ -941,7 +1153,7 @@ Considérez la fonction scalaire $f(\theta) = \theta^2$ et un gradient calculé 
 4. Que se passerait-il sans la correction du biais $\hat{m}_1 = m_1/(1-\beta_1)$? Calculez la mise à jour sans correction.
 ````
 
-````{admonition} Solution Exercice 2
+````{admonition} Solution Exercice 4
 :class: dropdown
 
 **1. Moments après la première itération** ($t=1$, $g_0 = 2\theta_0 = 2$):
@@ -974,7 +1186,7 @@ $$
 \theta_1^{\text{SGD}} = 1 - 0{,}1 \times 2 = 0{,}8
 $$
 
-SGD fait un pas plus grand (de $0{,}2$ vs $0{,}1$ pour Adam). Adam normalise le gradient par sa magnitude: $\hat{m}_1 / \sqrt{\hat{s}_1} = 2/2 = 1$. Pour un gradient de magnitude constante, Adam fait un pas de taille $\eta$ indépendamment de la magnitude du gradient. C'est la normalisation adaptative qui rend Adam moins sensible au choix de $\eta$.
+SGD fait un pas plus grand (de $0{,}2$ vs $0{,}1$ pour Adam). Dans cet exemple scalaire et à la première itération, Adam normalise le gradient par sa magnitude: $\hat{m}_1 / \sqrt{\hat{s}_1} = 2/2 = 1$, ce qui donne un pas de taille $\eta$ indépendamment de la magnitude du gradient. En dimension supérieure et après plusieurs itérations, la normalisation est plus nuancée (elle agit par coordonnée et dépend de l'historique), mais le principe reste le même: la normalisation adaptative rend Adam moins sensible au choix de $\eta$.
 
 **4. Sans correction du biais:**
 
@@ -985,7 +1197,7 @@ $$
 Sans correction, le premier pas serait très grand (les moments sont sous-estimés par rapport à leur valeur asymptotique, et $s_1$ est petit, donc $1/\sqrt{s_1}$ est grand). La correction du biais ramène les moments à leur vraie valeur dès la première itération.
 ````
 
-````{admonition} Exercice 3: Dropout et espérance des activations ★★
+````{admonition} Exercice 5: Dropout et espérance des activations ★★
 :class: hint dropdown
 
 Soit $z_j$ l'activation d'un neurone et $\epsilon_j \sim \text{Ber}(1-p)$ le masque de dropout. La sortie avec dropout inversé est $\tilde{z}_j = \frac{\epsilon_j}{1-p} z_j$.
@@ -999,7 +1211,7 @@ Soit $z_j$ l'activation d'un neurone et $\epsilon_j \sim \text{Ber}(1-p)$ le mas
 4. Implémentez une fonction `dropout(z, p, training)` en NumPy qui applique le dropout inversé pendant l'entraînement et retourne $z$ inchangé à l'inférence.
 ````
 
-````{admonition} Solution Exercice 3
+````{admonition} Solution Exercice 5
 :class: dropdown
 
 **1. Espérance:**
@@ -1042,7 +1254,7 @@ def dropout(z, p, training=True):
 ```
 ````
 
-````{admonition} Exercice 4: Comparer SGD et la méthode de Newton ★★
+````{admonition} Exercice 6: Comparer SGD et la méthode de Newton ★★
 :class: hint dropdown
 
 Considérez la fonction $f(\theta_1, \theta_2) = \theta_1^2 + 10\theta_2^2$ avec le point initial $\boldsymbol{\theta}_0 = (1, 1)^\top$.
@@ -1056,7 +1268,7 @@ Considérez la fonction $f(\theta_1, \theta_2) = \theta_1^2 + 10\theta_2^2$ avec
 4. Pour un réseau avec $p = 10^8$ paramètres, combien de mémoire (en Go) faudrait-il pour stocker le hessien en float32?
 ````
 
-````{admonition} Solution Exercice 4
+````{admonition} Solution Exercice 6
 :class: dropdown
 
 1. $\nabla f(\boldsymbol{\theta}) = (2\theta_1,\; 20\theta_2)^\top$. En $(1, 1)$: $\nabla f = (2, 20)^\top$.
@@ -1076,7 +1288,7 @@ Considérez la fonction $f(\theta_1, \theta_2) = \theta_1^2 + 10\theta_2^2$ avec
 4. Le hessien a $p^2 = 10^{16}$ entrées. En float32 (4 octets): $4 \times 10^{16}$ octets $= 4 \times 10^7$ Go $\approx 40$ pétaoctets. C'est hors de portée de toute infrastructure actuelle.
 ````
 
-````{admonition} Exercice 5: Bruit du mini-lot et taille de lot ★★
+````{admonition} Exercice 7: Bruit du mini-lot et taille de lot ★★
 :class: hint dropdown
 
 Soit $\mathcal{L}(\boldsymbol{\theta}) = \frac{1}{N}\sum_{i=1}^N \ell_i(\boldsymbol{\theta})$ la perte empirique, et $\hat{\mathbf{g}} = \frac{1}{B}\sum_{i \in \mathcal{B}} \nabla \ell_i(\boldsymbol{\theta})$ le gradient estimé sur un mini-lot $\mathcal{B}$ de taille $B$ tiré sans remise.
@@ -1090,7 +1302,7 @@ Soit $\mathcal{L}(\boldsymbol{\theta}) = \frac{1}{N}\sum_{i=1}^N \ell_i(\boldsym
 4. En doublant la taille du lot, par quel facteur la variance diminue-t-elle? Par quel facteur le coût par itération augmente-t-il?
 ````
 
-````{admonition} Solution Exercice 5
+````{admonition} Solution Exercice 7
 :class: dropdown
 
 1. $\mathbb{E}[\hat{\mathbf{g}}] = \frac{1}{B}\sum_{i \in \mathcal{B}} \mathbb{E}[\nabla \ell_i] = \frac{1}{B} \cdot B \cdot \nabla \mathcal{L} = \nabla \mathcal{L}$, car chaque $i$ est tiré uniformément et $\mathbb{E}[\nabla \ell_i] = \nabla \mathcal{L}$.
@@ -1102,7 +1314,7 @@ Soit $\mathcal{L}(\boldsymbol{\theta}) = \frac{1}{N}\sum_{i=1}^N \ell_i(\boldsym
 4. En doublant $B$, la variance est divisée par 2, mais le coût par itération double. Le rapport signal/bruit s'améliore en $\sqrt{B}$ seulement (écart-type en $1/\sqrt{B}$), ce qui explique les rendements décroissants des grands lots.
 ````
 
-````{admonition} Exercice 6: Initialisation de Glorot ★★
+````{admonition} Exercice 8: Initialisation de Glorot ★★
 :class: hint dropdown
 
 Considérez une couche linéaire $\mathbf{z} = W\mathbf{x}$ avec $W \in \mathbb{R}^{m \times n}$. On suppose que les entrées $x_j$ sont i.i.d. de moyenne 0 et de variance $\text{Var}[x_j] = v$, et que les poids $W_{ij}$ sont i.i.d. de moyenne 0 et de variance $\text{Var}[W_{ij}] = \sigma^2$, indépendants des entrées.
@@ -1116,7 +1328,7 @@ Considérez une couche linéaire $\mathbf{z} = W\mathbf{x}$ avec $W \in \mathbb{
 4. En considérant aussi la passe arrière (le gradient a la même structure mais avec $m$ termes au lieu de $n$), montrez que le compromis entre les deux donne $\sigma^2 = \frac{2}{n + m}$. C'est l'initialisation de Glorot.
 ````
 
-````{admonition} Solution Exercice 6
+````{admonition} Solution Exercice 8
 :class: dropdown
 
 1. $z_i = \sum_{j=1}^n W_{ij} x_j$. Par indépendance et moyenne nulle: $\mathbb{E}[z_i] = \sum_j \mathbb{E}[W_{ij}]\mathbb{E}[x_j] = 0$.
@@ -1126,4 +1338,52 @@ Considérez une couche linéaire $\mathbf{z} = W\mathbf{x}$ avec $W \in \mathbb{
 3. On veut $n \sigma^2 v = v$, donc $\sigma^2 = 1/n$.
 
 4. Lors de la passe arrière, le gradient se propage par $\bar{\mathbf{x}} = W^\top \bar{\mathbf{z}}$, ce qui donne $\text{Var}[\bar{x}_j] = m \sigma^2 \text{Var}[\bar{z}_i]$. Pour préserver la variance du gradient, il faut $\sigma^2 = 1/m$. Le compromis entre les deux conditions ($1/n$ pour la passe avant, $1/m$ pour la passe arrière) donne la moyenne harmonique: $\sigma^2 = \frac{2}{n + m}$.
+````
+
+````{admonition} Exercice 9: Comparer les optimiseurs (computationnel) ★★
+:class: hint dropdown
+
+Implémentez SGD, SGD avec momentum et Adam en NumPy pour entraîner un MLP à deux couches cachées (32 neurones, ReLU) sur un problème de classification binaire de votre choix (par exemple, `sklearn.datasets.make_moons`).
+
+1. Tracez les courbes de perte d'entraînement en fonction des époques pour les trois optimiseurs. Utilisez $\eta = 0{,}01$ pour SGD, $\eta = 0{,}01$ et $\beta = 0{,}9$ pour momentum, et $\eta = 0{,}001$ pour Adam.
+
+2. Ajoutez l'arrêt précoce avec patience $k = 10$ et un ensemble de validation (20% des données). Combien d'époques chaque optimiseur utilise-t-il avant l'arrêt?
+
+3. Comparez les frontières de décision finales. Quel optimiseur donne la frontière la plus lisse?
+````
+
+````{admonition} Solution Exercice 9
+:class: dropdown
+
+L'exercice est ouvert, mais voici les observations typiques:
+
+1. Adam converge plus vite (en nombre d'époques) que SGD et momentum grâce à la normalisation adaptative. SGD oscille davantage.
+
+2. Avec l'arrêt précoce, Adam s'arrête souvent plus tôt car il atteint rapidement une bonne perte de validation. SGD sans momentum peut nécessiter beaucoup plus d'époques.
+
+3. Les frontières sont généralement similaires pour les trois optimiseurs si l'entraînement converge. Adam et momentum tendent à donner des frontières légèrement plus lisses car ils oscillent moins en fin d'entraînement.
+
+Voici un squelette de code pour démarrer:
+
+```python
+import numpy as np
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+
+X, y = make_moons(n_samples=300, noise=0.2, random_state=0)
+X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2)
+
+def relu(x):    return np.maximum(0, x)
+def sigmoid(x): return 1 / (1 + np.exp(-np.clip(x, -50, 50)))
+
+# Initialisation He
+H = 32
+W1 = np.random.randn(2, H) * np.sqrt(2 / 2)
+b1 = np.zeros(H)
+W2 = np.random.randn(H, 1) * np.sqrt(2 / H)
+b2 = np.zeros(1)
+
+# Boucle d'entraînement: à compléter pour chaque optimiseur
+# ...
+```
 ````

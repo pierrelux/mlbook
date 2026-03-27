@@ -116,7 +116,42 @@ $$
 
 La sortie a la même forme que l'entrée: $T$ vecteurs de dimension $d_v$. Chaque vecteur de sortie est une combinaison pondérée de toutes les valeurs, les poids étant déterminés par la similarité entre la requête de cette position et les clés de toutes les autres positions.
 
+Prenons un exemple concret. Dans la phrase « Le chat qui dormait sur le canapé s'est réveillé », le mot « réveillé » doit savoir que son sujet est « chat » pour construire une représentation utile. L'auto-attention peut capturer cette dépendance: les matrices $W_Q$ et $W_K$ projettent les représentations de « réveillé » et « chat » dans un espace où leur produit scalaire est élevé, ce qui donne un poids d'attention fort entre ces deux positions. Le vecteur de sortie pour « réveillé » incorpore alors l'information de « chat ». Les matrices de projection $W_Q$, $W_K$ et $W_V$ déterminent quel type de relation l'attention capture. Un seul jeu de matrices ne peut encoder qu'une seule notion de similarité entre positions. Nous verrons à la section suivante comment l'attention multi-têtes dépasse cette limitation.
+
 Une propriété importante de l'auto-attention est qu'elle est équivariante par permutation: si l'on permute les lignes de $X$, les lignes de la sortie sont permutées de la même façon. L'auto-attention ne contient aucune notion d'ordre intrinsèque. Contrairement au RNN, où la position $t$ reçoit nécessairement l'information des positions $1, \ldots, t-1$ via $\mathbf{h}_{t-1}$, l'auto-attention traite toutes les positions de façon symétrique. Nous verrons plus loin comment l'encodage positionnel restaure la notion d'ordre.
+
+```{code-cell} python
+import numpy as np
+from scipy.special import softmax
+
+def self_attention(X, W_Q, W_K, W_V):
+    d_k = W_Q.shape[1]
+    Q, K, V = X @ W_Q, X @ W_K, X @ W_V
+    scores = Q @ K.T / d_k**0.5
+    weights = softmax(scores, axis=-1)
+    return weights @ V
+
+rng = np.random.default_rng(0)
+T, d, d_k = 4, 8, 3
+X = rng.standard_normal((T, d))
+W_Q = rng.standard_normal((d, d_k))
+W_K = rng.standard_normal((d, d_k))
+W_V = rng.standard_normal((d, d_k))
+
+# Sortie sur l'entrée originale
+Y = self_attention(X, W_Q, W_K, W_V)
+
+# Permuter les lignes de X, puis calculer l'auto-attention
+perm = [2, 0, 3, 1]
+Y_perm = self_attention(X[perm], W_Q, W_K, W_V)
+
+# Comparer: permuter la sortie vs calculer sur l'entrée permutée
+print("Y permutée (Y[perm]):")
+print(np.round(Y[perm], 4))
+print("\nAuto-attention sur X permutée:")
+print(np.round(Y_perm, 4))
+print("\nIdentiques ?", np.allclose(Y[perm], Y_perm))
+```
 
 ### Chemins directs entre positions
 
@@ -136,7 +171,7 @@ La conséquence pour l'entraînement est directe: un chemin court entre deux pos
 
 ## Attention multi-têtes
 
-Un seul mécanisme d'attention ne peut capturer qu'un seul type de relation entre les positions. En pratique, différentes positions peuvent être reliées de multiples façons: en syntaxe (sujet-verbe), en sémantique (coréférence), en proximité, etc.
+Comme nous l'avons vu, un seul jeu de matrices de projection ne capture qu'un seul type de relation. Or, dans « Le chat qui dormait sur le canapé s'est réveillé », le mot « dormait » entretient à la fois une relation syntaxique avec « chat » (son sujet) et une relation de proximité avec « canapé » (son complément de lieu). Un seul mécanisme d'attention doit choisir: il ne peut pas donner un poids élevé à « chat » et à « canapé » pour des raisons différentes avec une seule paire $W_Q, W_K$.
 
 L'attention multi-têtes exécute $H$ mécanismes d'attention en parallèle, chacun avec ses propres projections. La tête $h$ calcule:
 
@@ -174,11 +209,11 @@ $$
 
 Avec un noyau gaussien $K_\lambda(\mathbf{x}, \mathbf{x}_i) = \exp(-\|\mathbf{x} - \mathbf{x}_i\|^2 / 2\lambda^2)$, le lien avec l'attention est exact, pas seulement structurel. En développant $\|\mathbf{x} - \mathbf{x}_i\|^2 = \|\mathbf{x}\|^2 - 2\mathbf{x}^\top \mathbf{x}_i + \|\mathbf{x}_i\|^2$, le terme $\|\mathbf{x}\|^2$ est constant pour toutes les positions et disparaît dans le rapport du softmax. Si les clés ont des normes comparables, le score se réduit à $\mathbf{x}^\top \mathbf{x}_i / \lambda^2$: un produit scalaire mis à l'échelle, exactement la forme de l'attention avec $\sqrt{d_k}$ jouant le rôle de $\lambda$ (l'exercice 5 développe cette dérivation en détail).
 
-La correspondance devient plus révélatrice quand on examine ce que l'attention apprend. Dans Nadaraya-Watson, le noyau est fixé a priori. Dans l'attention, les projections $W_Q$ et $W_K$ induisent un noyau effectif $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \exp(\mathbf{x}_i^\top W_Q W_K^\top \mathbf{x}_j / \sqrt{d_k})$. La matrice $M = W_Q W_K^\top$ apprend quelles directions de l'espace d'entrée sont pertinentes pour la comparaison, de façon analogue à l'apprentissage de la forme et de la bande passante du noyau {cite}`tsai2019transformer`. Contrairement aux noyaux de Mercer, cette matrice est en général asymétrique ($M \neq M^\top$), ce qui permet à l'attention de traiter différemment la relation « sujet → verbe » et la relation « verbe → sujet » {cite}`wright2021transformers`.
+La correspondance devient plus révélatrice quand on examine ce que l'attention apprend. Dans Nadaraya-Watson, le noyau est fixé a priori. Dans l'attention, les projections $W_Q$ et $W_K$ induisent un noyau effectif $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \exp(\mathbf{x}_i^\top W_Q W_K^\top \mathbf{x}_j / \sqrt{d_k})$. La matrice $M = W_Q W_K^\top$ apprend quelles directions de l'espace d'entrée sont pertinentes pour la comparaison, de façon analogue à l'apprentissage de la forme et de la bande passante du noyau {cite}`tsai2019transformer`. Contrairement aux noyaux classiques en statistique, qui mesurent une similarité symétrique ($K(\mathbf{x}, \mathbf{x}') = K(\mathbf{x}', \mathbf{x})$), cette matrice est en général asymétrique ($M \neq M^\top$), ce qui permet à l'attention de traiter différemment la relation « sujet → verbe » et la relation « verbe → sujet » {cite}`wright2021transformers`.
 
 La divergence la plus profonde concerne $W_V$. Dans Nadaraya-Watson, les « valeurs » $y_i$ sont les observations brutes: l'estimateur ne peut retourner que des moyennes pondérées des données. Si l'on pose $W_V = I$, l'attention se réduit exactement à Nadaraya-Watson. Mais une projection $W_V$ apprise transforme ce que chaque position offre avant l'agrégation. L'attention apprend simultanément comment pondérer (via $W_Q$, $W_K$) et quoi retourner (via $W_V$). L'attention multi-têtes pousse cette idée plus loin: $H$ estimateurs à noyau indépendants, chacun avec ses propres projections $(W_Q^{(h)}, W_K^{(h)}, W_V^{(h)})$, combinés linéairement par $W_O$ — un ensemble de régresseurs à noyau spécialisés.
 
-Le lien avec la régression à noyau dépasse le cas gaussien. Santos et al. {cite}`santos2026sparse` montrent que remplacer le softmax par sparsemax produit exactement le noyau d'Epanechnikov (à support compact), et que $\alpha$-entmax avec $\alpha = 1 + 1/n$ engendre la hiérarchie classique des noyaux: Epanechnikov ($n = 1$), biweight ($n = 2$), triweight ($n = 3$), gaussien ($n \to \infty$). Le choix de la fonction de normalisation dans l'attention est équivalent au choix du noyau en régression non paramétrique, chacun avec son propre compromis biais-variance.
+Le lien avec la régression à noyau dépasse le cas gaussien. En régression non paramétrique, le noyau gaussien attribue un poids non nul à tous les points, même très éloignés. D'autres noyaux classiques — Epanechnikov, biweight, triweight — attribuent un poids nul au-delà d'une certaine distance (on dit qu'ils sont à support compact). Ils diffèrent par la douceur de la transition vers zéro: l'Epanechnikov est linéaire, le biweight quadratique, le triweight cubique. Santos et al. {cite}`santos2026sparse` montrent que remplacer le softmax par sparsemax dans le mécanisme d'attention produit exactement le noyau d'Epanechnikov, et que $\alpha$-entmax avec $\alpha = 1 + 1/n$ engendre toute cette hiérarchie: Epanechnikov ($n = 1$), biweight ($n = 2$), triweight ($n = 3$), gaussien ($n \to \infty$). Le choix de la fonction de normalisation dans l'attention est donc équivalent au choix du noyau en régression non paramétrique, chacun avec son propre compromis biais-variance.
 
 ## Le bloc transformeur
 
@@ -234,9 +269,111 @@ p_{t, 2i+1} &= \cos\!\left(\frac{t}{10000^{2i/d}}\right)
 \end{aligned}
 $$
 
-Chaque dimension de l'encodage oscille à une fréquence différente. Les basses fréquences (grands indices $i$) varient lentement avec la position, encodant l'information de position grossière. Les hautes fréquences (petits indices $i$) varient rapidement, encodant la position fine. Ce choix permet au modèle d'apprendre des relations de position relatives, puisque $\mathbf{p}_{t+k}$ peut s'exprimer comme une transformation linéaire de $\mathbf{p}_t$ pour tout décalage $k$.
+Chaque paire de dimensions $(2i, 2i+1)$ oscille à une fréquence différente, déterminée par $\omega_i = 1 / 10000^{2i/d}$. La première paire ($i = 0$) a une longueur d'onde de $2\pi \approx 6$ positions: elle change rapidement et distingue des positions voisines. La dernière paire ($i = d/2 - 1$) a une longueur d'onde d'environ $2\pi \times 10000 \approx 63\,000$ positions: elle varie à peine sur une séquence de quelques centaines de mots. Cette combinaison de fréquences fonctionne comme un système de numération: les basses fréquences encodent la position grossière (début, milieu ou fin de la séquence) tandis que les hautes fréquences encodent la position fine (la distinction entre positions adjacentes). Le modèle peut extraire des relations de position relatives par combinaison linéaire, puisque $\mathbf{p}_{t+k}$ s'exprime comme une transformation linéaire de $\mathbf{p}_t$ pour tout décalage $k$ fixé (chaque paire sin/cos se transforme par une rotation d'angle $k\omega_i$).
 
 Une alternative courante est d'utiliser des encodages positionnels appris: chaque position $t$ a un vecteur $\mathbf{p}_t$ qui est un paramètre du modèle, optimisé pendant l'entraînement. Les deux approches fonctionnent bien en pratique.
+
+Comment des vecteurs initialisés aléatoirement apprennent-ils à encoder la position? Pour le voir, considérons une expérience simple. On entraîne un unique bloc d'auto-attention sur la tâche « prédire le vecteur à la position précédente »: étant donné une séquence $\mathbf{x}_0, \ldots, \mathbf{x}_{T-1}$, la sortie à la position $t$ doit être $\mathbf{x}_{t-1}$. Cette tâche exige de savoir quelle position est « la précédente », ce qui est impossible sans information de position. Les encodages positionnels $\mathbf{p}_t$, initialisés aléatoirement, sont la seule source de cette information. Le gradient de la perte les organise pour que l'attention puisse distinguer les positions.
+
+```{code-cell} python
+:tags: [hide-input]
+
+import numpy as np
+from scipy.special import softmax
+import matplotlib.pyplot as plt
+%config InlineBackend.figure_format = 'retina'
+
+rng = np.random.default_rng(42)
+T, d = 16, 16
+B = 32  # taille de lot
+
+# Paramètres (initialisés aléatoirement)
+P = rng.standard_normal((T, d)) * 0.05      # encodages positionnels à apprendre
+Wq = rng.standard_normal((d, d)) * (2/d)**0.5
+Wk = rng.standard_normal((d, d)) * (2/d)**0.5
+Wv = rng.standard_normal((d, d)) * (2/d)**0.5
+W_out = rng.standard_normal((d, d)) * (2/d)**0.5
+
+# Attention positionnelle avant entraînement
+Q0i = P @ Wq; K0i = P @ Wk
+A_init = softmax(Q0i @ K0i.T / d**0.5, axis=-1)
+
+# Adam pour chaque paramètre
+params = [P, Wq, Wk, Wv, W_out]
+m_s = [np.zeros_like(p) for p in params]
+v_s = [np.zeros_like(p) for p in params]
+eta, b1, b2, eps = 0.001, 0.9, 0.999, 1e-8
+
+losses = []
+for step in range(3000):
+    x = rng.standard_normal((B, T, d)) * 0.5
+    X = x + P  # ajouter les encodages positionnels
+
+    # Cible: le vecteur à la position précédente
+    target = np.zeros_like(x)
+    target[:, 1:, :] = x[:, :-1, :]
+
+    # Passe avant
+    Q = X @ Wq; K = X @ Wk; V = X @ Wv
+    scores = Q @ K.transpose(0, 2, 1) / d**0.5
+    A = softmax(scores, axis=-1)
+    Z = A @ V
+    y = Z @ W_out
+    losses.append(0.5 * np.mean((y - target)**2))
+
+    # Passe arrière (rétropropagation manuelle à travers l'attention)
+    dy = (y - target) / (B * T * d)
+    dW_out = np.einsum('btk,btj->kj', Z, dy)
+    dZ = dy @ W_out.T
+    dA = dZ @ V.transpose(0, 2, 1)
+    dV = A.transpose(0, 2, 1) @ dZ
+    dS = A * (dA - (A * dA).sum(axis=-1, keepdims=True)) / d**0.5
+    dQ = dS @ K; dK = dS.transpose(0, 2, 1) @ Q
+    dX = dQ @ Wq.T + dK @ Wk.T + dV @ Wv.T
+    dP = dX.sum(axis=0)  # somme sur le lot
+    dWq = np.einsum('bti,btj->ij', X, dQ)
+    dWk = np.einsum('bti,btj->ij', X, dK)
+    dWv = np.einsum('bti,btj->ij', X, dV)
+
+    grads = [dP, dWq, dWk, dWv, dW_out]
+    t_ = step + 1
+    for i in range(5):
+        m_s[i] = b1 * m_s[i] + (1 - b1) * grads[i]
+        v_s[i] = b2 * v_s[i] + (1 - b2) * grads[i]**2
+        mhat = m_s[i] / (1 - b1**t_)
+        vhat = v_s[i] / (1 - b2**t_)
+        params[i] -= eta * mhat / (np.sqrt(vhat) + eps)
+
+# Attention positionnelle après entraînement (x = 0, position seule)
+Q0 = P @ Wq; K0 = P @ Wk
+A_final = softmax(Q0 @ K0.T / d**0.5, axis=-1)
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+
+im0 = axes[0].imshow(A_init, cmap='Blues', vmin=0, vmax=0.3)
+axes[0].set_title('Attention avant entraînement', fontsize=10)
+axes[0].set_xlabel('Position source (clé)')
+axes[0].set_ylabel('Position cible (requête)')
+plt.colorbar(im0, ax=axes[0], shrink=0.8)
+
+im1 = axes[1].imshow(A_final, cmap='Blues', vmin=0, vmax=1)
+axes[1].set_title('Attention après entraînement', fontsize=10)
+axes[1].set_xlabel('Position source (clé)')
+axes[1].set_ylabel('Position cible (requête)')
+plt.colorbar(im1, ax=axes[1], shrink=0.8)
+
+axes[2].semilogy(losses, 'C0-', lw=1.5)
+axes[2].set_xlabel('Itération')
+axes[2].set_ylabel('Perte (MSE)')
+axes[2].set_title('Convergence', fontsize=10)
+axes[2].grid(True, alpha=0.3)
+
+plt.suptitle("Apprentissage d'encodages positionnels sur la tâche « prédire le mot précédent »",
+             fontsize=11)
+plt.tight_layout()
+```
+
+Avant l'entraînement, l'attention est quasi uniforme: chaque position regarde toutes les autres de façon indiscriminée. Après 3000 itérations, une diagonale décalée apparaît: la position $t$ concentre presque tout son poids d'attention sur la position $t-1$. Les encodages positionnels, partis de vecteurs aléatoires, se sont organisés pour que le produit $\mathbf{q}_t^\top \mathbf{k}_{t-1}$ soit maximal — le modèle a appris de lui-même la notion de « position précédente ».
 
 L'animation interactive ci-dessous permet d'explorer l'encodage positionnel sinusoïdal. La carte de chaleur montre l'encodage de chaque position: les dimensions basses oscillent rapidement (position fine), les dimensions hautes oscillent lentement (position grossière). Le visualiseur de vagues isole des paires sin/cos individuelles, et le graphique de similarité cosinus montre que deux positions proches ont des encodages similaires — une propriété approximativement invariante par translation.
 
@@ -278,9 +415,29 @@ BERT {cite}`devlin2019bert` est l'exemple le plus connu. On l'utilise pour la cl
 
 ### Décodeur seul
 
-Le décodeur génère une séquence un élément à la fois, de gauche à droite. Pour que le modèle ne puisse pas "tricher" en regardant les mots futurs, l'auto-attention est masquée: la position $t$ ne peut consulter que les positions $1, \ldots, t$. Cela se fait en mettant à $-\infty$ les entrées correspondantes dans $Q K^\top$ avant le softmax.
+Le décodeur génère une séquence un élément à la fois, de gauche à droite. Un modèle de langage est entraîné à prédire le prochain mot à chaque position: la cible à la position $t$ est le mot $t + 1$. Pendant l'entraînement, toutes les positions sont traitées en parallèle par l'auto-attention, ce qui signifie que la position $t$ a accès à toute la séquence, y compris les mots futurs qu'elle est censée prédire. Sans contrainte supplémentaire, le modèle pourrait simplement copier le mot suivant au lieu d'apprendre à le prédire.
 
-GPT {cite}`radford2018improving` et les grands modèles de langage (LLM) utilisent cette architecture. Le modèle est entraîné à prédire le prochain mot à chaque position, et la génération se fait de façon autorégressive: on échantillonne un mot, on l'ajoute à la séquence, et on prédit le suivant.
+Le masque causal résout ce problème en restreignant l'attention: la position $t$ ne peut consulter que les positions $1, \ldots, t$. Concrètement, on définit une matrice de masque $M \in \mathbb{R}^{T \times T}$ dont les entrées valent:
+
+$$
+M_{ij} = \begin{cases} 0 & \text{si } i \geq j \\ -\infty & \text{si } i < j \end{cases}
+$$
+
+Cette matrice est triangulaire inférieure (avec des zéros sur la diagonale et en dessous, $-\infty$ au-dessus). Pour $T = 4$:
+
+$$
+M = \begin{pmatrix} 0 & -\infty & -\infty & -\infty \\ 0 & 0 & -\infty & -\infty \\ 0 & 0 & 0 & -\infty \\ 0 & 0 & 0 & 0 \end{pmatrix}
+$$
+
+On ajoute ce masque aux scores d'attention avant le softmax:
+
+$$
+\text{CausalAttention}(Q, K, V) = \text{softmax}\!\left(\frac{Q K^\top + M}{\sqrt{d_k}}\right) V
+$$
+
+Le mécanisme repose sur le comportement du softmax face à $-\infty$: lorsque $M_{ij} = -\infty$, le score $s_{ij} + M_{ij} = -\infty$, et $\exp(-\infty) = 0$. Le poids d'attention $\alpha_{ij}$ est donc nul, et la position $i$ ignore complètement la position $j$. Le softmax renormalise les poids restants pour qu'ils somment à 1, de sorte que chaque position ne combine que les valeurs des positions passées et présente.
+
+GPT {cite}`radford2018improving` et les grands modèles de langage (LLM) utilisent cette architecture. La génération se fait de façon autorégressive: on échantillonne un mot, on l'ajoute à la séquence, et on prédit le suivant.
 
 ### Encodeur-décodeur
 
