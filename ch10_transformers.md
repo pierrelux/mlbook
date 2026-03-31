@@ -17,6 +17,7 @@ kernelspec:
 - Expliquer le rôle de l'encodage positionnel
 - Distinguer les variantes encodeur, décodeur et encodeur-décodeur
 - Relier le mécanisme d'attention à l'estimateur de Nadaraya-Watson
+- Comparer la génération autorégressive par RNN et par transformeur, et expliquer le rôle du cache clés-valeurs
 - Expliquer le compromis entre parallélisme et coût quadratique dans les transformeurs
 ```
 
@@ -445,6 +446,240 @@ L'architecture originale du transformeur {cite}`vaswani2017attention` combine un
 
 Cette architecture est naturelle pour les tâches de transduction (traduction, résumé, réponse à une question), où l'entrée et la sortie sont des séquences de nature différente.
 
+## Entraînement et génération autorégressive
+
+La section précédente a décrit la structure du décodeur et le masque causal, mais elle n'a pas détaillé comment on entraîne un modèle de langage ni comment on génère du texte avec. Cette section rend ces deux procédures explicites et les compare à leur équivalent pour les réseaux récurrents. Nous commençons par préciser ce qu'est un jeton.
+
+### Des mots aux jetons
+
+Jusqu'ici, nous avons parlé de « mots » et de « positions » de manière informelle. En pratique, un modèle de langage ne travaille pas directement sur des mots: il opère sur des **jetons** (*tokens*), des unités de texte issues d'un découpage appelé **tokénisation** (*tokenization*).
+
+Pourquoi ne pas utiliser les mots directement? Le vocabulaire d'une langue est immense et ouvert: noms propres, termes techniques, néologismes, fautes de frappe. Un vocabulaire de mots entiers contiendrait des centaines de milliers d'entrées, et tout mot absent du vocabulaire serait inutilisable. À l'autre extrême, découper en caractères individuels résout le problème du vocabulaire (l'alphabet est fini et petit), mais produit des séquences très longues — une phrase de 20 mots devient une séquence de 100 caractères — et chaque caractère isolé porte peu d'information sémantique.
+
+La tokénisation par sous-mots (*subword tokenization*) offre un compromis. L'idée, popularisée par l'algorithme BPE (*Byte Pair Encoding*) {cite}`sennrich2016neural`, est de construire un vocabulaire de taille fixe (typiquement 30 000 à 100 000 entrées) en fusionnant progressivement les paires de caractères les plus fréquentes dans un corpus. Les mots courants sont représentés par un seul jeton (« le », « pour », « transformer »), tandis que les mots rares sont découpés en sous-mots (« anticonstitutionnellement » → « anti », « constitu », « tion », « nellement »). Ce mécanisme garantit que tout texte peut être découpé en jetons du vocabulaire, sans mot inconnu.
+
+Chaque jeton du vocabulaire est associé à un indice entier. La première couche du modèle est une table de représentations vectorielles (*embedding table*) $E \in \mathbb{R}^{|\mathcal{V}| \times d}$, où $|\mathcal{V}|$ est la taille du vocabulaire et $d$ la dimension des représentations. Le jeton d'indice $i$ est converti en vecteur $\mathbf{e}_i = E[i, :] \in \mathbb{R}^d$. Ce sont ces vecteurs qui entrent dans le transformeur comme la séquence $(\mathbf{x}_1, \ldots, \mathbf{x}_T)$, et les paramètres de $E$ sont appris conjointement avec le reste du modèle.
+
+La dernière couche d'un modèle de langage fait l'opération inverse: elle projette la représentation de sortie sur le vocabulaire pour obtenir un score par jeton. Souvent, cette projection réutilise la même matrice $E$ (transposée), ce qui réduit le nombre de paramètres.
+
+### Génération mot par mot
+
+Générer du texte avec un modèle de langage consiste à produire une séquence de jetons un par un. À chaque étape $t$, le modèle calcule une distribution sur le vocabulaire, conditionnée sur les jetons déjà produits $(x_1, \ldots, x_t)$, puis échantillonne le jeton suivant $x_{t+1}$ à partir de cette distribution. Ce jeton est ajouté à la séquence, et le processus se répète.
+
+Avec un RNN, cette boucle repose sur l'état caché $\mathbf{h}_t$, qui résume tout le contexte en un vecteur de taille fixe.
+
+```{prf:algorithm} Génération autorégressive avec un RNN
+:label: ch10-rnn-generation
+
+**Entrée**: Jeton initial $x_1$, modèle RNN
+
+1. Initialiser $\mathbf{h}_0 = \mathbf{0}$
+2. Pour $t = 1, 2, \ldots$:
+   - $\mathbf{h}_t = \varphi(W_{hh}\, \mathbf{h}_{t-1} + W_{xh}\, \mathbf{e}(x_t) + \mathbf{b}_h)$
+   - $p_t = \text{softmax}(W_{hy}\, \mathbf{h}_t + \mathbf{b}_y)$
+   - Échantillonner $x_{t+1} \sim \text{Catégorielle}(p_t)$
+   - Si $x_{t+1} = \langle\text{fin}\rangle$, arrêter
+3. Retourner $(x_1, x_2, \ldots)$
+```
+
+Le coût de chaque étape est $O(m^2 + md)$, où $m$ est la dimension de l'état caché et $d$ celle des représentations vectorielles. Ce coût est constant quel que soit le nombre de jetons déjà générés, car tout le contexte est comprimé dans $\mathbf{h}_t$.
+
+Avec un transformeur décodeur, il n'y a pas d'état caché récurrent. À chaque étape, le modèle reçoit la séquence complète $(x_1, \ldots, x_t)$ et calcule l'auto-attention sur toutes ces positions.
+
+```{prf:algorithm} Génération autorégressive avec un transformeur (version naïve)
+:label: ch10-transformer-generation
+
+**Entrée**: Jeton initial $x_1$, transformeur décodeur à $N$ blocs
+
+1. Initialiser $S \leftarrow (x_1)$
+2. Pour $t = 1, 2, \ldots$:
+   - Empiler les représentations: $X \leftarrow (\mathbf{e}(x_1), \ldots, \mathbf{e}(x_t)) \in \mathbb{R}^{t \times d}$
+   - Pour chaque bloc $\ell = 1, \ldots, N$:
+     - $Q, K, V \leftarrow XW_Q^{(\ell)},\; XW_K^{(\ell)},\; XW_V^{(\ell)}$ chacune dans $\mathbb{R}^{t \times d_k}$
+     - $A \leftarrow \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right) V$ où $QK^\top \in \mathbb{R}^{t \times t}$
+     - $X \leftarrow \text{MLP}(X + A)$ avec normalisation et connexion résiduelle
+   - $p_t \leftarrow \text{softmax}(W_{\text{sortie}}\, \mathbf{x}_t^{(N)} + \mathbf{b})$ où $\mathbf{x}_t^{(N)}$ est la dernière ligne de $X$
+   - Échantillonner $x_{t+1} \sim \text{Catégorielle}(p_t)$
+   - Si $x_{t+1} = \langle\text{fin}\rangle$, arrêter
+   - $S \leftarrow S \,\|\, (x_{t+1})$
+3. Retourner $S$
+```
+
+À l'étape $t$, l'attention calcule le produit $QK^\top \in \mathbb{R}^{t \times t}$: le coût est $O(t^2 d)$ par couche. En sommant sur les $T$ étapes de génération, le coût total est $O\!\left(\sum_{t=1}^T t^2 d\right) = O(T^3 d)$, cubique en la longueur de la séquence. La sous-section sur le cache clés-valeurs montrera comment ramener ce coût à $O(T^2 d)$.
+
+À l'inférence, les deux architectures sont donc séquentielles: on ne peut pas produire le jeton $t+1$ avant d'avoir choisi le jeton $t$. La différence est le coût par étape. Pour le RNN, ce coût est constant car l'état $\mathbf{h}_t$ a une taille fixe. Pour le transformeur, il croît avec la longueur de la séquence car l'attention revisite tout le contexte à chaque pas.
+
+### Entraînement parallèle
+
+Pendant l'entraînement, la séquence cible $(w_1, w_2, \ldots, w_T)$ est connue entièrement. L'objectif est de maximiser la vraisemblance du prochain jeton à chaque position. La perte est la somme des entropies croisées:
+
+$$
+\mathcal{L} = \sum_{t=1}^{T-1} \bigl[-\log p_\theta(w_{t+1} \mid w_1, \ldots, w_t)\bigr]
+$$ (eq:ntp-loss)
+
+Pour un RNN, on utilise le *teacher forcing*: à chaque pas $t$, on fournit comme entrée le vrai jeton $w_t$ du corpus (et non la prédiction du modèle). La mise à jour de l'état caché devient $\mathbf{h}_t = \varphi(W_{hh}\, \mathbf{h}_{t-1} + W_{xh}\, \mathbf{e}(w_t) + \mathbf{b}_h)$, où $\mathbf{e}(w_t)$ est la représentation vectorielle du jeton de référence. Cela stabilise l'entraînement en évitant que les erreurs du modèle s'accumulent d'un pas à l'autre. Mais le calcul reste séquentiel: $\mathbf{h}_t$ dépend de $\mathbf{h}_{t-1}$, et les $T$ pas de temps sont traités dans l'ordre.
+
+Pour un transformeur, le masque causal rend le teacher forcing inutile, car il accomplit le même effet de manière parallèle. On fournit la séquence complète $(w_1, \ldots, w_T)$ en une seule passe avant. Le masque garantit que la position $t$ ne consulte que $(w_1, \ldots, w_t)$, exactement comme si on avait appliqué le teacher forcing position par position. Les $T$ prédictions sont obtenues simultanément, et la perte {eq}`eq:ntp-loss` est calculée sur toutes les positions en un seul passage. Le calcul est massivement parallèle: c'est un produit matriciel $QK^\top$ sur toute la séquence, l'opération pour laquelle les GPU sont conçus.
+
+L'asymétrie entre entraînement et inférence est donc la suivante. Pendant l'entraînement, tous les jetons cibles sont connus à l'avance, ce qui permet de traiter toutes les positions en parallèle (transformeur) ou au moins d'utiliser les vrais jetons comme entrée (RNN avec teacher forcing). Pendant la génération, chaque jeton dépend du précédent, et le calcul est nécessairement séquentiel pour les deux architectures. Cette asymétrie a une conséquence: pendant l'entraînement, le modèle ne voit jamais ses propres erreurs, car il reçoit toujours les vrais jetons. Pendant la génération, une erreur à l'étape $t$ affecte toutes les étapes suivantes. Cet écart entre les conditions d'entraînement et de génération est appelé biais d'exposition (*exposure bias*).
+
+### Le cache clés-valeurs
+
+L'algorithme de génération naïf ({prf:ref}`ch10-transformer-generation`) recalcule l'attention sur toute la séquence à chaque nouvelle étape. Or, à l'étape $t$, les clés et valeurs des positions $1, \ldots, t-1$ ont déjà été calculées à l'étape $t-1$: seule la position $t$ est nouvelle.
+
+Le cache clés-valeurs (*KV cache*) exploite cette observation. À chaque couche et chaque tête, on conserve en mémoire les matrices de clés et de valeurs des positions passées. À l'étape $t$, on calcule uniquement la requête, la clé et la valeur pour la nouvelle position $t$:
+
+$$
+\mathbf{q}_t = \mathbf{x}_t W_Q, \quad \mathbf{k}_t = \mathbf{x}_t W_K, \quad \mathbf{v}_t = \mathbf{x}_t W_V
+$$
+
+On concatène $\mathbf{k}_t$ et $\mathbf{v}_t$ au cache:
+
+$$
+K_t = \begin{pmatrix} K_{t-1} \\ \mathbf{k}_t \end{pmatrix}, \quad
+V_t = \begin{pmatrix} V_{t-1} \\ \mathbf{v}_t \end{pmatrix}
+$$
+
+L'attention pour la position $t$ est alors un produit vecteur-matrice, pas un produit matrice-matrice:
+
+$$
+\text{attention}_t = \text{softmax}\!\left(\frac{\mathbf{q}_t\, K_t^\top}{\sqrt{d_k}}\right) V_t
+$$
+
+Le coût de l'étape $t$ passe de $O(t^2 d)$ à $O(td)$: un produit de taille $1 \times t$ au lieu de $t \times t$. Sur $T$ étapes, le coût total est $O\!\left(\sum_{t=1}^T td\right) = O(T^2 d)$ au lieu de $O(T^3 d)$. La contrepartie est la mémoire: on stocke $K_t$ et $V_t$ pour chaque couche et chaque tête, soit une quantité de mémoire qui croît linéairement avec la longueur de la séquence.
+
+Avec le cache, le transformeur à l'inférence ressemble au RNN en ce qu'il étend un état à chaque pas. Mais cet état (le cache) grandit avec $t$, alors que l'état caché $\mathbf{h}_t$ du RNN a une taille fixe $m$. C'est le même compromis que celui discuté au chapitre précédent: le RNN comprime toute l'information dans un vecteur de taille fixe, au risque du goulot d'information; le transformeur conserve tout le contexte, au prix d'une mémoire croissante.
+
+### Démonstration: génération avec GPT-2
+
+Mettons en pratique la boucle de génération autorégressive avec GPT-2, un transformeur décodeur pré-entraîné sur un large corpus de texte anglais. Le code ci-dessous implémente la boucle décrite dans l'algorithme {prf:ref}`ch10-transformer-generation`, sans recourir à une fonction de génération toute faite: on calcule les logits, on applique le softmax avec un paramètre de température, on échantillonne, et on ajoute le jeton au contexte.
+
+```{code-cell} python
+:tags: [hide-input]
+import logging, warnings, os
+logging.disable(logging.INFO)
+warnings.filterwarnings("ignore")
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+import torch
+import numpy as np
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+model.eval()
+
+def generer(prompt, max_jetons=40, temperature=1.0, graine=42):
+    """Génération autorégressive, jeton par jeton."""
+    torch.manual_seed(graine)
+    ids = tokenizer.encode(prompt, return_tensors="pt")
+    generes = []
+
+    for _ in range(max_jetons):
+        with torch.no_grad():
+            sorties = model(ids)
+        # Logits du dernier jeton
+        logits = sorties.logits[0, -1, :] / temperature
+        probs = torch.softmax(logits, dim=0)
+        # Échantillonner le prochain jeton
+        jeton = torch.multinomial(probs, num_samples=1)
+        generes.append(jeton.item())
+        ids = torch.cat([ids, jeton.unsqueeze(0)], dim=1)
+        # Arrêter au jeton de fin
+        if jeton.item() == tokenizer.eos_token_id:
+            break
+
+    return tokenizer.decode(generes)
+
+prompt = "The meaning of life is"
+print(f"Invite : {prompt!r}\n")
+print(f"Texte généré :\n{prompt}{generer(prompt)}")
+```
+
+À chaque étape, le modèle reçoit la séquence complète (invite + jetons déjà générés), calcule les logits sur le vocabulaire, et échantillonne le jeton suivant. La boucle est séquentielle: on ne peut pas choisir le jeton $t+1$ avant d'avoir produit le jeton $t$.
+
+On peut extraire les poids d'attention de GPT-2 pour observer le masque causal. La matrice d'attention d'une tête a pour entrée $(i, j)$ le poids $\alpha_{ij}$ que la position $i$ accorde à la position $j$. Le masque causal force $\alpha_{ij} = 0$ pour tout $j > i$: chaque position ne consulte que les positions précédentes et elle-même. La matrice résultante est triangulaire inférieure.
+
+```{code-cell} python
+:tags: [hide-input]
+%config InlineBackend.figure_format = 'retina'
+import matplotlib.pyplot as plt
+
+# Charger le modèle avec l'implémentation d'attention qui expose les poids
+model_attn = GPT2LMHeadModel.from_pretrained("gpt2", attn_implementation="eager")
+model_attn.eval()
+
+ids = tokenizer.encode(prompt, return_tensors="pt")
+with torch.no_grad():
+    sorties = model_attn(ids, output_attentions=True)
+
+jetons = [tokenizer.decode(i) for i in ids[0]]
+T = len(jetons)
+
+# Couche 0, 4 premières têtes
+fig, axes = plt.subplots(1, 4, figsize=(14, 3.5))
+for h, ax in enumerate(axes):
+    attn = sorties.attentions[0][0, h, :T, :T].numpy()
+    im = ax.imshow(attn, cmap='Blues', vmin=0, vmax=1)
+    ax.set_xticks(range(T))
+    ax.set_xticklabels(jetons, rotation=45, ha='right', fontsize=8)
+    ax.set_yticks(range(T))
+    ax.set_yticklabels(jetons, fontsize=8)
+    ax.set_title(f'Tête {h}', fontsize=10)
+    ax.set_xlabel('Clé (position consultée)')
+    if h == 0:
+        ax.set_ylabel('Requête (position courante)')
+
+fig.suptitle(f'Poids d\'attention de la première couche de GPT-2 — masque causal',
+             fontsize=11, y=1.06)
+plt.tight_layout()
+```
+
+La structure triangulaire est visible dans chaque tête: les entrées au-dessus de la diagonale sont nulles. Au-delà de cette contrainte commune, chaque tête apprend un motif d'attention différent. Certaines têtes concentrent leur attention sur le jeton immédiatement précédent; d'autres répartissent l'attention plus uniformément sur tout le contexte disponible.
+
+Le paramètre de **température** contrôle la forme de la distribution. Une température basse ($\tau \ll 1$) concentre la masse de probabilité sur les jetons les plus probables, rendant la génération quasi déterministe. Une température élevée ($\tau > 1$) aplatit la distribution et augmente la diversité, au prix de la cohérence.
+
+```{code-cell} python
+:tags: [hide-input]
+%config InlineBackend.figure_format = 'retina'
+import matplotlib.pyplot as plt
+
+# Montrer la distribution sur le vocabulaire pour le dernier jeton de l'invite
+ids = tokenizer.encode(prompt, return_tensors="pt")
+with torch.no_grad():
+    logits = model(ids).logits[0, -1, :]
+
+temperatures = [0.3, 1.0, 2.0]
+fig, axes = plt.subplots(1, 3, figsize=(13, 3.5))
+
+for ax, tau in zip(axes, temperatures):
+    probs = torch.softmax(logits / tau, dim=0)
+    top_probs, top_ids = probs.topk(10)
+    top_mots = [tokenizer.decode(i).strip() for i in top_ids]
+
+    bars = ax.barh(range(10), top_probs.numpy(), color='#2196F3')
+    ax.set_yticks(range(10))
+    ax.set_yticklabels(top_mots, fontsize=9)
+    ax.invert_yaxis()
+    ax.set_xlabel('Probabilité')
+    ax.set_title(f'$\\tau = {tau}$')
+    ax.set_xlim(0, min(1.0, top_probs[0].item() * 1.3))
+
+plt.suptitle(f'Distribution sur les 10 jetons les plus probables après "{prompt}"',
+             fontsize=11, y=1.04)
+plt.tight_layout()
+```
+
+À température $\tau = 0{,}3$, le jeton le plus probable concentre l'essentiel de la masse: la génération suit un chemin prévisible. À $\tau = 1$ (la valeur par défaut), la distribution est celle apprise par le modèle. À $\tau = 2$, les jetons moins probables reçoivent une part non négligeable, ce qui produit un texte plus varié mais moins cohérent. La température ne modifie pas les logits: elle change uniquement la forme du softmax, $p_i = \exp(z_i / \tau) / \sum_j \exp(z_j / \tau)$.
+
+```{code-cell} python
+:tags: [hide-input]
+print(f"Invite : {prompt!r}\n")
+for tau in [0.3, 1.0, 2.0]:
+    texte = generer(prompt, temperature=tau)
+    print(f"τ = {tau:.1f} : {prompt}{texte}")
+```
+
 ## Pourquoi les transformeurs dominent
 
 Les transformeurs ont remplacé les RNN comme architecture dominante pour le traitement des séquences, et ils se sont étendus bien au-delà (vision, audio, protéines, etc.). Cette domination repose sur un avantage structurel lié au matériel moderne, mais elle s'accompagne d'un coût que les RNN n'avaient pas.
@@ -473,7 +708,7 @@ Le mécanisme d'attention permet à chaque position d'une séquence de consulter
 
 Le transformeur empile des blocs composés d'attention multi-têtes et de réseaux à propagation avant, stabilisés par des connexions résiduelles et la normalisation de couche. L'encodage positionnel injecte la notion d'ordre, absente de l'auto-attention elle-même.
 
-Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décodeur) correspondent à des familles de tâches différentes. Le parallélisme, les connexions directes à longue portée, et les propriétés de mise à l'échelle expliquent la domination actuelle des transformeurs, au prix d'un coût quadratique en la longueur de la séquence.
+Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décodeur) correspondent à des familles de tâches différentes. Le parallélisme, les connexions directes à longue portée, et les propriétés de mise à l'échelle expliquent la domination actuelle des transformeurs, au prix d'un coût quadratique en la longueur de la séquence. Pendant l'entraînement, le masque causal permet de calculer toutes les prédictions en parallèle; pendant la génération, les jetons sont produits un par un, et le cache clés-valeurs évite de recalculer l'attention sur tout le contexte à chaque pas.
 
 ```{admonition} Ce que vous devez retenir
 :class: tip
@@ -493,6 +728,8 @@ Les trois variantes principales (encodeur seul, décodeur seul, encodeur-décode
 7. L'attention par produit scalaire est une généralisation paramétrique de Nadaraya-Watson: les projections $W_Q$, $W_K$ apprennent la forme du noyau, $W_V$ apprend une transformation des valeurs absente de l'estimateur classique, et le choix de la fonction de normalisation (softmax, sparsemax) détermine la famille de noyaux.
 
 8. Les transformeurs échangent la profondeur séquentielle $O(T)$ des RNN contre un coût mémoire $O(T^2)$. Leur domination repose sur le parallélisme massif des GPU et les propriétés de mise à l'échelle.
+
+9. Pendant l'entraînement, le masque causal permet de calculer les $T$ prédictions en parallèle (toutes les positions dans une seule passe avant). Pendant la génération, les jetons sont produits un par un. Le cache clés-valeurs réduit le coût par étape de $O(t^2 d)$ à $O(td)$.
 ```
 
 ## Exercices
@@ -637,4 +874,24 @@ $$
    - Remplacer les valeurs brutes $y_i$ par des projections apprises: $\mathbf{v}_i = W_V \mathbf{x}_i$.
 
    Nadaraya-Watson utilise des similarités et des valeurs fixées par les données; l'attention apprend les trois projections ($W_Q$, $W_K$, $W_V$), ce qui lui permet d'adapter simultanément ce qu'elle cherche, comment elle compare, et ce qu'elle retourne.
+````
+
+````{admonition} Exercice 6: Coût de la génération autorégressive ★★
+:class: hint dropdown
+
+On génère $T$ jetons avec un transformeur décodeur à un seul bloc, de dimension $d$, avec une seule tête d'attention.
+
+1. Sans cache clés-valeurs, quel est le coût du produit $QK^\top$ à l'étape $t$ (quand la séquence contient $t$ jetons)? Quel est le coût total pour générer $T$ jetons?
+2. Avec le cache clés-valeurs, quel est le coût de l'attention à l'étape $t$? Le coût total?
+3. Un RNN avec un état caché de dimension $m$ génère $T$ jetons. Quel est le coût total? Comparez avec les résultats précédents.
+````
+
+````{admonition} Solution Exercice 6
+:class: dropdown
+
+1. À l'étape $t$, les matrices $Q$ et $K$ ont $t$ lignes et $d$ colonnes. Le produit $QK^\top \in \mathbb{R}^{t \times t}$ coûte $O(t^2 d)$. Le coût total est $\sum_{t=1}^T O(t^2 d) = O(T^3 d / 3) = O(T^3 d)$.
+
+2. Avec le cache, à l'étape $t$, on calcule un seul vecteur requête $\mathbf{q}_t \in \mathbb{R}^d$ et on le multiplie par $K_t^\top \in \mathbb{R}^{d \times t}$. Le coût est $O(td)$. Le coût total est $\sum_{t=1}^T O(td) = O(T^2 d / 2) = O(T^2 d)$.
+
+3. Pour le RNN, chaque étape coûte $O(m^2 + md)$ (mise à jour de $\mathbf{h}_t$ et calcul de la sortie). Le coût total est $O(T(m^2 + md))$, linéaire en $T$. Le RNN est donc plus économe en calcul par jeton, mais il comprime tout le contexte dans un vecteur de taille fixe $m$, ce qui limite sa capacité à exploiter les dépendances à long terme.
 ````

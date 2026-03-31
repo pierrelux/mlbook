@@ -20,6 +20,10 @@ dependencies = [
     "jax>=0.9.1",
     "sympy>=1.14.0",
     "networkx>=3.6.1",
+    "pooch",
+    "torch",
+    "torchvision",
+    "transformers",
 ]
 
 [build-system]

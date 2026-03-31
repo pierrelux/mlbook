@@ -44,6 +44,7 @@ project:
       children:
         - file: ch7_neural_networks.md
         - file: ch8_optimization.md
+        - file: ch9_convnets.md
         - file: ch9_autoencoders.md
         - file: ch9_rnn.md
         - file: ch10_transformers.md

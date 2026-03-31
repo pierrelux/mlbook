@@ -1511,7 +1511,7 @@ Le MLP traite son entrée comme un vecteur plat $\mathbf{x} \in \mathbb{R}^d$: c
 
 Mais pour une image de $28 \times 28$ pixels, le MLP la transforme en un vecteur de 784 entrées. La matrice $W_1 \in \mathbb{R}^{h \times 784}$ mélange toutes les positions spatiales: elle ne sait pas que le pixel $(0, 0)$ est voisin du pixel $(0, 1)$ mais éloigné du pixel $(27, 27)$. Pour une phrase de 10 mots, le MLP a besoin d'une entrée $\mathbf{x} \in \mathbb{R}^{10d}$ de taille fixe. Que fait-on avec une phrase de 20 mots?
 
-Ces limitations motivent des architectures qui exploitent la structure des données. Les réseaux récurrents traitent les séquences élément par élément en maintenant un état interne. Le mécanisme d'attention et les transformeurs permettent à chaque position d'une séquence de consulter directement toutes les autres, sans contrainte de longueur fixe.
+Ces limitations motivent des architectures qui exploitent la structure des données. Les réseaux convolutifs remplacent la matrice dense par une opération de convolution qui respecte la structure spatiale des images. Les réseaux récurrents traitent les séquences élément par élément en maintenant un état interne. Le mécanisme d'attention et les transformeurs permettent à chaque position d'une séquence de consulter directement toutes les autres, sans contrainte de longueur fixe.
 
 ## Résumé
 
