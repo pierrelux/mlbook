@@ -48,6 +48,9 @@ project:
         - file: ch9_autoencoders.md
         - file: ch9_rnn.md
         - file: ch10_transformers.md
+    - title: "Partie IV: Méthodes d'ensemble"
+      children:
+        - file: ch11_ensembles.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb
@@ -62,6 +65,7 @@ project:
         - file: exercises/tp7_traceur.ipynb
         - file: exercises/projet_energie.ipynb
         - file: exercises/devoir2_starter.ipynb
+        - file: exercises/demo_functional_gd.ipynb
     # - title: "Présentations"
     #   children:
     #     - file: slides/linear_models.md
