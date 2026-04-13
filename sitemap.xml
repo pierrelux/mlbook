@@ -47,6 +47,9 @@
     <loc>http://localhost:3003/ch11-ensembles</loc>
   </url>
   <url>
+    <loc>http://localhost:3003/ch-revision</loc>
+  </url>
+  <url>
     <loc>http://localhost:3003/tp0-knn</loc>
   </url>
   <url>
