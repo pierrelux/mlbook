@@ -51,6 +51,9 @@ project:
     - title: "Partie IV: Méthodes d'ensemble"
       children:
         - file: ch11_ensembles.md
+    - title: "Révision"
+      children:
+        - file: ch_revision.md
     - title: "Travaux Pratiques"
       children:
         - file: exercises/tp0_knn.ipynb
